@@ -257,6 +257,8 @@ void DuiCompositeWindow::setVisible(bool visible)
     window_visible = visible;
 
     QGraphicsItem::setVisible(visible);
+    DuiCompositeManager *p = (DuiCompositeManager *) qApp;
+    p->d->setWindowDebugProperties(window());
 }
 
 void DuiCompositeWindow::startPing()
@@ -362,12 +364,14 @@ void DuiCompositeWindow::q_delayShow()
 
 QVariant DuiCompositeWindow::itemChange(GraphicsItemChange change, const QVariant &value)
 {
-    if (change == ItemZValueHasChanged  ||
-            change == ItemVisibleHasChanged ||
-            change == ItemParentHasChanged) {
-        DuiCompositeManager *p = (DuiCompositeManager *) qApp;
+    DuiCompositeManager *p = (DuiCompositeManager *) qApp;
+    bool zvalChanged = (change == ItemZValueHasChanged);
+    if (zvalChanged)
+        p->d->setWindowDebugProperties(window());
+
+    if (zvalChanged || change == ItemVisibleHasChanged || change == ItemParentHasChanged)
         p->d->glwidget->update();
-    }
+    
     return QGraphicsItem::itemChange(change, value);
 }
 

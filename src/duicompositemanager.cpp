@@ -108,7 +108,13 @@ public:
         WM_CHANGE_STATE,
 
         // DUI-specific
-        _DUI_DECORATOR_WINDOW,
+        _DUI_DECORATOR_WINDOW, 
+        _DUI_WM_INFO,
+        _DUI_WM_WINDOW_ZVALUE,
+        _DUI_WM_WINDOW_COMPOSITED_VISIBLE, 
+        _DUI_WM_WINDOW_COMPOSITED_INVISIBLE,
+        _DUI_WM_WINDOW_DIRECT_VISIBLE,
+        _DUI_WM_WINDOW_DIRECT_INVISIBLE,
 
         ATOMS_TOTAL
     };
@@ -180,6 +186,18 @@ DuiCompAtoms::DuiCompAtoms(Display *d)
     atoms[_NET_ACTIVE_WINDOW]          = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
     atoms[_NET_CLOSE_WINDOW]           = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
     atoms[_DUI_DECORATOR_WINDOW]       = XInternAtom(dpy, "_DUI_DECORATOR_WINDOW", False);
+
+     // custom properties for CITA
+    atoms[_DUI_WM_INFO]                = XInternAtom (dpy, "_DUI_WM_INFO", False);
+    atoms[_DUI_WM_WINDOW_ZVALUE]       = XInternAtom (dpy, "_DUI_WM_WINDOW_ZVALUE", False);
+    atoms[_DUI_WM_WINDOW_COMPOSITED_VISIBLE]    
+        = XInternAtom (dpy, "_DUI_WM_WINDOW_COMPOSITED_VISIBLE", False);
+    atoms[_DUI_WM_WINDOW_COMPOSITED_INVISIBLE]    
+        = XInternAtom (dpy, "_DUI_WM_WINDOW_COMPOSITED_INVISIBLE", False);
+    atoms[_DUI_WM_WINDOW_DIRECT_VISIBLE]    
+        = XInternAtom (dpy, "_DUI_WM_WINDOW_DIRECT_VISIBLE", False);
+    atoms[_DUI_WM_WINDOW_DIRECT_INVISIBLE]    
+        = XInternAtom (dpy, "_DUI_WM_WINDOW_DIRECT_INVISIBLE", False);
 }
 
 DuiCompAtoms::Type DuiCompAtoms::windowType(Window w)
@@ -931,6 +949,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
             DuiDecoratorFrame::instance()->raise();
             stack[APPLICATION_LAYER] = e->window;
         }
+        setWindowDebugProperties(win);
     }
 }
 
@@ -1216,6 +1235,32 @@ void DuiCompositeManagerPrivate::setWindowState(Window w, int state)
                     32, PropModeReplace, (unsigned char *)d, 2);
 }
 
+void DuiCompositeManagerPrivate::setWindowDebugProperties(Window w)
+{
+#ifdef WINDOW_DEBUG
+    DuiCompositeWindow* i = texturePixmapItem(w);
+    if (!i)
+        return;
+    
+    CARD32 d[1];
+    if (i->windowVisible())
+        d[0] = i->isDirectRendered() ? 
+            ATOM(_DUI_WM_WINDOW_DIRECT_VISIBLE) : ATOM(_DUI_WM_WINDOW_COMPOSITED_VISIBLE);
+    else
+        d[0] = i->isDirectRendered() ? 
+            ATOM(_DUI_WM_WINDOW_DIRECT_INVISIBLE) : ATOM(_DUI_WM_WINDOW_COMPOSITED_INVISIBLE);
+    
+    XChangeProperty(QX11Info::display(), w, ATOM(_DUI_WM_INFO), XA_ATOM,
+                    32, PropModeReplace, (unsigned char *)d, 1);
+    long z = i->zValue();
+    XChangeProperty(QX11Info::display(), w, ATOM(_DUI_WM_WINDOW_ZVALUE), XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *) &z, 1);
+    
+#else
+    Q_UNUSED(w);
+#endif    
+}
+
 bool DuiCompositeManagerPrivate::x11EventFilter(XEvent *event)
 {
     static const int damage_ev = damage_event + XDamageNotify;
@@ -1408,6 +1453,7 @@ void DuiCompositeManagerPrivate::addItem(DuiCompositeWindow *item)
             SLOT(sendPing(DuiCompositeWindow *)));
 
     updateWinList();
+    setWindowDebugProperties(item->window());
 }
 
 void DuiCompositeManagerPrivate::updateWinList(bool stackingOnly)

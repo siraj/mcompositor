@@ -38,7 +38,7 @@ class DuiCompositeWindow;
 
 enum {
     INPUT_LAYER = 0,
-    DOCK_LAYER = 0,
+    DOCK_LAYER,
     SYSTEM_LAYER,
     APPLICATION_LAYER,
     DESKTOP_LAYER,
@@ -68,10 +68,9 @@ public:
 
     void prepare();
     void activateWindow(Window w);
-    //! Update the _NET_CLIENT_LIST and _NET_CLIENT_LIST_STACKING
     void updateWinList(bool stackingOnly = false);
     void setWindowState(Window , int);
-
+    void setWindowDebugProperties(Window w);
     void topmostWindowsRaise();
     void positionWindow(Window w, StackPosition pos);
     void addItem(DuiCompositeWindow *item);
@@ -87,7 +86,6 @@ public:
     void clientMessageEvent(XClientMessageEvent *);
     void redirectWindows();
     void mapOverlayWindow();
-    //! Redirects existing items
     void enableRedirection();
     void exposeDesktop(bool exposed);
 
@@ -136,7 +134,6 @@ public slots:
 
     void gotHungWindow(DuiCompositeWindow *window);
     void sendPing(DuiCompositeWindow *window);
-
     void enableInput();
     void disableInput();
     void enableCompositing();
