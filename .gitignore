@@ -1,0 +1,19 @@
+Makefile
+*.o
+moc_*.cpp
+*.moc
+*~
+# VIM temporary swap files
+.*.swp
+libdecorator.so*
+#Debian stuff
+debian/tmp
+debian/duicompositor
+debian/duicompositor-dbg
+debian/duicompositor-tests
+*.debhelper
+debian/files
+debian/*.substvars
+tests/ut_duicompositescene/ut_duicompositescene
+tests/ut_duisimplewindowframe/ut_duisimplewindowframe
+*-stamp

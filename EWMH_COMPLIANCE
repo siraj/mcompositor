@@ -1,0 +1,78 @@
+W A R N I N G:                                                    
+--------------                                                    
+This document is a work in progress and is in no way complete or accurate!
+Its current purpose is in aiding the duicompositor's NetWM audit for a future 
+duicompositor release.
+
+NetWM Compliance Document:
+==========================
+
+Listed below are all the NetWM (or EWM) hints decided upon on freedesktop.org 
+(as of version 1.4draft-2) and duicompsitor's current level of
+compliance with the spec.
+
+
+compliance :
+    - = none,
+    / = partial,
+    + = complete,
+
+ 
+/ _NET_WM_WINDOW_TYPE
++ _NET_WM_WINDOW_TYPE_DESKTOP
++ _NET_WM_WINDOW_TYPE_NORMAL
++ _NET_WM_WINDOW_TYPE_INPUT
++ _NET_WM_WINDOW_TYPE_NOTIFICATION
++ _NET_WM_WINDOW_TYPE_DOCK
+
+/ _NET_WM_WINDOW_OPACITY
+
+/ _NET_WM_PID
+/ _NET_WM_STATE
++ _NET_WM_STATE_ABOVE
++ _NET_WM_STATE_SKIP_TASKBAR
+
++ _NET_ACTIVE_WINDOW
++ _NET_CLOSE_WINDOW
++ _NET_CLIENT_LIST
++ _NET_CLIENT_LIST_STACKING
++ _NET_WM_ICON_GEOMETRY
+
+- _NET_SUPPORTED
+- _NET_NUMBER_OF_DESKTOPS
+- _NET_DESKTOP_GEOMETRY
+- _NET_DESKTOP_VIEWPORT
+- _NET_CURRENT_DESKTOP
+- _NET_DESKTOP_NAMES
+- _NET_WORKAREA
+- _NET_SUPPORTING_WM_CHECK
+- _NET_VIRTUAL_ROOTS
+- _NET_DESKTOP_LAYOUT
+- _NET_SHOWING_DESKTOP
+
+- _NET_WM_NAME
+- _NET_WM_VISIBLE_NAME
+- _NET_WM_ICON_NAME
+- _NET_WM_VISIBLE_ICON_NAME
+- _NET_WM_DESKTOP
+- _NET_WM_ALLOWED_ACTIONS
+- _NET_WM_STRUT
+- _NET_WM_STRUT_PARTIAL
+- _NET_WM_ICON_GEOMETRY
+- _NET_WM_ICON
+- _NET_WM_HANDLED_ICONS
+- _NET_WM_USER_TIME
+- _NET_WM_USER_TIME_WINDOW
+- _NET_FRAME_EXTENTS
+
++ _NET_WM_PING
+- _NET_WM_SYNC_REQUEST
+- _NET_WM_FULLSCREEN_MONITORS
++ _NET_WM_CM_Sn
+
+KDE-specific extensions:
+
++ _KDE_NET_WM_WINDOW_TYPE_OVERRIDE
+    - window type, makes the window borderless (used by Qt as hint)
+
+

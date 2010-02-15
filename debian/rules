@@ -1,0 +1,128 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+DEBDIR = ..
+CFLAGS = -Wall -Werror -g
+
+comma :=,
+empty :=
+space := $(empty) $(empty)
+
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+else
+	CFLAGS += -O2
+endif
+
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+    INSTALL_PROGRAM += -s
+endif
+
+TMP_BUILD_OPTS = $(subst $(comma),$(space),$(DEB_BUILD_OPTIONS))
+
+ifneq (,$(filter parallel=%,$(TMP_BUILD_OPTS)))
+         NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(TMP_BUILD_OPTS)))
+         PARALLEL_MAKEFLAGS += -j$(NUMJOBS)
+endif
+
+QMAKE_OPTIONS = COV_OPTION=off
+BASENAME_ORIGIN = $(shell cat .git/config | grep url | sed 's/.*\///')
+ifeq (duitests,$(BASENAME_ORIGIN))
+	QMAKE_OPTIONS = COV_OPTION=on
+endif
+
+# shared library versions, option 1
+version=0.1.0
+major=0
+
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+
+	qmake $(QMAKE_OPTIONS)
+
+	touch configure-stamp
+
+
+build: build-stamp
+build-stamp: configure-stamp 
+	dh_testdir
+
+	make  $(PARALLEL_MAKEFLAGS)
+
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+
+	rm -f build-stamp configure-stamp
+
+	make  $(PARALLEL_MAKEFLAGS) clean || true
+	rm -f lib/*
+	rm -rf .obj	
+
+	dh_clean 
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k 
+	dh_installdirs
+
+	# Add here commands to install the package into debian/tmp
+
+	#duicompositor package 
+	INSTALL_ROOT=$(CURDIR)/debian/tmp make  $(PARALLEL_MAKEFLAGS) install
+
+	# create metadata to duicompositor-tests package
+	#mkdir -p $(CURDIR)/debian/tmp/usr/share/duicompositor-tests/
+	#testhelper -d $(CURDIR)/debian/tmp/usr/lib/duicompositor-tests -t /usr/lib/duicompositor-tests -p duicompositor-tests -o $(CURDIR)/debian/tmp/usr/share/duicompositor-tests/tests.xml
+
+	#duicompositor-doc package
+	#make  $(PARALLEL_MAKEFLAGS) doc
+	#mkdir -p ${CURDIR}/debian/tmp/usr/share/doc/duicompositor/api
+	#cp -r doc/html/*  ${CURDIR}/debian/tmp/usr/share/doc/duicompositor/api/
+
+
+# Build architecture-independent files here.
+binary-indep: build install
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+#	dh_installchangelogs 
+#	dh_installdocs
+	dh_install --sourcedir=debian/tmp -v 
+#	dh_installexamples
+#	dh_install
+#	dh_installmenu
+#	dh_installdebconf	
+#	dh_installlogrotate
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+#	dh_installinit
+#	dh_installcron
+#	dh_installinfo
+#	dh_installman
+	dh_link
+	dh_strip --dbg-package=duicompositor
+	dh_compress
+	dh_fixperms
+#	dh_perl
+#	dh_python
+	dh_makeshlibs
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb --destdir=$(DEBDIR)
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure
