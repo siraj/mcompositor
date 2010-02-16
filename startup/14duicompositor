@@ -1,5 +1,0 @@
-#!/bin/sh
-
-export DISPLAY=:0
-/usr/sbin/dsmetool -U user -t /usr/bin/duicompositor
-/usr/sbin/dsmetool -U user -t "/usr/bin/duidecorator -software -remote-theme"
