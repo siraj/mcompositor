@@ -28,11 +28,18 @@ ifneq (,$(filter parallel=%,$(TMP_BUILD_OPTS)))
          PARALLEL_MAKEFLAGS += -j$(NUMJOBS)
 endif
 
-QMAKE_OPTIONS = COV_OPTION=off
+QMAKE_OPTIONS = COV_OPTION=off 
 BASENAME_ORIGIN = $(shell cat .git/config | grep url | sed 's/.*\///')
 ifeq (duitests,$(BASENAME_ORIGIN))
 	QMAKE_OPTIONS = COV_OPTION=on
 endif
+
+ifeq (,$(findstring notestability,$(DEB_BUILD_OPTIONS)))
+    QMAKE_OPTIONS -= TESTABILITY=on
+else
+    QMAKE_OPTIONS += TESTABILITY=off
+endif
+
 
 # shared library versions, option 1
 version=0.1.0
@@ -42,7 +49,7 @@ configure: configure-stamp
 configure-stamp:
 	dh_testdir
 
-	qmake $(QMAKE_OPTIONS)
+	qmake -r $(QMAKE_OPTIONS)
 
 	touch configure-stamp
 
