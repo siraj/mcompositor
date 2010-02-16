@@ -78,10 +78,6 @@ install: build
 	#duicompositor package 
 	INSTALL_ROOT=$(CURDIR)/debian/tmp make  $(PARALLEL_MAKEFLAGS) install
 
-	# create metadata to duicompositor-tests package
-	#mkdir -p $(CURDIR)/debian/tmp/usr/share/duicompositor-tests/
-	#testhelper -d $(CURDIR)/debian/tmp/usr/lib/duicompositor-tests -t /usr/lib/duicompositor-tests -p duicompositor-tests -o $(CURDIR)/debian/tmp/usr/share/duicompositor-tests/tests.xml
-
 	#duicompositor-doc package
 	#make  $(PARALLEL_MAKEFLAGS) doc
 	#mkdir -p ${CURDIR}/debian/tmp/usr/share/doc/duicompositor/api

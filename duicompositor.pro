@@ -2,7 +2,6 @@ TEMPLATE = subdirs
 CONFIG+=ordered
 SUBDIRS = \
 	src \
-#    tests \
     decorators
 
 QMAKE_CLEAN += \ 
