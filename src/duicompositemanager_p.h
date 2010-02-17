@@ -63,7 +63,7 @@ public:
 
     static Window parentWindow(Window child);
     DuiCompositeWindow *texturePixmapItem(Window w);
-    DuiCompositeWindow *bindWindow(Window win, DuiCompositeWindow *transient = 0);
+    DuiCompositeWindow *bindWindow(Window win);
     QGraphicsScene *scene();
 
     void prepare();

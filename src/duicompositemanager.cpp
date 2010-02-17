@@ -841,7 +841,6 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
 {
     Window win = e->window;
     Window transient_for = 0;
-    DuiCompositeWindow *tf_item = 0;
 
     if (win == xoverlay) {
         enableRedirection();
@@ -850,8 +849,6 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
 
     // For menus and popups
     XGetTransientForHint(QX11Info::display(), win, &transient_for);
-    if (transient_for)
-        tf_item = texturePixmapItem(transient_for);
 
     FrameData fd = framed_windows.value(win);
     if (fd.frame) {
@@ -888,8 +885,8 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 && (e->event == QX11Info::appRootWindow())) {
             DuiCompositeWindow *applayer = texturePixmapItem(stack[APPLICATION_LAYER]);
             if ((applayer && (applayer->childItems().count() == 0))
-                    // ensure this is not the previous application layer
-                    && (e->window != stack[APPLICATION_LAYER]))
+                    && (e->window != stack[APPLICATION_LAYER])
+                    && !transient_for)
                 // lower previous app window
                 XLowerWindow(QX11Info::display(), stack[APPLICATION_LAYER]);
 
@@ -929,7 +926,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
     // only composite top-level windows
     if ((parentWindow(win) == RootWindow(QX11Info::display(), 0))
             && (e->event == QX11Info::appRootWindow())) {
-        item = bindWindow(win, tf_item);
+        item = bindWindow(win);
         if (!item->hasAlpha() && !atom->isDecorator(win)) {
             compositing = true;
             if (DuiDecoratorFrame::instance()->decoratorItem() &&
@@ -1322,7 +1319,7 @@ void DuiCompositeManagerPrivate::redirectWindows()
         if (attr.map_state == IsViewable &&
                 localwin != kids[i] &&
                 (attr.width > 1 && attr.height > 1)) {
-            bindWindow(kids[i], 0);
+            bindWindow(kids[i]);
             if (kids[i] == localwin || kids[i] == parentWindow(localwin))
                 continue;
             XGrabButton(QX11Info::display(), AnyButton, AnyModifier, kids[i],
@@ -1358,8 +1355,7 @@ bool DuiCompositeManagerPrivate::removeWindow(Window w)
     return true;
 }
 
-DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window,
-        DuiCompositeWindow *tf)
+DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
 {
     Display *display = QX11Info::display();
     bool is_decorator = atom->isDecorator(window);
@@ -1392,8 +1388,6 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window,
                 SLOT(setUnBlurred()));
         return item;
     }
-    if (tf)
-        item->setParentItem(tf);
 
     item->manipulationEnabled(true);
     topmostWindowsRaise();
