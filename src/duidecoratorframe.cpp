@@ -62,7 +62,8 @@ Qt::HANDLE DuiDecoratorFrame::winId() const
 
 void DuiDecoratorFrame::lower()
 {
-    XLowerWindow(QX11Info::display(), decorator_window);
+    if (decorator_window)
+        XLowerWindow(QX11Info::display(), decorator_window);
     if (decorator_item)
         decorator_item->setVisible(false);
 }
@@ -78,9 +79,12 @@ void DuiDecoratorFrame::setManagedWindow(Qt::HANDLE window)
 {
     Display *dpy = QX11Info::display();
 
-    if (client == window || !decorator_item)
+    if (client == window)
         return;
     client = window;
+    
+    if (!decorator_item)
+        return;
 
     // TODO: Make this dynamic based on decorator dimensions.
     DuiCompositeWindow *w = DuiCompositeWindow::compositeWindow(window);

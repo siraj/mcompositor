@@ -906,9 +906,11 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         return;
     }
     if (item) {
-        if (!item->hasAlpha())
+        if (!item->hasAlpha()) {
+            item->setVisible(true);
+            compositing = true;
             disableCompositing();
-        else {
+        } else {
             ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
             item->saveBackingStore(true);
             item->delayShow(100);
@@ -1021,8 +1023,14 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             if (ping_source) {
                 ping_source->receivedPing();
                 Window managed = DuiDecoratorFrame::instance()->managedWindow();
-                if (ping_source->window() == managed && !ping_source->needDecoration())
+                if (ping_source->window() == managed && !ping_source->needDecoration()) {
                     DuiDecoratorFrame::instance()->lower();
+                    DuiDecoratorFrame::instance()->setManagedWindow(0);
+                    if(!ping_source->hasAlpha()) {
+                        compositing = true;
+                        disableCompositing();
+                    }
+                }
             }
         }
     } else if (event->message_type == ATOM(_NET_WM_STATE)) {
@@ -1557,12 +1565,13 @@ void DuiCompositeManagerPrivate::enableRedirection()
     for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
             it != windows.end(); ++it) {
         DuiCompositeWindow *tp  = it.value();
-
-        ((DuiTexturePixmapItem *)tp)->enableRedirectedRendering();
+        if(tp->windowVisible())
+            ((DuiTexturePixmapItem *)tp)->enableRedirectedRendering();
 
         // Hide if really not visible
         if (tp->isIconified())
             tp->hide();
+        setWindowDebugProperties(it.key());
     }
     glwidget->update();
     compositing = true;
@@ -1579,7 +1588,7 @@ void DuiCompositeManagerPrivate::disableCompositing()
     // we could still have exisisting decorator on-screen.
     // ensure we don't accidentally disturb it
     if (!compositing || (DuiDecoratorFrame::instance()->decoratorItem() &&
-                         DuiDecoratorFrame::instance()->decoratorItem()->isVisible()))
+                         DuiDecoratorFrame::instance()->decoratorItem()->windowVisible()))
         return;
 
     scene()->views()[0]->setUpdatesEnabled(false);
@@ -1590,6 +1599,7 @@ void DuiCompositeManagerPrivate::disableCompositing()
         // checks above fail. somehow decorator got in. stop it at this point
         if (!tp->isDecorator() && !tp->isIconified())
             ((DuiTexturePixmapItem *)tp)->enableDirectFbRendering();
+        setWindowDebugProperties(it.key());
     }
 
     XSync(QX11Info::display(), False);
