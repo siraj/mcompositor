@@ -652,9 +652,9 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
     if (e->parent != RootWindow(QX11Info::display(), 0))
         return;
 
+    bool isInput = (atom->windowType(e->window) == DuiCompAtoms::INPUT);
     // sandbox these windows. we own them
-    if ((atom->windowType(e->window) == DuiCompAtoms::INPUT) ||
-            atom->isDecorator(e->window))
+    if (atom->isDecorator(e->window))
         return;
 
     // dock changed
@@ -681,7 +681,7 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
     wc.sibling =  e->above;
     wc.stack_mode = e->detail;
 
-    if ((e->detail == Above) && (e->above == None)) {
+    if ((e->detail == Above) && (e->above == None) && !isInput ) {
         // enforce DUI guidelines. lower previous application window
         // that was on the screen
         XWindowAttributes a;
@@ -707,7 +707,7 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
                     enableCompositing();
             }
         }
-    } else if ((e->detail == Below) && (e->above == None))
+    } else if ((e->detail == Below) && (e->above == None) && !isInput)
         setWindowState(e->window, IconicState);
 
     unsigned int value_mask = e->value_mask;
@@ -736,7 +736,10 @@ void DuiCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         if (hasDock && ((dock_region.boundingRect().width()  <= a.width) &&
                         (dock_region.boundingRect().height() <= a.height))) {
             QRect r = (QRegion(a.x, a.y, a.width, a.height) - dock_region).boundingRect();
-            XMoveResizeWindow(dpy, e->window, r.x(), r.y(), r.width(), r.height());
+            bool isInput = (atom->windowType(e->window) == DuiCompAtoms::INPUT);
+            int xpos =  isInput ? a.x : r.x();
+            int ypos =  isInput ? a.y : r.y();
+            XMoveResizeWindow(dpy, e->window, xpos, ypos, r.width(), r.height());
         } else if ((a.width != xres) && (a.height != yres)) {
             XResizeWindow(dpy, e->window, xres, yres);
         }
