@@ -736,10 +736,7 @@ void DuiCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         if (hasDock && ((dock_region.boundingRect().width()  <= a.width) &&
                         (dock_region.boundingRect().height() <= a.height))) {
             QRect r = (QRegion(a.x, a.y, a.width, a.height) - dock_region).boundingRect();
-            bool isInput = (atom->windowType(e->window) == DuiCompAtoms::INPUT);
-            int xpos =  isInput ? a.x : r.x();
-            int ypos =  isInput ? a.y : r.y();
-            XMoveResizeWindow(dpy, e->window, xpos, ypos, r.width(), r.height());
+            XMoveResizeWindow(dpy, e->window, r.x(), r.y(), r.width(), r.height());
         } else if ((a.width != xres) && (a.height != yres)) {
             XResizeWindow(dpy, e->window, xres, yres);
         }
