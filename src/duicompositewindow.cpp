@@ -38,6 +38,7 @@ DuiCompositeWindow::DuiCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       blur(false),
       iconified(false),
       iconified_final(false),
+      iconify_state(NoIconifyState),
       destroyed(false),
       requestzval(false),
       process_hung(false),
@@ -129,14 +130,22 @@ void DuiCompositeWindow::iconify(const QRectF &iconGeometry, bool defer)
 void DuiCompositeWindow::setIconified(bool iconified)
 {
     iconified_final = iconified;
+    iconify_state = ManualIconifyState;
     if (iconified && !anim->pendingAnimation())
-        emit itemIconified();
+        emit itemIconified(this);
+}
+
+DuiCompositeWindow::IconifyState DuiCompositeWindow::iconifyState() const
+{
+    return iconify_state;
 }
 
 void DuiCompositeWindow::startTransition()
 {
-    anim->startAnimation();
-    anim->deferAnimation(false);
+    if (anim->pendingAnimation()) {
+        anim->startAnimation();
+        anim->deferAnimation(false);
+    }
 }
 
 // TODO: have an option of disabling the animation
@@ -171,11 +180,12 @@ void DuiCompositeWindow::finalizeState()
     if (iconified) {
         iconified_final = true;
         hide();
-        emit itemIconified();
+        iconify_state = TransitionIconifyState;
+        emit itemIconified(this);
     } else {
         iconified_final = false;
         show();
-        QTimer::singleShot(200, this, SIGNAL(itemRestored()));
+        QTimer::singleShot(200, this, SLOT(q_itemRestored()));
     }
 
     // item lifetime
@@ -185,13 +195,20 @@ void DuiCompositeWindow::finalizeState()
     requestzval = false;
 }
 
+void DuiCompositeWindow::q_itemRestored()
+{
+    emit itemRestored(this);
+}
+
 void DuiCompositeWindow::requestZValue(int zvalue)
 {
     if (anim->isActive()) {
         zval = zvalue;
         requestzval = true;
-    } else
+    } else {
         setZValue(zvalue);
+        requestzval = false;
+    }
 }
 
 bool DuiCompositeWindow::isIconified() const
@@ -344,7 +361,7 @@ void DuiCompositeWindow::windowSettled()
     window_transitioning = false;
 }
 
-bool DuiCompositeWindow::isTransitioning() const
+bool DuiCompositeWindow::isTransitioning()
 {
     return window_transitioning;
 }

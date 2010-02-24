@@ -87,7 +87,7 @@ public:
     void redirectWindows();
     void mapOverlayWindow();
     void enableRedirection();
-    void exposeDesktop(bool exposed);
+    void setExposeDesktop(bool exposed);
 
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
@@ -99,8 +99,6 @@ public:
     Window localwin;
     Window xoverlay;
     Window prev_focus;
-    Window iconify_window;
-    Window raise_window;
 
     static Window stack[TOTAL_LAYERS];
 
@@ -136,12 +134,12 @@ public slots:
     void sendPing(DuiCompositeWindow *window);
     void enableInput();
     void disableInput();
-    void enableCompositing();
-    void disableCompositing();
+    void enableCompositing(bool forced = false);
+    void disableCompositing(bool forced = false);
     void showLaunchIndicator(int timeout);
     void hideLaunchIndicator();
-    void iconifyOnComposite();
-    void raiseOnComposite();
+    void iconifyOnLower(DuiCompositeWindow *window);
+    void raiseOnRestore(DuiCompositeWindow *window);
     void exposeDesktop();
     void directRenderDesktop();
 };

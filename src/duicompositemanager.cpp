@@ -108,13 +108,15 @@ public:
         WM_CHANGE_STATE,
 
         // DUI-specific
-        _DUI_DECORATOR_WINDOW, 
+        _DUI_DECORATOR_WINDOW,
+#ifdef WINDOW_DEBUG 
         _DUI_WM_INFO,
         _DUI_WM_WINDOW_ZVALUE,
         _DUI_WM_WINDOW_COMPOSITED_VISIBLE, 
         _DUI_WM_WINDOW_COMPOSITED_INVISIBLE,
         _DUI_WM_WINDOW_DIRECT_VISIBLE,
         _DUI_WM_WINDOW_DIRECT_INVISIBLE,
+#endif
 
         ATOMS_TOTAL
     };
@@ -187,6 +189,7 @@ DuiCompAtoms::DuiCompAtoms(Display *d)
     atoms[_NET_CLOSE_WINDOW]           = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
     atoms[_DUI_DECORATOR_WINDOW]       = XInternAtom(dpy, "_DUI_DECORATOR_WINDOW", False);
 
+#ifdef WINDOW_DEBUG 
      // custom properties for CITA
     atoms[_DUI_WM_INFO]                = XInternAtom (dpy, "_DUI_WM_INFO", False);
     atoms[_DUI_WM_WINDOW_ZVALUE]       = XInternAtom (dpy, "_DUI_WM_WINDOW_ZVALUE", False);
@@ -198,6 +201,7 @@ DuiCompAtoms::DuiCompAtoms(Display *d)
         = XInternAtom (dpy, "_DUI_WM_WINDOW_DIRECT_VISIBLE", False);
     atoms[_DUI_WM_WINDOW_DIRECT_INVISIBLE]    
         = XInternAtom (dpy, "_DUI_WM_WINDOW_DIRECT_INVISIBLE", False);
+#endif
 }
 
 DuiCompAtoms::Type DuiCompAtoms::windowType(Window w)
@@ -400,8 +404,6 @@ DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
 {
     watch   = new DuiCompositeScene(this);
     atom = new DuiCompAtoms(QX11Info::display());
-    connect(this, SIGNAL(compositingEnabled()), SLOT(iconifyOnComposite()));
-    connect(this, SIGNAL(compositingEnabled()), SLOT(raiseOnComposite()));
 }
 
 DuiCompositeManagerPrivate::~DuiCompositeManagerPrivate()
@@ -459,7 +461,6 @@ void DuiCompositeManagerPrivate::prepare()
     enableInput();
 
     XDamageQueryExtension(QX11Info::display(), &damage_event, &damage_error);
-    iconify_window = 0;
 }
 
 bool DuiCompositeManagerPrivate::needDecoration(Window window)
@@ -575,32 +576,7 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         XUngrabServer(QX11Info::display());
         delete fd.frame;
     }
-
-    bool need_comp = false;
-
-    // Check if existing items on the screen still needs to be composited,
-    // otherwise, do direct rendering
-
-    // TODO: move this in disableCompositing(). generalize this function
-    // into needCompositing(). Apply here and in disableCompositing()
-    // as well
-    for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
-            it != windows.end(); ++it) {
-        DuiCompositeWindow *i  = it.value();
-
-        if (i->isDecorator())
-            continue;
-        bool need_decor = i->needDecoration();
-        if (!i->isIconified() && (i->hasAlpha() || need_decor)) {
-            enableCompositing();
-            if (need_decor && DuiDecoratorFrame::instance()->decoratorItem())
-                DuiDecoratorFrame::instance()->decoratorItem()->setVisible(true);
-            need_comp = true;
-            break;
-        }
-    }
-    if (!need_comp)
-        disableCompositing();
+    disableCompositing();
 }
 
 void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
@@ -622,10 +598,7 @@ void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
                 DuiDecoratorFrame::instance()->raise();
                 item->update();
             }
-
-            item->setIconified(false);
-            int z = atom->windowType(e->window);
-            item->setZValue(z);
+            item->setIconified(false);            
             positionWindow(e->window, DuiCompositeManagerPrivate::STACK_TOP);
             if ((atom->getState(e->window)   != ATOM(_NET_WM_STATE_ABOVE)) &&
                     (atom->windowType(e->window) != DuiCompAtoms::DOCK))
@@ -688,15 +661,12 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
         XGetWindowAttributes(QX11Info::display(), e->window, &a);
         if ((a.map_state == IsViewable) && (atom->windowType(e->window) != DuiCompAtoms::DOCK)) {
             setWindowState(e->window, NormalState);
-            exposeDesktop(false);
-            if (e->window != stack[APPLICATION_LAYER])
-                XLowerWindow(QX11Info::display(), stack[APPLICATION_LAYER]);
+            setExposeDesktop(false);
             stack[APPLICATION_LAYER] = e->window;
 
             // selective compositing support
             DuiCompositeWindow *i = texturePixmapItem(e->window);
             if (i) {
-                i->setZValue(windows.size() + 1);
                 i->restore();
 
                 // since we call disable compositing immediately
@@ -741,20 +711,20 @@ void DuiCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             XResizeWindow(dpy, e->window, xres, yres);
         }
     }
+    
     if (atom->isDecorator(e->window)) {
         enableCompositing();
         DuiDecoratorFrame::instance()->setDecoratorWindow(e->window);
         return;
     }
-
+    
     XRenderPictFormat *format = XRenderFindVisualFormat(QX11Info::display(),
-                                a.visual);
-    if (format && (format->type == PictTypeDirect && format->direct.alphaMask)) {
-        hasAlpha = true;
-        // map overlay here ahead
+                                                        a.visual);
+    if (format && (format->type == PictTypeDirect && format->direct.alphaMask)){
         enableCompositing();
+        hasAlpha = true;
     }
-
+    
     if (needDecoration(e->window)) {
         XSelectInput(dpy, e->window,
                      StructureNotifyMask | ColormapChangeMask |
@@ -832,7 +802,6 @@ void DuiCompositeManagerPrivate::topmostWindowsRaise()
                 (atom->windowType(w) == DuiCompAtoms::DOCK)) {
             XRaiseWindow(QX11Info::display(), w);
             positionWindow(w, DuiCompositeManagerPrivate::STACK_TOP);
-            it.value()->setZValue(DuiCompAtoms::ABOVE);
         }
     }
 }
@@ -883,18 +852,11 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 && !atom->isDecorator(e->window)
                 && (parentWindow(win) == RootWindow(QX11Info::display(), 0))
                 && (e->event == QX11Info::appRootWindow())) {
-            DuiCompositeWindow *applayer = texturePixmapItem(stack[APPLICATION_LAYER]);
-            if ((applayer && (applayer->childItems().count() == 0))
-                    && (e->window != stack[APPLICATION_LAYER])
-                    && !transient_for)
-                // lower previous app window
-                XLowerWindow(QX11Info::display(), stack[APPLICATION_LAYER]);
-
             hideLaunchIndicator();
             stack[APPLICATION_LAYER] = e->window; // between
-
+            
             if (stack[DESKTOP_LAYER])
-                exposeDesktop(false);
+                setExposeDesktop(false);
         }
     }
 
@@ -906,18 +868,15 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         return;
     }
     if (item) {
-        if (!item->hasAlpha()) {
+        ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
+        item->saveBackingStore(true);
+        if (!item->hasAlpha()) 
             item->setVisible(true);
-            compositing = true;
-            disableCompositing();
-        } else {
-            ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
-            item->saveBackingStore(true);
+        else 
             item->delayShow(100);
-        }
         return;
     }
-
+    
     if (win == localwin || win == parentWindow(localwin))
         return;
 
@@ -930,21 +889,19 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
             && (e->event == QX11Info::appRootWindow())) {
         item = bindWindow(win);
         if (!item->hasAlpha() && !atom->isDecorator(win)) {
-            compositing = true;
+            item->setVisible(true);
             if (DuiDecoratorFrame::instance()->decoratorItem() &&
                     !item->needDecoration())
                 DuiDecoratorFrame::instance()->decoratorItem()->setVisible(false);
-            disableCompositing();
+            disableCompositing(true);
         } else
             item->delayShow(500);
-
+        
         // the current decorated window got mapped
         if (e->window == DuiDecoratorFrame::instance()->managedWindow()) {
             connect(item, SIGNAL(visualized(bool)),
                     DuiDecoratorFrame::instance(),
                     SLOT(visualizeDecorator(bool)));
-            compositing = false;
-            enableCompositing();
             DuiDecoratorFrame::instance()->raise();
             stack[APPLICATION_LAYER] = e->window;
         }
@@ -958,30 +915,26 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     DuiCompositeWindow *i = texturePixmapItem(event->window);
     FrameData fd = framed_windows.value(event->window);
 
-    // raise event->window ...
     if (event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
         got_active_window = true;
 
         // Visibility notification to desktop window. Ensure this is sent
         // before transitions are started
         if (stack[DESKTOP_LAYER])
-            exposeDesktop(false);
+            setExposeDesktop(false);
 
         Window raise = event->window;
-        compositing = false;
-        enableCompositing();
-        XSync(QX11Info::display(), False);
         DuiCompositeWindow *d_item = texturePixmapItem(stack[DESKTOP_LAYER]);
         bool needComp = false;
         if (d_item && d_item->isDirectRendered()) {
             needComp = true;
-            raise_window = raise;
-        } else
-            XRaiseWindow(QX11Info::display(), raise);
-
+            enableCompositing(true);
+        }
         if (i) {
             i->setZValue(windows.size() + 1);
-            i->restore(atom->iconGeometry(raise), needComp);
+            QRectF iconGeometry = atom->iconGeometry(raise);
+            i->setPos(iconGeometry.topLeft());
+            i->restore(iconGeometry, needComp);
             i->startPing();
         }
         if (fd.frame)
@@ -1003,7 +956,7 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         ev.xclient.data.l[1] = CurrentTime;
 
         XSendEvent(QX11Info::display(), close_window, False, NoEventMask, &ev);
-        exposeDesktop(true);
+        setExposeDesktop(true);
         XSync(QX11Info::display(), False);
 
         DuiCompositeWindow *check_hung = texturePixmapItem(close_window);
@@ -1026,10 +979,8 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                 if (ping_source->window() == managed && !ping_source->needDecoration()) {
                     DuiDecoratorFrame::instance()->lower();
                     DuiDecoratorFrame::instance()->setManagedWindow(0);
-                    if(!ping_source->hasAlpha()) {
-                        compositing = true;
-                        disableCompositing();
-                    }
+                    if(!ping_source->hasAlpha()) 
+                        disableCompositing(true);
                 }
             }
         }
@@ -1085,20 +1036,26 @@ void DuiCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
     // Handle iconify requests
     if (event->message_type == ATOM(WM_CHANGE_STATE))
         if (event->data.l[0] == IconicState && event->format == 32) {
+            got_active_window = true;
             setWindowState(event->window, IconicState);
-
+            
             DuiCompositeWindow *i = texturePixmapItem(event->window);
+            DuiCompositeWindow *d_item = texturePixmapItem(stack[DESKTOP_LAYER]);
+            if (d_item) 
+                d_item->setZValue(i->zValue()-1);
+            
             Window lower = event->window;
-            exposeDesktop(false);
-
-            iconify_window = lower;
-            compositing = false;
-            enableCompositing();
+            setExposeDesktop(false);
             if (i) {
+                bool needComp = false;
+                if(i->isDirectRendered()) {
+                    enableCompositing();
+                    needComp = true;
+                }
                 // Delayed transition is only available on platforms
                 // which has selective comppositing. This is triggered
                 // when windows are rendered off-screen
-                i->iconify(atom->iconGeometry(lower), true);
+                i->iconify(atom->iconGeometry(lower), needComp);
                 if (i->needDecoration())
                     i->startTransition();
                 i->stopPing();
@@ -1110,37 +1067,48 @@ void DuiCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
     rootMessageEvent(event);
 }
 
-void DuiCompositeManagerPrivate::iconifyOnComposite()
+void DuiCompositeManagerPrivate::iconifyOnLower(DuiCompositeWindow *window)
 {
-    if (!iconify_window)
+    if(window->iconifyState() != DuiCompositeWindow::TransitionIconifyState)
         return;
 
     // TODO: (work for more)
     // Handle minimize request coming from a managed window itself,
     // if there are any
-    FrameData fd = framed_windows.value(iconify_window);
+    FrameData fd = framed_windows.value(window->window());
     if (fd.frame) {
         setWindowState(fd.frame->managedWindow(), IconicState);
         DuiCompositeWindow *i = texturePixmapItem(fd.frame->winId());
-        iconify_window = fd.frame->winId();
         if (i)
             i->iconify();
     }
 
-    XLowerWindow(QX11Info::display(), iconify_window);
+    XLowerWindow(QX11Info::display(), window->window());
+    if (stack[DESKTOP_LAYER]) 
+        XRaiseWindow(QX11Info::display(), stack[DESKTOP_LAYER]);
+    
+    enableCompositing();
+    for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
+         it != windows.end(); ++it) {
+        DuiCompositeWindow *i  = it.value();
+        
+        XVisibilityEvent c;
+        c.type       = VisibilityNotify;
+        c.send_event = True;
+        c.window     = i->window();
+        c.state      = VisibilityFullyObscured;
+        XSendEvent(QX11Info::display(), i->window(), true,
+                   VisibilityChangeMask, (XEvent *)&c);
+    }
 }
 
 
-void DuiCompositeManagerPrivate::raiseOnComposite()
+void DuiCompositeManagerPrivate::raiseOnRestore(DuiCompositeWindow *window)
 {
-    if (!raise_window)
-        return;
-
-    XRaiseWindow(QX11Info::display(), raise_window);
-    raise_window = 0;
+    XRaiseWindow(QX11Info::display(), window->window());
 }
 
-void DuiCompositeManagerPrivate::exposeDesktop(bool exposed)
+void DuiCompositeManagerPrivate::setExposeDesktop(bool exposed)
 {
     if (stack[DESKTOP_LAYER]) {
         XVisibilityEvent desk_notify;
@@ -1160,24 +1128,13 @@ void DuiCompositeManagerPrivate::exposeDesktop(bool exposed)
         XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER], true,
                    VisibilityChangeMask, (XEvent *)&desk_notify);
     }
-    if (iconify_window) {
-        XVisibilityEvent c;
-        c.type       = VisibilityNotify;
-        c.send_event = True;
-        c.window     = iconify_window;
-        c.state      = VisibilityFullyObscured;
-        XSendEvent(QX11Info::display(), iconify_window, true,
-                   VisibilityChangeMask, (XEvent *)&c);
-
-        iconify_window = 0;
-    }
 }
 
 // Visibility notification to desktop window. Ensure this is called once
 // transitions are done
 void DuiCompositeManagerPrivate::exposeDesktop()
 {
-    exposeDesktop(true);
+    setExposeDesktop(true);
 }
 
 bool DuiCompositeManagerPrivate::isSelfManagedFocus(Window w)
@@ -1203,19 +1160,18 @@ void DuiCompositeManagerPrivate::activateWindow(Window w)
 {
     if (!isSelfManagedFocus(w))
         return;
-
+    
     if (DuiDecoratorFrame::instance()->managedWindow() == w)
         DuiDecoratorFrame::instance()->activate();
-    if (atom->windowType(w) == DuiCompAtoms::DESKTOP) {
-        got_active_window = false;
+    got_active_window = false;
+    DuiCompositeWindow* i = texturePixmapItem(w);
+    if (i && !i->isDirectRendered() && !i->hasAlpha() && !i->needDecoration())
         QTimer::singleShot(100, this, SLOT(directRenderDesktop()));
-    }
-    /* already focused */
+    
     if (prev_focus == w)
         return;
-
     prev_focus = w;
-
+                
     XSetInputFocus(QX11Info::display(), w, RevertToPointerRoot, CurrentTime);
     if ((atom->windowType(w) != DuiCompAtoms::DESKTOP) &&
             (atom->windowType(w) != DuiCompAtoms::DOCK)) {
@@ -1225,7 +1181,7 @@ void DuiCompositeManagerPrivate::activateWindow(Window w)
 }
 
 void DuiCompositeManagerPrivate::directRenderDesktop()
-{
+{    
     if (got_active_window)
         return;
     disableCompositing();
@@ -1386,6 +1342,7 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
     if (!is_decorator && (atom->windowType(window) != DuiCompAtoms::DOCK))
         stacking_list.append(window);
     addItem(item);
+
     if (wtype == DuiCompAtoms::INPUT) {
         item->updateWindowPixmap();
         return item;
@@ -1441,21 +1398,26 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
 void DuiCompositeManagerPrivate::addItem(DuiCompositeWindow *item)
 {
     watch->addItem(item);
+    updateWinList();
+    setWindowDebugProperties(item->window());
     connect(item, SIGNAL(acceptingInput()), SLOT(enableInput()));
-    connect(item, SIGNAL(itemIconified()), SLOT(exposeDesktop()));
+    
+    if (atom->windowType(item->window()) == DuiCompAtoms::DESKTOP) 
+        return;
+    
+    connect(item, SIGNAL(itemIconified(DuiCompositeWindow*)), SLOT(exposeDesktop()));
     connect(this, SIGNAL(compositingEnabled()), item, SLOT(startTransition()));
-    if (!item->hasAlpha() && !item->needDecoration())
-        connect(item, SIGNAL(itemRestored()), SLOT(disableCompositing()));
-
+    //     if (!item->hasAlpha() && !item->needDecoration())
+    //         connect(item, SIGNAL(itemRestored(DuiCompositeWindow*)), SLOT(disableCompositing()));
+    connect(item, SIGNAL(itemRestored(DuiCompositeWindow*)), SLOT(raiseOnRestore(DuiCompositeWindow*)));
+    connect(item, SIGNAL(itemIconified(DuiCompositeWindow*)), SLOT(iconifyOnLower(DuiCompositeWindow*)));
+    
     // ping protocol
     connect(item, SIGNAL(windowHung(DuiCompositeWindow *)),
             SLOT(gotHungWindow(DuiCompositeWindow *)));
-
+    
     connect(item, SIGNAL(pingTriggered(DuiCompositeWindow *)),
             SLOT(sendPing(DuiCompositeWindow *)));
-
-    updateWinList();
-    setWindowDebugProperties(item->window());
 }
 
 void DuiCompositeManagerPrivate::updateWinList(bool stackingOnly)
@@ -1519,17 +1481,25 @@ DuiCompositeManagerPrivate::positionWindow(Window w,
         break;
 
     }
-
     // Force the inputmethod window to be really on top of the rest
     wp = stacking_list.indexOf(stack[INPUT_LAYER]);
     if (wp >= 0 && wp < stacking_list.size())
         stacking_list.move(wp, stacking_list.size() - 1);
+    
+    if (pos == DuiCompositeManagerPrivate::STACK_TOP) {
+        for (int i = 0; i < stacking_list.size(); i++) {
+            DuiCompositeWindow* witem = texturePixmapItem(stacking_list.at(i));
+            if (witem)
+                witem->requestZValue(i);
+        }
+    }
+    
     updateWinList(true);
 }
 
-void DuiCompositeManagerPrivate::enableCompositing()
+void DuiCompositeManagerPrivate::enableCompositing(bool forced)
 {
-    if (compositing)
+    if (compositing && !forced)
         return;
 
     XWindowAttributes a;
@@ -1583,13 +1553,26 @@ void DuiCompositeManagerPrivate::enableRedirection()
     emit compositingEnabled();
 }
 
-void DuiCompositeManagerPrivate::disableCompositing()
+void DuiCompositeManagerPrivate::disableCompositing(bool forced)
 {
+    if (DuiCompositeWindow::isTransitioning())
+        return;
+
     // we could still have exisisting decorator on-screen.
     // ensure we don't accidentally disturb it
-    if (!compositing || (DuiDecoratorFrame::instance()->decoratorItem() &&
-                         DuiDecoratorFrame::instance()->decoratorItem()->windowVisible()))
+    if ((!compositing && !forced) || 
+        (DuiDecoratorFrame::instance()->decoratorItem() &&
+         DuiDecoratorFrame::instance()->decoratorItem()->windowVisible()))
         return;
+    
+    for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
+         it != windows.end(); ++it) {
+        DuiCompositeWindow *i  = it.value();
+        if (i->isDecorator())
+            continue;
+        if (i->windowVisible() && (i->hasAlpha() || i->needDecoration())) 
+            return;
+    }
 
     scene()->views()[0]->setUpdatesEnabled(false);
 
@@ -1636,8 +1619,7 @@ void DuiCompositeManagerPrivate::sendPing(DuiCompositeWindow *w)
 void DuiCompositeManagerPrivate::gotHungWindow(DuiCompositeWindow *w)
 {
     Window window = w->window();
-    compositing = false;
-    enableCompositing();
+    enableCompositing(true);
 
     // own the window so we could kill it if we want to.
     // raise the items manually because at this time it is no longer

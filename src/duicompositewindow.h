@@ -45,6 +45,11 @@ public:
         NORMAL = 0,
         HUNG
     };
+    enum IconifyState {
+        NoIconifyState = 0,
+        ManualIconifyState,
+        TransitionIconifyState
+    };
 
     /*! Construct a DuiCompositeWindow
      *
@@ -140,6 +145,11 @@ public:
     void setIconified(bool iconified);
 
     /*!
+     * Returns how this window was iconified.
+     */
+    IconifyState iconifyState() const;
+
+    /*!
      * Returns true if this window needs a decoration
      */
     bool needDecoration() const;
@@ -233,6 +243,8 @@ public:
      */
     virtual void resize(int w, int h) = 0;
 
+    static bool isTransitioning();
+
 public slots:
 
     void startTransition();
@@ -254,6 +266,7 @@ private slots:
     void windowTransitioning();
     void windowSettled();
     void q_delayShow();
+    void q_itemRestored();
 
 signals:
     /*!
@@ -270,13 +283,11 @@ signals:
     void visualized(bool);
 
     /*! Emmitted when this window gets restored from an iconified state */
-    void itemRestored();
+    void itemRestored(DuiCompositeWindow *window);
     /*! Emmitted just after this window gets iconified  */
-    void itemIconified();
+    void itemIconified(DuiCompositeWindow *window);
 
 protected:
-
-    bool isTransitioning() const;
 
     virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *);
     virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *);
@@ -293,6 +304,7 @@ private:
     bool blur;
     bool iconified;
     bool iconified_final;
+    IconifyState iconify_state;
     bool destroyed;
     bool requestzval;
     bool process_hung;
