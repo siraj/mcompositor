@@ -19,9 +19,6 @@
 
 #include <QtGui>
 #include <QGLWidget>
-#ifdef GLES2_VERSION
-#include <duiglwidget.h>
-#endif
 #include "duicompositescene.h"
 #include "duicompositemanager.h"
 
@@ -63,21 +60,15 @@ int main(int argc, char *argv[])
     fmt.setSamples(0);
     fmt.setSampleBuffers(false);
 
-    // Temporary setback. In the future, we will bring back GLES rendering
-    // directly instead of using this class
-#ifdef GLES2_VERSION
-    DuiGLWidget *imp = new DuiGLWidget(fmt);
-    imp->setAutoFillBackground(false);
-#else
-    QGLWidget *imp = new QGLWidget(fmt);
-#endif
-    imp->setMinimumSize(QApplication::desktop()->width(),
+    QGLWidget *w = new QGLWidget(fmt);
+    w->setAutoFillBackground(false);
+    w->setMinimumSize(QApplication::desktop()->width(),
                         QApplication::desktop()->height());
-    imp->setMaximumSize(QApplication::desktop()->width(),
+    w->setMaximumSize(QApplication::desktop()->width(),
                         QApplication::desktop()->height());
-    app.setGLWidget(imp);
-    view.setViewport(imp);
-    imp->makeCurrent();
+    app.setGLWidget(w);
+    view.setViewport(w);
+    w->makeCurrent();
     view.show();
 
     app.prepareEvents();

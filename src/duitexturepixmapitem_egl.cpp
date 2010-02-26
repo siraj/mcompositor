@@ -32,27 +32,11 @@
 #include <X11/extensions/Xfixes.h>
 
 #include <GLES2/gl2.h>
-#include <duiglrenderer.h>
-#include <duiglshaderprogram.h>
-#include <duiglshader.h>
-#include <duiglshaderuniform.h>
-#include <duiglwidget.h>
-#include "texturepixmapshaders.h"
 
 /* Emulator doesn't support these configurations:
    - off screen pixmap
    - bind to texture
  */
-
-class BlurUniform: public IDuiGLUniformProvider
-{
-public:
-    virtual bool setUniformValue(const QString &name, const DuiGLShaderUniform &uniform) {
-        if (name == "blurstep")
-            uniform = (GLfloat) 0.5;
-        return true;
-    }
-};
 
 class EglTextureManager
 {
@@ -96,7 +80,7 @@ public:
 class EglResourceManager
 {
 public:
-    EglResourceManager(QGLWidget *glw)
+    EglResourceManager()
         : has_tfp(false) {
         if (!dpy)
             dpy = eglGetDisplay(EGLNativeDisplayType(QX11Info::display()));
@@ -105,26 +89,6 @@ public:
         if (exts.contains("EGL_NOKIA_texture_from_pixmap") ||
                 exts.contains("EGL_EXT_texture_from_pixmap"))
             has_tfp = true;
-
-        blurf = new BlurUniform();
-        // Temporary setback. In the future, we will bring back GLES rendering
-        // directly instead of using DuiGLRender
-        DuiGLWidget *duiglw = (DuiGLWidget *) glw;
-        DuiGLRenderer::instance()->setGLWidget(duiglw);
-        DuiGLRenderer::instance()->initGL(duiglw);
-        DuiGLRenderer::instance()->createShader("alphafrag",
-                                                AlphaTestFragShaderSource,
-                                                DuiGLRenderer::DuiShaderFragment);
-        DuiGLRenderer::instance()->createShader("blurfrag",
-                                                blurshader,
-                                                DuiGLRenderer::DuiShaderFragment);
-        DuiGLRenderer::instance()->createProgram("AlphaTest",
-                "DefaultVert",
-                "alphafrag");
-
-        DuiGLRenderer::instance()->createProgram("Blur",
-                "DefaultVert",
-                "blurfrag");
         texman = new EglTextureManager();
     }
 
@@ -133,8 +97,6 @@ public:
     }
 
     EglTextureManager *texman;
-
-    BlurUniform *blurf;
     static EGLConfig config;
     static EGLConfig configAlpha;
     static EGLDisplay dpy;
@@ -145,7 +107,7 @@ public:
 EglResourceManager *DuiTexturePixmapPrivate::eglresource = 0;
 EGLConfig EglResourceManager::config = 0;
 EGLConfig EglResourceManager::configAlpha = 0;
-EGLConfig EglResourceManager::dpy = 0;
+EGLDisplay EglResourceManager::dpy = 0;
 
 void DuiTexturePixmapItem::init(QGLWidget *glwidget)
 {
@@ -155,7 +117,7 @@ void DuiTexturePixmapItem::init(QGLWidget *glwidget)
     }
 
     if (!d->eglresource)
-        d->eglresource = new EglResourceManager(glwidget);
+        d->eglresource = new EglResourceManager();
 
     d->glpixmap = EGL_NO_SURFACE;
     d->custom_tfp = !d->eglresource->texturePixmapSupport();
@@ -416,8 +378,6 @@ void DuiTexturePixmapItem::paint(QPainter *painter,
     if (!d->ctx)
         d->ctx = const_cast<QGLContext *>(gl->context());
 
-    DuiGLRenderer *r = DuiGLRenderer::instance();
-
     if (d->has_alpha || opacity() < 1.0f) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -431,14 +391,8 @@ void DuiTexturePixmapItem::paint(QPainter *painter,
                   d->damage_rect.width, d->damage_rect.height);
     }
 
-    if (blurred())
-        r->drawTexture("Blur", painter->combinedTransform(),
-                       d->custom_tfp ? d->ctextureId : d->textureId,
-                       boundingRect().size(), d->eglresource->blurf, d->inverted_texture);
-    else
-        r->drawTexture(painter->combinedTransform(),
-                       d->custom_tfp ? d->ctextureId : d->textureId,
-                       boundingRect().size(), opacity(), d->inverted_texture);
+    d->drawTexture(d->custom_tfp ? d->ctextureId : d->textureId,
+                   painter->combinedTransform(), boundingRect(), opacity());
 
     // Explicitly disable blending. for some reason, the latest drivers
     // still has blending left-over even if we call glDisable(GL_BLEND)

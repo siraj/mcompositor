@@ -19,6 +19,28 @@
 #ifndef TEXTUREPIXMAPSHADERS_H
 #define TEXTUREPIXMAPSHADERS_H
 
+static const char* TexpVertShaderSource = "\
+    attribute highp vec4 inputVertex; \
+    attribute lowp  vec2 textureCoord; \
+    uniform   highp mat4 matProj; \
+    uniform   highp mat4 matWorld; \
+    varying   lowp  vec2 fragTexCoord; \
+    void main(void) \
+    {\
+            gl_Position = (matProj * matWorld) * inputVertex;\
+            fragTexCoord = textureCoord; \
+    }";
+
+static const char* TexpFragShaderSource = "\
+    varying lowp vec2 fragTexCoord;\
+    uniform sampler2D texture;\
+    uniform lowp float opacity;\n\
+    void main(void) \
+    {\
+            gl_FragColor = texture2D(texture, fragTexCoord) * opacity; \
+    }";
+
+
 static const char *AlphaTestFragShaderSource = "\
     precision lowp float;\
     varying lowp vec2 fragTexCoord;\

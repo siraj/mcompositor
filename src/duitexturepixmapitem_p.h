@@ -39,6 +39,7 @@ class QGLWidget;
 class QGraphicsItem;
 class DuiTexturePixmapItem;
 class QGLContext;
+class DuiGLResourceManager;
 
 /*! X11-specific implementation of DuiTexturePixmapItem */
 class DuiTexturePixmapPrivate
@@ -55,7 +56,9 @@ public:
     bool isOverrideRedirect() const;
     void resize(int w, int h);
     void windowRaised();
-
+    void drawTexture(GLuint textureId, const QTransform& transform,
+                     const QRectF& drawRect, qreal opacity);
+                
     QGLContext *ctx;
     QGLWidget *glwidget;
     Pixmap windowp;
@@ -80,6 +83,7 @@ public:
 #ifdef GLES2_VERSION
     static EglResourceManager *eglresource;
 #endif
+    static DuiGLResourceManager* glresource;
 };
 
 #endif //DUITEXTUREPIXMAPITEM_P_H
