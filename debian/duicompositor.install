@@ -1,4 +1,3 @@
 usr/bin/duicompositor
 usr/bin/duidecorator
 usr/lib/libdecorator.so*
-etc/X11/Xsession.post/*
