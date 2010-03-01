@@ -112,7 +112,7 @@ protected:
     virtual void windowRaised();
 
 private:
-    void init(QGLWidget *glwidget);
+    void init();
     void initCustomTfp();
     void cleanup();
     void rebindPixmap();

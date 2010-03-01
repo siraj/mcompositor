@@ -109,7 +109,7 @@ EGLConfig EglResourceManager::config = 0;
 EGLConfig EglResourceManager::configAlpha = 0;
 EGLDisplay EglResourceManager::dpy = 0;
 
-void DuiTexturePixmapItem::init(QGLWidget *glwidget)
+void DuiTexturePixmapItem::init()
 {
     if (!d->viewable) {
         qWarning("DuiTexturePixmapItem::init(): Failed getting offscreen pixmap");
@@ -192,7 +192,7 @@ DuiTexturePixmapItem::DuiTexturePixmapItem(Window window, QGLWidget *glwidget, Q
     : DuiCompositeWindow(window, parent),
       d(new DuiTexturePixmapPrivate(window, glwidget, this))
 {
-    init(glwidget);
+    init();
 }
 
 void DuiTexturePixmapItem::saveBackingStore(bool renew)
@@ -391,8 +391,7 @@ void DuiTexturePixmapItem::paint(QPainter *painter,
                   d->damage_rect.width, d->damage_rect.height);
     }
 
-    d->drawTexture(d->custom_tfp ? d->ctextureId : d->textureId,
-                   painter->combinedTransform(), boundingRect(), opacity());
+    d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
 
     // Explicitly disable blending. for some reason, the latest drivers
     // still has blending left-over even if we call glDisable(GL_BLEND)

@@ -26,6 +26,7 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xrender.h>
+#include <GLES2/gl2.h>
 
 #include "duitexturepixmapitem_p.h"
 
@@ -158,8 +159,7 @@ private:
 QGLShaderProgram* DuiGLResourceManager::shader[ShaderTotal];
 #endif
 
-void DuiTexturePixmapPrivate::drawTexture(GLuint textureId, const QTransform& transform,
-                                          const QRectF& drawRect, qreal opacity)
+void DuiTexturePixmapPrivate::drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity)
 {
     glwidget->makeCurrent();
     // TODO only update if matrix is dirty

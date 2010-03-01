@@ -56,8 +56,7 @@ public:
     bool isOverrideRedirect() const;
     void resize(int w, int h);
     void windowRaised();
-    void drawTexture(GLuint textureId, const QTransform& transform,
-                     const QRectF& drawRect, qreal opacity);
+    void drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
                 
     QGLContext *ctx;
     QGLWidget *glwidget;
