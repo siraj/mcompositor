@@ -213,7 +213,7 @@ void DuiTexturePixmapPrivate::init()
     XGetWindowAttributes(QX11Info::display(), item->window(), &a);
 
     XRenderPictFormat *format = XRenderFindVisualFormat(QX11Info::display(), a.visual);
-    has_alpha = (format->type == PictTypeDirect && format->direct.alphaMask);
+    has_alpha = (format && format->type == PictTypeDirect && format->direct.alphaMask);
 
     if (a.map_state != IsViewable)
         viewable = false;

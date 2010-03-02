@@ -310,8 +310,7 @@ void DuiCompositeWindow::pingWindow()
 {
     process_hung = true;
 
-    // 1s delay, if we dont get anything, means window is dead!
-    QTimer::singleShot(1000, this, SLOT(pingTimeout()));
+    QTimer::singleShot(5000, this, SLOT(pingTimeout()));
     emit pingTriggered(this);
 }
 

@@ -1619,6 +1619,9 @@ void DuiCompositeManagerPrivate::sendPing(DuiCompositeWindow *w)
 void DuiCompositeManagerPrivate::gotHungWindow(DuiCompositeWindow *w)
 {
     Window window = w->window();
+    if (!DuiDecoratorFrame::instance()->decoratorItem())
+        return;
+    
     enableCompositing(true);
 
     // own the window so we could kill it if we want to.
@@ -1627,16 +1630,14 @@ void DuiCompositeManagerPrivate::gotHungWindow(DuiCompositeWindow *w)
     DuiDecoratorFrame::instance()->setManagedWindow(window);
     DuiDecoratorFrame::instance()->raise();
     DuiCompositeWindow *p = DuiDecoratorFrame::instance()->decoratorItem();
-    if (p) {
-        int z = atom->windowType(window);
-        w->setZValue(z);
-        p->setZValue(z);
+    int z = atom->windowType(window);
+    w->setZValue(z);
+    p->setZValue(z);
 #if (QT_VERSION >= 0x040600)
-        w->stackBefore(p);
+    w->stackBefore(p);
 #endif
-
-        w->updateWindowPixmap();
-    }
+    
+    w->updateWindowPixmap();
 }
 
 void DuiCompositeManagerPrivate::showLaunchIndicator(int timeout)

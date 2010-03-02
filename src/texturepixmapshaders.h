@@ -57,10 +57,10 @@ static const char *AlphaTestFragShaderSource = "\
 static const char *blurshader = "\
 varying lowp vec2 fragTexCoord;\
 uniform sampler2D texture0;\
-uniform float blurstep;\
+uniform mediump float blurstep;\
 void main(void)\
 {\
-vec4 sample0,\
+mediump vec4 sample0,\
 sample1,\
 sample2,\
 sample3;\
