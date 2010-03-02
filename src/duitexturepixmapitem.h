@@ -34,7 +34,7 @@ class DuiTexturePixmapPrivate;
  * QGraphicsView directly using standard OpenGL / OpenGL ES2 calls without
  * the use of QPainter.
  *
- * If a GLX or EGL surface that supports render to texture is not found, the
+ * If an GLX or EGL pixmap surface that supports render to texture is not found, the
  * renderer defaults to its own custom texture to pixmap routines
  *
  */

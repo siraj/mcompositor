@@ -42,13 +42,12 @@ static const char* TexpFragShaderSource = "\
 
 
 static const char *AlphaTestFragShaderSource = "\
-    precision lowp float;\
     varying lowp vec2 fragTexCoord;\
     uniform sampler2D texture0;\
     void main(void) \
     {\
         vec4 baseColor = texture2D(texture0, fragTexCoord);\
-        float v = baseColor.r + baseColor.g + baseColor.b;   \
+        lowp float v = baseColor.r + baseColor.g + baseColor.b;   \
         if(v == 0.0)\
             discard;\
         else\
@@ -56,7 +55,6 @@ static const char *AlphaTestFragShaderSource = "\
     }";
 
 static const char *blurshader = "\
-precision mediump float;\
 varying lowp vec2 fragTexCoord;\
 uniform sampler2D texture0;\
 uniform float blurstep;\
@@ -66,7 +64,7 @@ vec4 sample0,\
 sample1,\
 sample2,\
 sample3;\
-float step = blurstep / 100.0;\
+mediump float step = blurstep / 100.0;\
 sample0 = texture2D(texture0, vec2(fragTexCoord.x - step,\
                                    fragTexCoord.y - step));\
 sample1 = texture2D(texture0, vec2(fragTexCoord.x + step,\

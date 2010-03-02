@@ -82,10 +82,8 @@ static bool hasTextureFromPixmap()
 }
 #endif
 
-void DuiTexturePixmapItem::init(QGLWidget *glwidget)
+void DuiTexturePixmapItem::init()
 {
-    Q_UNUSED(glwidget);
-
     if (!d->viewable) {
         qWarning("DuiTexturePixmapItem::init(): Failed getting offscreen pixmap");
         return;
@@ -114,6 +112,7 @@ void DuiTexturePixmapItem::init(QGLWidget *glwidget)
             d->has_alpha ? GLX_BIND_TO_TEXTURE_RGBA_EXT : GLX_BIND_TO_TEXTURE_RGB_EXT, True,
             GLX_DRAWABLE_TYPE, GLX_PIXMAP_BIT,
             GLX_BIND_TO_TEXTURE_TARGETS_EXT, GLX_TEXTURE_2D_BIT_EXT,
+            GLX_DOUBLEBUFFER, True,
             GLX_Y_INVERTED_EXT, GLX_DONT_CARE,
             None
         };
@@ -133,10 +132,10 @@ void DuiTexturePixmapItem::init(QGLWidget *glwidget)
         glXGetFBConfigAttrib(display, configs[0], GLX_Y_INVERTED_EXT, &inverted);
         if (d->has_alpha) {
             configAlpha = configs[0];
-            d->inverted_texture = inverted ? false : true;
+            d->inverted_texture = inverted ? true : false;
         } else {
             config = configs[0];
-            d->inverted_texture = inverted ? false : true;
+            d->inverted_texture = inverted ? true : false;
         }
         XFree(configs);
     }
@@ -159,7 +158,7 @@ DuiTexturePixmapItem::DuiTexturePixmapItem(Window window, QGLWidget *glwidget, Q
     : DuiCompositeWindow(window, parent),
       d(new DuiTexturePixmapPrivate(window, glwidget, this))
 {
-    init(glwidget);
+    init();
 }
 
 void DuiTexturePixmapItem::saveBackingStore(bool renew)
@@ -240,6 +239,8 @@ void DuiTexturePixmapItem::initCustomTfp()
     glBindTexture(GL_TEXTURE_2D, d->ctextureId);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    d->inverted_texture = false;
 }
 
 void DuiTexturePixmapItem::cleanup()
@@ -291,62 +292,20 @@ void DuiTexturePixmapItem::paint(QPainter *painter,
     }
 #endif
 
-    QGLWidget *gl = (QGLWidget *) painter->device();
-    if (!d->ctx)
-        d->ctx = const_cast<QGLContext *>(gl->context());
-
-    QTransform t = painter->transform();
-    QRectF drawRect = t.mapRect(boundingRect());
-
-    GLuint top, bottom;
-    if (d->inverted_texture) {
-        top = 1.0f;
-        bottom = 0.0f;
-    } else {
-        top = 0.0f;
-        bottom = 1.0f;
-    }
-
-    qreal width = qreal(drawRect.width());
-    qreal height = qreal(drawRect.height());
-    qreal posx = qreal(drawRect.x());
-    qreal posy = qreal(drawRect.y());
-
 #if (QT_VERSION >= 0x040600)
     painter->beginNativePainting();
 #endif
 
     glEnable(GL_TEXTURE_2D);
-    if (d->custom_tfp)
-        glBindTexture(GL_TEXTURE_2D, d->ctextureId);
-    else
-        glBindTexture(GL_TEXTURE_2D, d->textureId);
     if (d->has_alpha || opacity() < 1.0f) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glColor4f(1.0, 1.0, 1.0, opacity());
     }
-
-    glPushMatrix();
-    glLoadIdentity();
-    //glRotatef(angle, 0.0f, 0.0f, 1.0f);
-
-    glBegin(GL_QUADS);
-    glTexCoord2d(0.0f, bottom);
-    glVertex2d(posx, posy + height);
-
-    glTexCoord2d(0.0f, top);
-    glVertex2d(posx, posy);
-
-    glTexCoord2d(1.0f, top);
-    glVertex2d(posx + width, posy);
-
-    glTexCoord2d(1.0f, bottom);
-    glVertex2d(posx + width, posy + height);
-    glEnd();
-
-    glPopMatrix();
-    glDisable(GL_BLEND);
+    
+    glBindTexture(GL_TEXTURE_2D, d->custom_tfp ? d->ctextureId : d->textureId);
+    
+    d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
 
 #if (QT_VERSION >= 0x040600)
     painter->endNativePainting();

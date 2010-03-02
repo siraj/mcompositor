@@ -29,14 +29,10 @@ int main(int argc, char *argv[])
     QGraphicsScene *scene = app.scene();
     QGraphicsView view(scene);
 
-#ifndef DESKTOP_VERSION
     view.setUpdatesEnabled(false);
     view.setAutoFillBackground(false);
     view.setBackgroundBrush(Qt::NoBrush);
     view.setForegroundBrush(Qt::NoBrush);
-#else
-    view.setAttribute(Qt::WA_TranslucentBackground);
-#endif
     view.setFrameShadow(QFrame::Plain);
 
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);

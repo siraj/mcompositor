@@ -17,6 +17,9 @@
 **
 ****************************************************************************/
 
+#ifdef DESKTOP_VERSION
+#define GL_GLEXT_PROTOTYPES 1
+#endif
 #include "duitexturepixmapitem.h"
 #include "texturepixmapshaders.h"
 
@@ -26,7 +29,14 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xrender.h>
+#ifdef GLES2_VERSION
 #include <GLES2/gl2.h>
+#elif DESKTOP_VERSION
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glx.h>
+#include <GL/glxext.h>
+#endif
 
 #include "duitexturepixmapitem_p.h"
 
