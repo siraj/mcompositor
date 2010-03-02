@@ -1,0 +1,5 @@
+Simple SDL application to be used to test how duicompositor handles SDL apps.
+
+Features:
+   - "switch fullscreen" button to switch between windowed and fullscreen mode.
+   - "stop responding" button that causes the process to enter in an infinite busy loop.
