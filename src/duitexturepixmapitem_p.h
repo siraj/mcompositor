@@ -21,6 +21,7 @@
 #define DUITEXTUREPIXMAPITEM_P_H
 
 #include <QRect>
+#include <QRegion>
 
 #include <X11/extensions/Xdamage.h>
 
@@ -41,7 +42,9 @@ class DuiTexturePixmapItem;
 class QGLContext;
 class DuiGLResourceManager;
 
-/*! X11-specific implementation of DuiTexturePixmapItem */
+/*! Internal private implementation of DuiTexturePixmapItem 
+  Warning! Interface here may change at any time!
+ */
 class DuiTexturePixmapPrivate
 {
 public:
@@ -69,11 +72,10 @@ public:
     bool has_alpha;
     bool direct_fb_render;
     bool override_redirect;
-    bool enable_scissor;
     bool viewable;
 
     QRect brect;
-    XRectangle damage_rect;
+    QRegion damageRegion;
     qreal angle;
 
     Damage damage_object;

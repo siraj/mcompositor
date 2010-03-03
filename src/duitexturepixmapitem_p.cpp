@@ -191,6 +191,8 @@ void DuiTexturePixmapPrivate::drawTexture(const QTransform& transform, const QRe
     else
         glVertexAttribPointer(D_TEXTURE_COORDS, 2, GL_FLOAT, GL_FALSE, 0, 
                               glresource->texCoords);
+    if(item->blurred())
+        glresource->currentShader->setUniformValue("blurstep", (GLfloat) 0.5);
     glresource->currentShader->setUniformValue("opacity", (GLfloat) opacity);
     glresource->currentShader->setUniformValue("texture", 0);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);

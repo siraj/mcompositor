@@ -304,7 +304,12 @@ void DuiTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
 {
     if (isTransitioning() || d->direct_fb_render || !windowVisible())
         return;
-
+    
+    QRegion r;
+    for(int i = 0; i < num; ++i) 
+        r += QRegion(rects[i].x, rects[i].y, rects[i].width, rects[i].height);
+    d->damageRegion = r;
+    
     // Our very own custom texture from pixmap
     if (d->custom_tfp) {
         QPixmap qp = QPixmap::fromX11Pixmap(d->windowp);
@@ -335,22 +340,8 @@ void DuiTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
         if (!valid)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 0, GL_RGBA,
                          GL_UNSIGNED_BYTE, 0);
-        else {
-            d->enable_scissor = true;
-            if (num <= 1) {
-                d->enable_scissor = false;
-                d->damage_rect.x      = d->brect.x();
-                d->damage_rect.y      = d->brect.y();
-                d->damage_rect.height = d->brect.height();
-                d->damage_rect.width  = d->brect.width();
-                d->glwidget->update();
-                return;
-            }
-            for (register int i = 0; i < num; i++) {
-                d->damage_rect = rects[i];
-                d->glwidget->update();
-            }
-        }
+        else 
+            d->glwidget->update();
     }
 }
 
@@ -384,21 +375,26 @@ void DuiTexturePixmapItem::paint(QPainter *painter,
     }
     glBindTexture(GL_TEXTURE_2D, d->custom_tfp ? d->ctextureId : d->textureId);
 
-    if (d->enable_scissor) {
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(d->damage_rect.x,
-                  d->brect.height() - (d->damage_rect.y + d->damage_rect.height),
-                  d->damage_rect.width, d->damage_rect.height);
-    }
-
-    d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
+    if (d->damageRegion.numRects() > 1) {
+        d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
+        glEnable(GL_SCISSOR_TEST);        
+        for(int i = 0; i < d->damageRegion.numRects(); ++i) {
+            glScissor(d->damageRegion.rects().at(i).x(),
+                      d->brect.height() - 
+                      (d->damageRegion.rects().at(i).y() + 
+                       d->damageRegion.rects().at(i).height()),
+                      d->damageRegion.rects().at(i).width(), 
+                      d->damageRegion.rects().at(i).height());
+            d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
+        }
+        glDisable(GL_SCISSOR_TEST);
+    } else
+        d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
 
     // Explicitly disable blending. for some reason, the latest drivers
     // still has blending left-over even if we call glDisable(GL_BLEND)
     glBlendFunc(GL_ONE, GL_ZERO);
     glDisable(GL_BLEND);
-    if (d->enable_scissor)
-        glDisable(GL_SCISSOR_TEST);
 }
 
 void DuiTexturePixmapItem::windowRaised()
