@@ -667,14 +667,14 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
             // selective compositing support
             DuiCompositeWindow *i = texturePixmapItem(e->window);
             if (i) {
-                i->restore();
-
                 // since we call disable compositing immediately
                 // we don't see the animated transition
-                if (!i->hasAlpha() && !i->needDecoration())
-                    disableCompositing();
-                else if (DuiDecoratorFrame::instance()->managedWindow() == e->window)
-                    enableCompositing();
+                if (!i->hasAlpha() && !i->needDecoration()) {
+                    i->setIconified(false);        
+                    disableCompositing(true);
+                } else if (DuiDecoratorFrame::instance()->managedWindow() == e->window)
+                    enableCompositing();                
+                i->restore();
             }
         }
     } else if ((e->detail == Below) && (e->above == None) && !isInput)
