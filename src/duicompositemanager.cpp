@@ -577,6 +577,11 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         delete fd.frame;
     }
     disableCompositing();
+
+    int wp = stacking_list.indexOf(e->window) - 1;
+    if (wp == -1 || wp >= stacking_list.size())
+        return;
+    activateWindow(stacking_list.at(wp));
 }
 
 void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
@@ -860,6 +865,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         }
     }
 
+    activateWindow(win);
     DuiCompositeWindow *item = texturePixmapItem(win);
     // Compositing is assumed to be enabled at this point if a window
     // has alpha channels
