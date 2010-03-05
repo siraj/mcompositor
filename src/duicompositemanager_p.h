@@ -67,7 +67,7 @@ public:
     QGraphicsScene *scene();
 
     void prepare();
-    void activateWindow(Window w);
+    void activateWindow(Window w, bool disableCompositing = true);
     void updateWinList(bool stackingOnly = false);
     void setWindowState(Window , int);
     void setWindowDebugProperties(Window w);

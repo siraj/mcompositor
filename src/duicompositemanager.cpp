@@ -865,7 +865,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         }
     }
 
-    activateWindow(win);
+    activateWindow(win, false);
     DuiCompositeWindow *item = texturePixmapItem(win);
     // Compositing is assumed to be enabled at this point if a window
     // has alpha channels
@@ -1162,7 +1162,7 @@ bool DuiCompositeManagerPrivate::isSelfManagedFocus(Window w)
     return ret;
 }
 
-void DuiCompositeManagerPrivate::activateWindow(Window w)
+void DuiCompositeManagerPrivate::activateWindow(Window w, bool disableCompositing)
 {
     if (!isSelfManagedFocus(w))
         return;
@@ -1171,7 +1171,8 @@ void DuiCompositeManagerPrivate::activateWindow(Window w)
         DuiDecoratorFrame::instance()->activate();
     got_active_window = false;
     DuiCompositeWindow* i = texturePixmapItem(w);
-    if (i && !i->isDirectRendered() && !i->hasAlpha() && !i->needDecoration())
+    if (i && !i->isDirectRendered() && !i->hasAlpha() && !i->needDecoration()
+        && disableCompositing)
         QTimer::singleShot(100, this, SLOT(directRenderDesktop()));
     
     if (prev_focus == w)
@@ -1563,14 +1564,11 @@ void DuiCompositeManagerPrivate::disableCompositing(bool forced)
 {
     if (DuiCompositeWindow::isTransitioning())
         return;
-
-    // we could still have exisisting decorator on-screen.
-    // ensure we don't accidentally disturb it
-    if ((!compositing && !forced) || 
-        (DuiDecoratorFrame::instance()->decoratorItem() &&
-         DuiDecoratorFrame::instance()->decoratorItem()->windowVisible()))
+    if (!compositing && !forced)
         return;
     
+    // we could still have exisisting decorator on-screen.
+    // ensure we don't accidentally disturb it
     for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
          it != windows.end(); ++it) {
         DuiCompositeWindow *i  = it.value();
