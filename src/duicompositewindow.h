@@ -192,7 +192,8 @@ public:
     // For _NET_WM_PING abstraction
     void startPing();
     void stopPing();
-    void receivedPing();
+    void receivedPing(ulong timeStamp);
+    void setClientTimeStamp(ulong timeStamp);
 
     static DuiCompositeWindow *compositeWindow(Qt::HANDLE window);
 
@@ -301,13 +302,14 @@ private:
     qreal scaleto;
     bool scaled;
     int zval;
+    ulong ping_client_timestamp;
+    ulong ping_server_timestamp;
     bool blur;
     bool iconified;
     bool iconified_final;
     IconifyState iconify_state;
     bool destroyed;
     bool requestzval;
-    bool process_hung;
     ProcessStatus process_status;
     bool need_decor;
     bool is_decorator;

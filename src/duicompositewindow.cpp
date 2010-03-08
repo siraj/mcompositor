@@ -41,7 +41,6 @@ DuiCompositeWindow::DuiCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       iconify_state(NoIconifyState),
       destroyed(false),
       requestzval(false),
-      process_hung(false),
       process_status(NORMAL),
       need_decor(false),
       is_decorator(false),
@@ -289,9 +288,10 @@ void DuiCompositeWindow::stopPing()
     t_ping->stop();
 }
 
-void DuiCompositeWindow::receivedPing()
+void DuiCompositeWindow::receivedPing(ulong serverTimeStamp)
 {
-    process_hung = false;
+    ping_server_timestamp = serverTimeStamp;
+    startPing();
     process_status = NORMAL;
     if (blurred())
         setBlurred(false);
@@ -299,17 +299,20 @@ void DuiCompositeWindow::receivedPing()
 
 void DuiCompositeWindow::pingTimeout()
 {
-    if (process_hung) {
+    if (ping_server_timestamp != ping_client_timestamp && process_status != HUNG) {
         setBlurred(true);
         emit windowHung(this);
         process_status = HUNG;
     }
 }
 
+void DuiCompositeWindow::setClientTimeStamp(ulong timeStamp)
+{
+    ping_client_timestamp = timeStamp;
+}
+
 void DuiCompositeWindow::pingWindow()
 {
-    process_hung = true;
-
     QTimer::singleShot(5000, this, SLOT(pingTimeout()));
     emit pingTriggered(this);
 }

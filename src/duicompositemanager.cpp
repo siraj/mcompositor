@@ -980,7 +980,7 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         if (event->data.l[0] == (long) ATOM(_NET_WM_PING)) {
             DuiCompositeWindow *ping_source = texturePixmapItem(event->data.l[2]);
             if (ping_source) {
-                ping_source->receivedPing();
+                ping_source->receivedPing(event->data.l[1]);
                 Window managed = DuiDecoratorFrame::instance()->managedWindow();
                 if (ping_source->window() == managed && !ping_source->needDecoration()) {
                     DuiDecoratorFrame::instance()->lower();
@@ -1604,6 +1604,8 @@ void DuiCompositeManagerPrivate::disableCompositing(bool forced)
 void DuiCompositeManagerPrivate::sendPing(DuiCompositeWindow *w)
 {
     Window window = ((DuiCompositeWindow *) w)->window();
+    ulong t = QDateTime::currentDateTime().toTime_t();
+    w->setClientTimeStamp(t);
 
     XEvent ev;
     memset(&ev, 0, sizeof(ev));
@@ -1613,7 +1615,7 @@ void DuiCompositeManagerPrivate::sendPing(DuiCompositeWindow *w)
     ev.xclient.message_type = ATOM(WM_PROTOCOLS);
     ev.xclient.format = 32;
     ev.xclient.data.l[0] = ATOM(_NET_WM_PING);
-    ev.xclient.data.l[1] = CurrentTime;
+    ev.xclient.data.l[1] = t;
     ev.xclient.data.l[2] = window;
 
     XSendEvent(QX11Info::display(), window, False, NoEventMask, &ev);

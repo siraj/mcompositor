@@ -1,6 +1,17 @@
+duicompositor (0.3.4~1) unstable; urgency=low
+
+  * Fixes: NB#158496 No window gets activated when application close
+  * Fixes: NB#157476 Minimized application doesn't launch after tapping on same application from application grid
+  * Fixes: NB#153641 duidecorator hiding window content
+  * Fixes: NB#149265 Tap on close(X) "select internet connection" Fennec minimizes to home
+  * Fixes: NB#152376, Plain X application window title bar is not always on the top edge of the screen
+  * Support for CITA functional tests
+
+ -- Abdiel Janulgue <abj@codefuassassin.research.nokia.com>  Tue, 09 Mar 2010 00:11:35 +0200
+
 duicompositor (0.3.3~1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Release candidate 1
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Thu, 11 Feb 2010 16:30:20 +0200
 
