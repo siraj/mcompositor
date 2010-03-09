@@ -874,12 +874,14 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         return;
     }
     if (item) {
-        ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
-        item->saveBackingStore(true);
-        if (!item->hasAlpha()) 
+        if (!item->hasAlpha()) {
             item->setVisible(true);
-        else 
+            disableCompositing();
+        } else {
+            ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
+            item->saveBackingStore(true);
             item->delayShow(100);
+        }
         return;
     }
     
