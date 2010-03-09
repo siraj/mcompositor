@@ -576,6 +576,7 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         XUngrabServer(QX11Info::display());
         delete fd.frame;
     }
+    updateWinList();
     disableCompositing();
 
     int wp = stacking_list.indexOf(e->window) - 1;
@@ -876,6 +877,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
     if (item) {
         if (!item->hasAlpha()) {
             item->setVisible(true);
+            updateWinList();
             disableCompositing();
         } else {
             ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
@@ -1443,7 +1445,8 @@ void DuiCompositeManagerPrivate::updateWinList(bool stackingOnly)
 
             win = it.key();
             DuiCompositeWindow *d = it.value();
-            if (!d->isOverrideRedirect() && !atom->isDecorator(it.key()))
+            if (!d->isOverrideRedirect() && !atom->isDecorator(it.key())
+                && d->windowVisible())
                 w[i++] = it.key();
         }
 

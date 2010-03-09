@@ -379,6 +379,8 @@ void DuiCompositeWindow::q_delayShow()
 {
     DuiCompositeWindow::setVisible(true);
     updateWindowPixmap();
+    DuiCompositeManager *p = (DuiCompositeManager *) qApp;
+    p->d->updateWinList();
 }
 
 QVariant DuiCompositeWindow::itemChange(GraphicsItemChange change, const QVariant &value)
