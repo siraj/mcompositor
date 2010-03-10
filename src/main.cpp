@@ -21,16 +21,17 @@
 #include <QGLWidget>
 #include "duicompositescene.h"
 #include "duicompositemanager.h"
-#include <DuiNamespace>
 
 int main(int argc, char *argv[])
 {
+    // Don't load any Qt plugins
+    QCoreApplication::setLibraryPaths(QStringList());
     DuiCompositeManager app(argc, argv);
 
     QGraphicsScene *scene = app.scene();
     QGraphicsView view(scene);
 
-    view.setProperty(Dui::NoDuiStyle, true);
+    view.setProperty("NoDuiStyle", true);
     view.setUpdatesEnabled(false);
     view.setAutoFillBackground(false);
     view.setBackgroundBrush(Qt::NoBrush);
