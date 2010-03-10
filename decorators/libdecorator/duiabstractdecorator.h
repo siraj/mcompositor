@@ -66,6 +66,11 @@ protected:
      * Re-implement to obtain activate events from the managed window
      */
     virtual void activateEvent() = 0;
+    
+     /*!
+      * Pure virtual function that gets called this decorator manages a window
+      */
+    virtual void manageEvent(Qt::HANDLE window) = 0;
 
 private:
     Qt::HANDLE client;

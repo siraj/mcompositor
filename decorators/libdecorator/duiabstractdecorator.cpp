@@ -89,6 +89,7 @@ void DuiAbstractDecorator::close()
 void DuiAbstractDecorator::RemoteSetManagedWinId(qulonglong window)
 {
     client = window;
+    manageEvent(window);
 }
 
 void DuiAbstractDecorator::RemoteActivateWindow()

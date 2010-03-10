@@ -50,7 +50,8 @@ signals:
 
     void homeClicked();
     void escapeClicked();
-
+    void windowTitleChanged(const QString& title);
+    
 private:
     void fillXRectangle(XRectangle *xRect, const QRect &rect) const;
     void setSceneSize(DuiSceneManager &sceneManager);

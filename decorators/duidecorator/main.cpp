@@ -50,7 +50,9 @@ int main(int argc, char **argv)
                      SIGNAL(escapeClicked()));
 
     DuiNavigationBar navigationBar;
-
+    QObject::connect(&window, SIGNAL(windowTitleChanged(const QString&)), &navigationBar,
+                     SLOT(setViewMenuDescription(const QString&)));
+    
     window.init(sceneManager);
 
     sceneManager.showWindowNow(&navigationBar);

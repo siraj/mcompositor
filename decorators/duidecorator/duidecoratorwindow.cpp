@@ -30,7 +30,9 @@
 #include "duidecoratorwindow.h"
 
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/Xatom.h>
+#include <X11/Xmd.h>
 #include <X11/extensions/Xfixes.h>
 #include <X11/extensions/shapeconst.h>
 
@@ -41,24 +43,44 @@ class DuiDecorator: public DuiAbstractDecorator
 {
     Q_OBJECT
 public:
-    DuiDecorator(QObject *p)
-        : DuiAbstractDecorator(p) {
+    DuiDecorator(DuiDecoratorWindow *p)
+        : DuiAbstractDecorator(p)
+    { 
+        connect(this, SIGNAL(windowTitleChanged(const QString&)),
+                p, SIGNAL(windowTitleChanged(const QString&)));
     }
-
+    
     ~DuiDecorator() {
     }
 
 protected:
     virtual void activateEvent() {
     }
+    
+    virtual void manageEvent(Qt::HANDLE window)
+    {
+        XTextProperty p;
+        QString title;
+        
+        if(XGetWMName(QX11Info::display(), window, &p)) {
+            if (p.value) {
+                title = (char*) p.value;
+                XFree(p.value);
+            }
+        }
+        
+        emit windowTitleChanged(title);
+    }    
 
+signals:
+    
+    void windowTitleChanged(const QString&);
 };
 
 DuiDecoratorWindow::DuiDecoratorWindow(QWidget *parent)
     : DuiWindow(parent)
 {
-    setAttribute(Qt::WA_TranslucentBackground);
-
+    setTranslucentBackground(true);
     // We do not rotate (change orientation) at all.
     setOrientationAngle(Dui::Angle0, Dui::ImmediateOrientationChange);
     setOrientationAngleLocked(true);
@@ -73,33 +95,8 @@ DuiDecoratorWindow::~DuiDecoratorWindow()
 }
 
 void DuiDecoratorWindow::init(DuiSceneManager &sceneManager)
-{
-    bool softwareRendering = false;
-
-    if (QCoreApplication::arguments().contains("-software")) {
-        softwareRendering = true;
-    }
-
-    setWindowTitle("DuiDecorator");
-
-    setWindowFlags(Qt::FramelessWindowHint);
-
-    if (softwareRendering == false) {
-        QGLFormat fmt;
-        fmt.setAlpha(true);
-        QGLWidget *glw = new QGLWidget(fmt);
-        QPalette palette;
-        palette.setColor(QPalette::Base, Qt::transparent);
-        glw->setAutoFillBackground(true);
-        glw->setPalette(palette);
-        setViewport(glw);
-    } else {
-        viewport()->setAutoFillBackground(false);
-        setAttribute(Qt::WA_TranslucentBackground);
-    }
-
+{    
     setFocusPolicy(Qt::NoFocus);
-
     setSceneSize(sceneManager);
     setDuiDecoratorWindowProperty();
 }
