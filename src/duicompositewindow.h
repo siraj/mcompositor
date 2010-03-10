@@ -50,6 +50,11 @@ public:
         ManualIconifyState,
         TransitionIconifyState
     };
+    enum WindowType {
+        Unknown = 0,
+        Normal,
+        Transient
+    };
 
     /*! Construct a DuiCompositeWindow
      *
@@ -148,6 +153,12 @@ public:
      * Returns how this window was iconified.
      */
     IconifyState iconifyState() const;
+
+    WindowType windowType() const { return window_type; }
+    
+    void setWindowType(WindowType type) {
+        window_type = type;
+    }
 
     /*!
      * Returns true if this window needs a decoration
@@ -321,6 +332,8 @@ private:
     bool need_decor;
     bool is_decorator;
     bool window_visible;
+    WindowType window_type;
+
     static bool window_transitioning;
 
     // location of this window's icon

@@ -956,13 +956,19 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         return;
     }
     if (item) {
+        item->saveBackingStore(true);
         if (!item->hasAlpha()) {
             item->setVisible(true);
+            item->updateWindowPixmap();
+            if(transient_for) {
+                DuiCompositeWindow* t = DuiCompositeWindow::compositeWindow(transient_for);
+                if(t)
+                    item->setZValue(t->zValue()+1);
+            }
             updateWinList();
             disableCompositing();
         } else {
             ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
-            item->saveBackingStore(true);
             item->delayShow(100);
         }
         return;
@@ -979,6 +985,10 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
     if ((parentWindow(win) == RootWindow(QX11Info::display(), 0))
             && (e->event == QX11Info::appRootWindow())) {
         item = bindWindow(win);
+        if(transient_for)
+            item->setWindowType(DuiCompositeWindow::Transient);
+        else
+            item->setWindowType(DuiCompositeWindow::Normal);
         if (!item->hasAlpha() && !atom->isDecorator(win)) {
             item->setVisible(true);
             if (DuiDecoratorFrame::instance()->decoratorItem() &&
@@ -1543,7 +1553,7 @@ DuiCompositeManagerPrivate::positionWindow(Window w,
     if (pos == DuiCompositeManagerPrivate::STACK_TOP) {
         for (int i = 0; i < stacking_list.size(); i++) {
             DuiCompositeWindow* witem = texturePixmapItem(stacking_list.at(i));
-            if (witem)
+            if (witem && (witem->windowType() != DuiCompositeWindow::Transient))
                 witem->requestZValue(i);
         }
     }
