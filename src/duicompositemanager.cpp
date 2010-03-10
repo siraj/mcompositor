@@ -88,6 +88,7 @@ public:
         _NET_WM_WINDOW_TYPE_NOTIFICATION,
         _NET_WM_STATE_ABOVE,
         _NET_WM_STATE_SKIP_TASKBAR,
+        _NET_WM_STATE_FULLSCREEN,
         _KDE_NET_WM_WINDOW_TYPE_OVERRIDE,
 
         // window properties
@@ -120,9 +121,7 @@ public:
 
         ATOMS_TOTAL
     };
-
-    DuiCompAtoms(Display *d);
-
+    static DuiCompAtoms* instance();
     Type windowType(Window w);
     bool isDecorator(Window w);
     int getPid(Window w);
@@ -136,6 +135,9 @@ public:
     Atom getAtom(const unsigned int name);
 
 private:
+    explicit DuiCompAtoms();
+    static DuiCompAtoms* d;
+
     int intValueProperty(Window w, Atom property);
     Atom getType(Window w);
     Atom getAtom(Window w, Atoms atomtype);
@@ -145,18 +147,26 @@ private:
     Display *dpy;
 };
 
-#define ATOM(t) atom->getAtom(DuiCompAtoms::t)
+#define ATOM(t) DuiCompAtoms::instance()->getAtom(DuiCompAtoms::t)
 Atom DuiCompAtoms::atoms[DuiCompAtoms::ATOMS_TOTAL];
 Window DuiCompositeManagerPrivate::stack[TOTAL_LAYERS];
-
+DuiCompAtoms* DuiCompAtoms::d = 0;
 static bool hasDock  = false;
 
 // temporary launch indicator. will get replaced later
 static QGraphicsTextItem *launchIndicator = 0;
 
-DuiCompAtoms::DuiCompAtoms(Display *d)
-    : dpy(d)
+DuiCompAtoms* DuiCompAtoms::instance()
+{    
+    if (!d)
+        d = new DuiCompAtoms();
+    return d;
+}
+
+DuiCompAtoms::DuiCompAtoms()
 {
+    dpy = QX11Info::display();
+    
     atoms[WM_PROTOCOLS]                = XInternAtom(dpy, "WM_PROTOCOLS", False);
     atoms[WM_DELETE_WINDOW]            = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
 
@@ -175,6 +185,7 @@ DuiCompAtoms::DuiCompAtoms(Display *d)
     atoms[_NET_WM_STATE]               = XInternAtom(dpy, "_NET_WM_STATE", False);
     atoms[_NET_WM_STATE_ABOVE]         = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
     atoms[_NET_WM_STATE_SKIP_TASKBAR]  = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
+    atoms[_NET_WM_STATE_FULLSCREEN]    = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
     // uses the KDE standard for frameless windows
     atoms[_KDE_NET_WM_WINDOW_TYPE_OVERRIDE]
     = XInternAtom(dpy, "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE", False);
@@ -395,6 +406,77 @@ static Window transient_for(Window window)
     return transient_for;
 }
 
+static void skiptaskbar_wm_state(int toggle, Window window)
+{
+    Atom skip = ATOM(_NET_WM_STATE_SKIP_TASKBAR);
+    DuiCompAtoms* atom = DuiCompAtoms::instance();
+    QVector<Atom> states = atom->netWmStates(window);
+    bool update_root = false;
+
+    switch (toggle) {
+    case 0: {
+        int i = states.indexOf(skip);
+        if (i != -1) {
+            states.remove(i);
+            XChangeProperty(QX11Info::display(), window,
+                            ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
+                            (unsigned char *) states.data(), states.size());
+            update_root = true;
+        }
+    } break;
+    case 1: {
+        states.append(skip);
+        if (!states.isEmpty()) {
+            XChangeProperty(QX11Info::display(), window,
+                            ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
+                            (unsigned char *) states.data(), states.size());
+            update_root = true;
+        }
+    } break;
+    default: break;
+    }
+
+    if (update_root) {
+        XPropertyEvent p;
+        p.send_event = True;
+        p.display = QX11Info::display();
+        p.type   = PropertyNotify;
+        p.window = RootWindow(QX11Info::display(), 0);
+        p.atom   = ATOM(_NET_CLIENT_LIST);
+        p.state  = PropertyNewValue;
+        p.time   = CurrentTime;
+        XSendEvent(QX11Info::display(), p.window, False, PropertyChangeMask,
+                   (XEvent *)&p);
+    }
+}
+
+static void fullscreen_wm_state(int toggle, Window window)
+{
+    Display* dpy = QX11Info::display();
+    
+    switch (toggle) {
+    case 0: {
+        DuiCompositeWindow* win = DuiCompositeWindow::compositeWindow(window);
+        if(win) {
+            QRect r = win->originalGeometry();
+            XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
+        }
+    } break;
+    case 1: {
+        XWindowAttributes a;
+        XGetWindowAttributes(dpy, window, &a);
+        DuiCompositeWindow* win = DuiCompositeWindow::compositeWindow(window);
+        if(win)
+            win->setOriginalGeometry(QRect(a.x, a.y, a.width, a.height));
+        
+        int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
+        int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
+        XMoveResizeWindow(dpy, window, 0,0, xres, yres);        
+    } break;
+    default: break;
+    }
+}
+
 DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
     : QObject(p),
       glwidget(0),
@@ -402,8 +484,8 @@ DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
       arranged(false),
       compositing(true)
 {
-    watch   = new DuiCompositeScene(this);
-    atom = new DuiCompAtoms(QX11Info::display());
+    watch = new DuiCompositeScene(this);
+    atom = DuiCompAtoms::instance();
 }
 
 DuiCompositeManagerPrivate::~DuiCompositeManagerPrivate()
@@ -637,7 +719,8 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
         return;
 
     // dock changed
-    if (hasDock && (atom->windowType(e->window) == DuiCompAtoms::DOCK)) {
+    if (hasDock && (atom->windowType(e->window) == DuiCompAtoms::DOCK)
+        && (atom->getState(e->window) != ATOM(_NET_WM_STATE_FULLSCREEN))){
         dock_region = QRegion(e->x, e->y, e->width, e->height);
         QRect r = (QRegion(QApplication::desktop()->screenGeometry()) - dock_region).boundingRect();
         if (stack[DESKTOP_LAYER])
@@ -650,7 +733,6 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
             XMoveResizeWindow(QX11Info::display(), stack[INPUT_LAYER], r.x(), r.y(), r.width(), r.height());
     }
 
-    // just forward requests for now
     XWindowChanges wc;
     wc.border_width = e->border_width;
     wc.x = e->x;
@@ -661,8 +743,6 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
     wc.stack_mode = e->detail;
 
     if ((e->detail == Above) && (e->above == None) && !isInput ) {
-        // enforce DUI guidelines. lower previous application window
-        // that was on the screen
         XWindowAttributes a;
         XGetWindowAttributes(QX11Info::display(), e->window, &a);
         if ((a.map_state == IsViewable) && (atom->windowType(e->window) != DuiCompAtoms::DOCK)) {
@@ -705,12 +785,13 @@ void DuiCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
     int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
 
-    if ((atom->windowType(e->window)    == DuiCompAtoms::FRAMELESS
+    if ((atom->windowType(e->window) == DuiCompAtoms::FRAMELESS
             || atom->windowType(e->window) == DuiCompAtoms::DESKTOP
             || atom->windowType(e->window) == DuiCompAtoms::INPUT)
             && (atom->windowType(e->window) != DuiCompAtoms::DOCK)) {
         if (hasDock && ((dock_region.boundingRect().width()  <= a.width) &&
-                        (dock_region.boundingRect().height() <= a.height))) {
+                        (dock_region.boundingRect().height() <= a.height) &&
+                        (atom->getState(e->window) != ATOM(_NET_WM_STATE_FULLSCREEN)))) {
             QRect r = (QRegion(a.x, a.y, a.width, a.height) - dock_region).boundingRect();
             XMoveResizeWindow(dpy, e->window, r.x(), r.y(), r.width(), r.height());
         } else if ((a.width != xres) && (a.height != yres)) {
@@ -995,49 +1076,10 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             }
         }
     } else if (event->message_type == ATOM(_NET_WM_STATE)) {
-        bool update_root = false;
-        Atom skip = ATOM(_NET_WM_STATE_SKIP_TASKBAR);
-        QVector<Atom> states = atom->netWmStates(event->window);
-        switch (event->data.l[0]) {
-        case 0:
-            if (event->data.l[1] == (long) skip) {
-                int i = states.indexOf(skip);
-                if (i != -1) {
-                    states.remove(i);
-                    XChangeProperty(QX11Info::display(), event->window,
-                                    ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
-                                    (unsigned char *) states.data(), states.size());
-                    update_root = true;
-                }
-            }
-            break;
-        case 1:
-            if (event->data.l[1] == (long) skip) {
-                states.append(skip);
-                if (!states.isEmpty()) {
-                    XChangeProperty(QX11Info::display(), event->window,
-                                    ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
-                                    (unsigned char *) states.data(), states.size());
-                    update_root = true;
-                }
-            }
-            break;
-        default:
-            break;
-        }
-
-        if (update_root) {
-            XPropertyEvent p;
-            p.send_event = True;
-            p.display = QX11Info::display();
-            p.type   = PropertyNotify;
-            p.window = RootWindow(QX11Info::display(), 0);
-            p.atom   = ATOM(_NET_CLIENT_LIST);
-            p.state  = PropertyNewValue;
-            p.time   = CurrentTime;
-            XSendEvent(QX11Info::display(), p.window, False, PropertyChangeMask,
-                       (XEvent *)&p);
-        }
+        if (event->data.l[1] == (long)  ATOM(_NET_WM_STATE_SKIP_TASKBAR))
+            skiptaskbar_wm_state(event->data.l[0], event->window);
+        else if(event->data.l[1] == (long) ATOM(_NET_WM_STATE_FULLSCREEN))
+            fullscreen_wm_state(event->data.l[0], event->window);
     }
 }
 

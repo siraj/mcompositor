@@ -195,6 +195,13 @@ public:
     void receivedPing(ulong timeStamp);
     void setClientTimeStamp(ulong timeStamp);
 
+    // Window geometry
+    void setOriginalGeometry(const QRect geometry) {
+        origGeometry = geometry;
+    }
+    
+    QRect originalGeometry() const { return origGeometry; }
+
     static DuiCompositeWindow *compositeWindow(Qt::HANDLE window);
 
     Qt::HANDLE window() const;
@@ -319,6 +326,8 @@ private:
     // location of this window's icon
     QRectF iconGeometry;
     QPointF origPosition;
+    // _NET_WM_STATE_FULLSCREEN
+    QRect origGeometry;
 
     // Main ping timer
     QTimer *t_ping;
