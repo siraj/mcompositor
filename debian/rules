@@ -34,10 +34,10 @@ ifeq (duitests,$(BASENAME_ORIGIN))
 	QMAKE_OPTIONS = COV_OPTION=on
 endif
 
-ifeq (,$(findstring notestability,$(DEB_BUILD_OPTIONS)))
-    QMAKE_OPTIONS -= TESTABILITY=on
+ifneq (,$(findstring notestability,$(DEB_BUILD_OPTIONS)))
+	QMAKE_OPTIONS += TESTABILITY=off
 else
-    QMAKE_OPTIONS += TESTABILITY=off
+    QMAKE_OPTIONS += TESTABILITY=on
 endif
 
 
