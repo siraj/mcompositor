@@ -22,7 +22,11 @@
 #include <DuiWindow>
 
 #include <X11/Xlib.h>
+#ifdef HAVE_SHAPECONST
 #include <X11/extensions/shapeconst.h>
+#else
+#include <X11/extensions/shape.h>
+#endif
 
 #include <QObject>
 
