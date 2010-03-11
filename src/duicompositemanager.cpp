@@ -80,6 +80,7 @@ public:
         WM_DELETE_WINDOW,
 
         // window types
+        _NET_SUPPORTED,
         _NET_WM_WINDOW_TYPE,
         _NET_WM_WINDOW_TYPE_DESKTOP,
         _NET_WM_WINDOW_TYPE_NORMAL,
@@ -152,6 +153,7 @@ Atom DuiCompAtoms::atoms[DuiCompAtoms::ATOMS_TOTAL];
 Window DuiCompositeManagerPrivate::stack[TOTAL_LAYERS];
 DuiCompAtoms* DuiCompAtoms::d = 0;
 static bool hasDock  = false;
+static QRect availScreenRect = QRect();
 
 // temporary launch indicator. will get replaced later
 static QGraphicsTextItem *launchIndicator = 0;
@@ -171,6 +173,7 @@ DuiCompAtoms::DuiCompAtoms()
     atoms[WM_DELETE_WINDOW]            = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
 
     // fetch all the atoms
+    atoms[_NET_SUPPORTED]              = XInternAtom(dpy, "_NET_SUPPORTED", False);
     atoms[_NET_WM_PID]                 = XInternAtom(dpy, "_NET_WM_PID", False);
     atoms[_NET_WM_PING]                = XInternAtom(dpy, "_NET_WM_PING", False);
     atoms[_NET_WM_WINDOW_TYPE]         = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
@@ -213,6 +216,9 @@ DuiCompAtoms::DuiCompAtoms()
     atoms[_DUI_WM_WINDOW_DIRECT_INVISIBLE]    
         = XInternAtom (dpy, "_DUI_WM_WINDOW_DIRECT_INVISIBLE", False);
 #endif
+    XChangeProperty(dpy, QX11Info::appRootWindow(), atoms[_NET_SUPPORTED], 
+                    XA_ATOM, 32, PropModeReplace,(unsigned char *)atoms, 
+                    ATOMS_TOTAL);
 }
 
 DuiCompAtoms::Type DuiCompAtoms::windowType(Window w)
@@ -455,20 +461,14 @@ static void fullscreen_wm_state(int toggle, Window window)
     Display* dpy = QX11Info::display();
     
     switch (toggle) {
-    case 0: {
+    case 0: {        
         DuiCompositeWindow* win = DuiCompositeWindow::compositeWindow(window);
-        if(win) {
-            QRect r = win->originalGeometry();
+        if(win && !availScreenRect.isEmpty()) {
+            QRect r = availScreenRect;
             XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
         }
     } break;
-    case 1: {
-        XWindowAttributes a;
-        XGetWindowAttributes(dpy, window, &a);
-        DuiCompositeWindow* win = DuiCompositeWindow::compositeWindow(window);
-        if(win)
-            win->setOriginalGeometry(QRect(a.x, a.y, a.width, a.height));
-        
+    case 1: {        
         int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
         int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
         XMoveResizeWindow(dpy, window, 0,0, xres, yres);        
@@ -691,7 +691,7 @@ void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
             item->setIconified(false);            
             positionWindow(e->window, DuiCompositeManagerPrivate::STACK_TOP);
             if ((atom->getState(e->window)   != ATOM(_NET_WM_STATE_ABOVE)) &&
-                    (atom->windowType(e->window) != DuiCompAtoms::DOCK))
+                (atom->windowType(e->window) != DuiCompAtoms::DOCK))
                 topmostWindowsRaise();
         } else {
             if (e->window == DuiDecoratorFrame::instance()->managedWindow())
@@ -792,10 +792,12 @@ void DuiCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             || atom->windowType(e->window) == DuiCompAtoms::INPUT)
             && (atom->windowType(e->window) != DuiCompAtoms::DOCK)) {
         if (hasDock && ((dock_region.boundingRect().width()  <= a.width) &&
-                        (dock_region.boundingRect().height() <= a.height) &&
-                        (atom->getState(e->window) != ATOM(_NET_WM_STATE_FULLSCREEN)))) {
+                        (dock_region.boundingRect().height() <= a.height))) {
             QRect r = (QRegion(a.x, a.y, a.width, a.height) - dock_region).boundingRect();
-            XMoveResizeWindow(dpy, e->window, r.x(), r.y(), r.width(), r.height());
+            if(availScreenRect != r)
+                availScreenRect = r;
+            if(atom->getState(e->window) != ATOM(_NET_WM_STATE_FULLSCREEN))
+                XMoveResizeWindow(dpy, e->window, r.x(), r.y(), r.width(), r.height());
         } else if ((a.width != xres) && (a.height != yres)) {
             XResizeWindow(dpy, e->window, xres, yres);
         }
@@ -878,17 +880,25 @@ void DuiCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
 void DuiCompositeManagerPrivate::topmostWindowsRaise()
 {
-    // Raise to the topmost the _NET_WM_STATE_ABOVE
-    // and DOCK windows
+    bool hasFullScreen = false;
+
+    for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
+         it != windows.end(); ++it) {
+        if((atom->getState(it.key()) == ATOM(_NET_WM_STATE_FULLSCREEN)) &&
+           (it.value()->windowVisible())) {
+            hasFullScreen = true;
+            break;
+        }
+    }
+
     for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
             it != windows.end(); ++it) {
         Window w = it.key();
-
+        
         if (atom->isDecorator(w))
             continue;
-
-        if ((atom->getState(w)   == ATOM(_NET_WM_STATE_ABOVE)) ||
-                (atom->windowType(w) == DuiCompAtoms::DOCK)) {
+        if ((atom->getState(w) == ATOM(_NET_WM_STATE_ABOVE)) ||
+            (!hasFullScreen && (atom->windowType(w) == DuiCompAtoms::DOCK))) {
             XRaiseWindow(QX11Info::display(), w);
             positionWindow(w, DuiCompositeManagerPrivate::STACK_TOP);
         }
@@ -967,12 +977,13 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 if(t)
                     item->setZValue(t->zValue()+1);
             }
-            updateWinList();
             disableCompositing();
         } else {
             ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
             item->delayShow(100);
         }
+        if(!transient_for)
+            updateWinList();
         return;
     }
     
@@ -1036,12 +1047,14 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             QRectF iconGeometry = atom->iconGeometry(raise);
             i->setPos(iconGeometry.topLeft());
             i->restore(iconGeometry, needComp);
-            i->startPing();
+            if(event->window != stack[DESKTOP_LAYER])
+                i->startPing();
         }
         if (fd.frame)
             setWindowState(fd.frame->managedWindow(), NormalState);
         else
             setWindowState(event->window, NormalState);
+        activateWindow(event->window, false);
     } else if (event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
         Window close_window = event->window;
 
@@ -1471,8 +1484,6 @@ void DuiCompositeManagerPrivate::addItem(DuiCompositeWindow *item)
     
     connect(item, SIGNAL(itemIconified(DuiCompositeWindow*)), SLOT(exposeDesktop()));
     connect(this, SIGNAL(compositingEnabled()), item, SLOT(startTransition()));
-    //     if (!item->hasAlpha() && !item->needDecoration())
-    //         connect(item, SIGNAL(itemRestored(DuiCompositeWindow*)), SLOT(disableCompositing()));
     connect(item, SIGNAL(itemRestored(DuiCompositeWindow*)), SLOT(raiseOnRestore(DuiCompositeWindow*)));
     connect(item, SIGNAL(itemIconified(DuiCompositeWindow*)), SLOT(iconifyOnLower(DuiCompositeWindow*)));
     
