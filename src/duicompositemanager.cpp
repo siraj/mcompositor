@@ -683,7 +683,9 @@ void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
         if (above != None) {
             if (item->needDecoration()) {
                 DuiDecoratorFrame::instance()->setManagedWindow(e->window);
+                DuiDecoratorFrame::instance()->decoratorItem()->setVisible(true);
                 DuiDecoratorFrame::instance()->raise();
+                DuiDecoratorFrame::instance()->decoratorItem()->setZValue(item->zValue()+1);
                 item->update();
             }
             item->setIconified(false);            
@@ -989,13 +991,9 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
             item->setWindowType(DuiCompositeWindow::Transient);
         else
             item->setWindowType(DuiCompositeWindow::Normal);
-        if (!item->hasAlpha() && !atom->isDecorator(win)) {
-            item->setVisible(true);
-            if (DuiDecoratorFrame::instance()->decoratorItem() &&
-                    !item->needDecoration())
-                DuiDecoratorFrame::instance()->decoratorItem()->setVisible(false);
+        if (!item->hasAlpha())
             disableCompositing(true);
-        } else
+        else
             item->delayShow(500);
         
         // the current decorated window got mapped
@@ -1003,7 +1001,9 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
             connect(item, SIGNAL(visualized(bool)),
                     DuiDecoratorFrame::instance(),
                     SLOT(visualizeDecorator(bool)));
+            DuiDecoratorFrame::instance()->decoratorItem()->setVisible(true);
             DuiDecoratorFrame::instance()->raise();
+            DuiDecoratorFrame::instance()->decoratorItem()->setZValue(item->zValue()+1);
             stack[APPLICATION_LAYER] = e->window;
         }
         setWindowDebugProperties(win);
@@ -1164,7 +1164,6 @@ void DuiCompositeManagerPrivate::iconifyOnLower(DuiCompositeWindow *window)
     }
 }
 
-
 void DuiCompositeManagerPrivate::raiseOnRestore(DuiCompositeWindow *window)
 {
     XRaiseWindow(QX11Info::display(), window->window());
@@ -1226,10 +1225,12 @@ void DuiCompositeManagerPrivate::activateWindow(Window w, bool disableCompositin
     if (DuiDecoratorFrame::instance()->managedWindow() == w)
         DuiDecoratorFrame::instance()->activate();
     got_active_window = false;
-    DuiCompositeWindow* i = texturePixmapItem(w);
-    if (i && !i->isDirectRendered() && !i->hasAlpha() && !i->needDecoration()
-        && disableCompositing)
-        QTimer::singleShot(100, this, SLOT(directRenderDesktop()));
+    
+    if(disableCompositing) {
+        DuiCompositeWindow* i = texturePixmapItem(w);
+        if (i && !i->isDirectRendered() && !i->hasAlpha() && !i->needDecoration())
+            QTimer::singleShot(100, this, SLOT(directRenderDesktop()));
+    }
     
     if (prev_focus == w)
         return;
@@ -1641,7 +1642,7 @@ void DuiCompositeManagerPrivate::disableCompositing(bool forced)
             it != windows.end(); ++it) {
         DuiCompositeWindow *tp  = it.value();
         // checks above fail. somehow decorator got in. stop it at this point
-        if (!tp->isDecorator() && !tp->isIconified())
+        if (!tp->isDecorator() && !tp->isIconified() && !tp->hasAlpha())
             ((DuiTexturePixmapItem *)tp)->enableDirectFbRendering();
         setWindowDebugProperties(it.key());
     }
