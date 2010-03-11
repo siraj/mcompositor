@@ -1,3 +1,15 @@
+duicompositor (0.3.5-1) unstable; urgency=low
+
+  * Fixes: NB#157682 Screen blanks with pin query, doesnot revert back to UI either
+  * Fixes: NB#159687 Statusbar can't be hidden
+  * Fixes: NB#157682 Screen blanks with pin query, doesnot revert back to UI either
+  * Initial support for transient pop-ups
+  * DuiDecorator improvements: HW-rendering + display proper window title
+  * Support for _NET_WM_STATE_FULLSCREEN 
+  * List supported protocols using _NET_SUPPORTED
+
+ -- Abdiel Janulgue <abj@codefuassassin.research.nokia.com>  Thu, 11 Mar 2010 22:24:04 +0200
+
 duicompositor (0.3.4~1) unstable; urgency=low
 
   * Fixes: NB#158496 No window gets activated when application close
