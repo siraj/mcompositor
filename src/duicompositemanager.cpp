@@ -111,6 +111,7 @@ public:
 
         // DUI-specific
         _DUI_DECORATOR_WINDOW,
+        _DUI_STATUSBAR_OVERLAY,
 #ifdef WINDOW_DEBUG 
         _DUI_WM_INFO,
         _DUI_WM_WINDOW_ZVALUE,
@@ -125,6 +126,7 @@ public:
     static DuiCompAtoms* instance();
     Type windowType(Window w);
     bool isDecorator(Window w);
+    bool statusBarOverlayed(Window w);
     int getPid(Window w);
     long getWmState(Window w);
     Atom getState(Window w);
@@ -202,6 +204,8 @@ DuiCompAtoms::DuiCompAtoms()
     atoms[_NET_ACTIVE_WINDOW]          = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
     atoms[_NET_CLOSE_WINDOW]           = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
     atoms[_DUI_DECORATOR_WINDOW]       = XInternAtom(dpy, "_DUI_DECORATOR_WINDOW", False);
+    // remove this when statusbar in-scene approach is done
+    atoms[_DUI_STATUSBAR_OVERLAY]       = XInternAtom(dpy, "_DUI_STATUSBAR_OVERLAY", False);
 
 #ifdef WINDOW_DEBUG 
      // custom properties for CITA
@@ -246,6 +250,12 @@ DuiCompAtoms::Type DuiCompAtoms::windowType(Window w)
 bool DuiCompAtoms::isDecorator(Window w)
 {
     return (intValueProperty(w, atoms[_DUI_DECORATOR_WINDOW]) == 1);
+}
+ 
+// Remove this when statusbar in-scene approach is done
+bool DuiCompAtoms::statusBarOverlayed(Window w)
+{
+    return (intValueProperty(w, atoms[_DUI_STATUSBAR_OVERLAY]) == 1);
 }
 
 int DuiCompAtoms::getPid(Window w)
@@ -475,6 +485,17 @@ static void fullscreen_wm_state(int toggle, Window window)
     } break;
     default: break;
     }
+}
+
+static bool need_geometry_modify(Window window)
+{
+    DuiCompAtoms* atom = DuiCompAtoms::instance();
+
+    if ((atom->getState(window) == ATOM(_NET_WM_STATE_FULLSCREEN)) || 
+        (atom->statusBarOverlayed(window)))
+        return false;
+
+    return true;
 }
 
 DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
@@ -721,17 +742,16 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
         return;
 
     // dock changed
-    if (hasDock && (atom->windowType(e->window) == DuiCompAtoms::DOCK)
-        && (atom->getState(e->window) != ATOM(_NET_WM_STATE_FULLSCREEN))){
+    if (hasDock && (atom->windowType(e->window) == DuiCompAtoms::DOCK)) {
         dock_region = QRegion(e->x, e->y, e->width, e->height);
         QRect r = (QRegion(QApplication::desktop()->screenGeometry()) - dock_region).boundingRect();
-        if (stack[DESKTOP_LAYER])
+        if (stack[DESKTOP_LAYER] && need_geometry_modify(stack[DESKTOP_LAYER]))
             XMoveResizeWindow(QX11Info::display(), stack[DESKTOP_LAYER], r.x(), r.y(), r.width(), r.height());
 
-        if (stack[APPLICATION_LAYER])
+        if (stack[APPLICATION_LAYER] && need_geometry_modify(stack[APPLICATION_LAYER]))
             XMoveResizeWindow(QX11Info::display(), stack[APPLICATION_LAYER], r.x(), r.y(), r.width(), r.height());
 
-        if (stack[INPUT_LAYER])
+        if (stack[INPUT_LAYER] && need_geometry_modify(stack[INPUT_LAYER]))
             XMoveResizeWindow(QX11Info::display(), stack[INPUT_LAYER], r.x(), r.y(), r.width(), r.height());
     }
 
@@ -791,12 +811,11 @@ void DuiCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             || atom->windowType(e->window) == DuiCompAtoms::DESKTOP
             || atom->windowType(e->window) == DuiCompAtoms::INPUT)
             && (atom->windowType(e->window) != DuiCompAtoms::DOCK)) {
-        if (hasDock && ((dock_region.boundingRect().width()  <= a.width) &&
-                        (dock_region.boundingRect().height() <= a.height))) {
-            QRect r = (QRegion(a.x, a.y, a.width, a.height) - dock_region).boundingRect();
+        if (hasDock) {
+            QRect r = (QRegion(QApplication::desktop()->screenGeometry()) - dock_region).boundingRect();
             if(availScreenRect != r)
                 availScreenRect = r;
-            if(atom->getState(e->window) != ATOM(_NET_WM_STATE_FULLSCREEN))
+            if(need_geometry_modify(e->window))
                 XMoveResizeWindow(dpy, e->window, r.x(), r.y(), r.width(), r.height());
         } else if ((a.width != xres) && (a.height != yres)) {
             XResizeWindow(dpy, e->window, xres, yres);
@@ -1592,18 +1611,14 @@ void DuiCompositeManagerPrivate::mapOverlayWindow()
     // here exactly before compositing was enabled
     // Ensure the changes are visualized immediately
 
-    glwidget->setAttribute(Qt::WA_PaintOutsidePaintEvent);
     QPainter m(glwidget);
     m.drawPixmap(0, 0, QPixmap::grabWindow(QX11Info::appRootWindow()));
     glwidget->update();
     QCoreApplication::flush();
-    XSync(QX11Info::display(), False);
 
     // Freeze painting of framebuffer as of this point
     scene()->views()[0]->setUpdatesEnabled(false);
-    XMoveWindow(QX11Info::display(), localwin, -2, -2);
     XMapWindow(QX11Info::display(), xoverlay);
-    XSync(QX11Info::display(), False);
 }
 
 void DuiCompositeManagerPrivate::enableRedirection()
@@ -1756,6 +1771,7 @@ DuiCompositeManager::~DuiCompositeManager()
 
 void DuiCompositeManager::setGLWidget(QGLWidget *glw)
 {
+    glw->setAttribute(Qt::WA_PaintOutsidePaintEvent);
     d->glwidget = glw;
 }
 

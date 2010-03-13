@@ -41,7 +41,6 @@ int main(int argc, char *argv[])
     view.setWindowFlags(Qt::X11BypassWindowManagerHint);
     view.setAttribute(Qt::WA_NoSystemBackground);
 #if QT_VERSION >= 0x040600
-    view.move(-2, -2);
     view.setViewportUpdateMode(QGraphicsView::NoViewportUpdate);
     view.setOptimizationFlags(QGraphicsView::IndirectPainting);
 #endif
