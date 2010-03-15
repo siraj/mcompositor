@@ -711,9 +711,16 @@ void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
             }
             item->setIconified(false);            
             positionWindow(e->window, DuiCompositeManagerPrivate::STACK_TOP);
-            if ((atom->getState(e->window)   != ATOM(_NET_WM_STATE_ABOVE)) &&
-                (atom->windowType(e->window) != DuiCompAtoms::DOCK))
-                topmostWindowsRaise();
+            
+            if ((atom->getState(e->window) == ATOM(_NET_WM_STATE_ABOVE)) ||
+                (atom->windowType(e->window) == DuiCompAtoms::DOCK))
+                return;
+            
+            Window main_w = transient_for(e->window);
+            if(main_w && atom->getState(main_w) == ATOM(_NET_WM_STATE_ABOVE))
+                return;
+            
+            topmostWindowsRaise();
         } else {
             if (e->window == DuiDecoratorFrame::instance()->managedWindow())
                 DuiDecoratorFrame::instance()->lower();
@@ -1618,6 +1625,7 @@ void DuiCompositeManagerPrivate::mapOverlayWindow()
 
     // Freeze painting of framebuffer as of this point
     scene()->views()[0]->setUpdatesEnabled(false);
+    XMoveWindow(QX11Info::display(), localwin, -2, -2);
     XMapWindow(QX11Info::display(), xoverlay);
 }
 
