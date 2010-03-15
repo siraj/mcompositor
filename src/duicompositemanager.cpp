@@ -702,7 +702,7 @@ void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
 
         Window above = e->above;
         if (above != None) {
-            if (item->needDecoration()) {
+            if (item->needDecoration() && DuiDecoratorFrame::instance()->decoratorItem()) {
                 DuiDecoratorFrame::instance()->setManagedWindow(e->window);
                 DuiDecoratorFrame::instance()->decoratorItem()->setVisible(true);
                 DuiDecoratorFrame::instance()->raise();
@@ -1034,7 +1034,8 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
             item->delayShow(500);
         
         // the current decorated window got mapped
-        if (e->window == DuiDecoratorFrame::instance()->managedWindow()) {
+        if (e->window == DuiDecoratorFrame::instance()->managedWindow() &&
+            DuiDecoratorFrame::instance()->decoratorItem()) {
             connect(item, SIGNAL(visualized(bool)),
                     DuiDecoratorFrame::instance(),
                     SLOT(visualizeDecorator(bool)));
