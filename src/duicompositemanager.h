@@ -100,6 +100,8 @@ public:
      * \param w Window id of a window
      */
     bool isRedirected(Qt::HANDLE window);
+    
+    void topmostWindowsRaise();
 
 public slots:
     void enableCompositing();

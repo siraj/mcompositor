@@ -466,27 +466,6 @@ static void skiptaskbar_wm_state(int toggle, Window window)
     }
 }
 
-static void fullscreen_wm_state(int toggle, Window window)
-{
-    Display* dpy = QX11Info::display();
-    
-    switch (toggle) {
-    case 0: {        
-        DuiCompositeWindow* win = DuiCompositeWindow::compositeWindow(window);
-        if(win && !availScreenRect.isEmpty()) {
-            QRect r = availScreenRect;
-            XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
-        }
-    } break;
-    case 1: {        
-        int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
-        int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
-        XMoveResizeWindow(dpy, window, 0,0, xres, yres);        
-    } break;
-    default: break;
-    }
-}
-
 static bool need_geometry_modify(Window window)
 {
     DuiCompAtoms* atom = DuiCompAtoms::instance();
@@ -496,6 +475,49 @@ static bool need_geometry_modify(Window window)
         return false;
 
     return true;
+}
+
+static void fullscreen_wm_state(int toggle, Window window)
+{
+    Atom fullscreen = ATOM(_NET_WM_STATE_FULLSCREEN);
+    Display* dpy = QX11Info::display();
+    DuiCompAtoms* atom = DuiCompAtoms::instance();
+    QVector<Atom> states = atom->netWmStates(window);
+    int i = states.indexOf(fullscreen);
+    
+    switch (toggle) {
+    case 0: {        
+        if (i != -1) {
+            states.remove(i);
+            XChangeProperty(QX11Info::display(), window,
+                            ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
+                            (unsigned char *) states.data(), states.size());
+        }
+
+        DuiCompositeWindow* win = DuiCompositeWindow::compositeWindow(window);
+        if(win && need_geometry_modify(window) && !availScreenRect.isEmpty()) {
+            QRect r = availScreenRect;
+            XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
+        }
+        
+        DuiCompositeManager *p = (DuiCompositeManager *) qApp;      
+        p->topmostWindowsRaise();
+    } break;
+    case 1: {        
+        if (i != -1 || states.isEmpty()) {
+            states.append(fullscreen);
+            XChangeProperty(QX11Info::display(), window,
+                            ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
+                            (unsigned char *) states.data(), states.size());
+        } 
+
+        int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
+        int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
+        XMoveResizeWindow(dpy, window, 0,0, xres, yres);        
+        XRaiseWindow(dpy, window);
+    } break;
+    default: break;
+    }
 }
 
 DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
@@ -1832,4 +1854,9 @@ void DuiCompositeManager::showLaunchIndicator(int timeout)
 void DuiCompositeManager::hideLaunchIndicator()
 {
     d->hideLaunchIndicator();
+}
+
+void DuiCompositeManager::topmostWindowsRaise()
+{
+    d->topmostWindowsRaise();
 }
