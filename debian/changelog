@@ -1,6 +1,7 @@
 duicompositor (0.3.6~1) karmic; urgency=low
 
   * New version [UNRELEASED]
+  * In-scene status bar support	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Sat, 13 Mar 2010 17:20:01 +0200
 
