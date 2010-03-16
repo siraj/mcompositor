@@ -81,6 +81,8 @@ public:
 
         // window types
         _NET_SUPPORTED,
+        _NET_SUPPORTING_WM_CHECK,
+        _NET_WM_NAME,
         _NET_WM_WINDOW_TYPE,
         _NET_WM_WINDOW_TYPE_DESKTOP,
         _NET_WM_WINDOW_TYPE_NORMAL,
@@ -176,6 +178,8 @@ DuiCompAtoms::DuiCompAtoms()
 
     // fetch all the atoms
     atoms[_NET_SUPPORTED]              = XInternAtom(dpy, "_NET_SUPPORTED", False);
+    atoms[_NET_SUPPORTING_WM_CHECK]    = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
+    atoms[_NET_WM_NAME]                = XInternAtom(dpy, "_NET_WM_NAME", False);
     atoms[_NET_WM_PID]                 = XInternAtom(dpy, "_NET_WM_PID", False);
     atoms[_NET_WM_PING]                = XInternAtom(dpy, "_NET_WM_PING", False);
     atoms[_NET_WM_WINDOW_TYPE]         = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
@@ -568,16 +572,27 @@ void DuiCompositeManagerPrivate::prepare()
 {
     watch->prepareRoot();
     Window w;
-    Atom a;
+    QString wm_name = "DuiCompositor";
 
     w = XCreateSimpleWindow(QX11Info::display(),
                             RootWindow(QX11Info::display(), 0),
                             0, 0, 1, 1, 0,
                             None, None);
+    XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
+                    ATOM(_NET_SUPPORTING_WM_CHECK), XA_WINDOW, 32, 
+                    PropModeReplace, (unsigned char *)&w, 1);
+    XChangeProperty(QX11Info::display(), w, ATOM(_NET_SUPPORTING_WM_CHECK), 
+                    XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
+    XChangeProperty(QX11Info::display(), w, ATOM(_NET_WM_NAME), 
+                    XInternAtom(QX11Info::display(), "UTF8_STRING", 0), 8, 
+                    PropModeReplace, (unsigned char*) wm_name.toUtf8().data(), 
+                    wm_name.size());
+
+
     Xutf8SetWMProperties(QX11Info::display(), w, "DuiCompositor",
                          "DuiCompositor", NULL, 0, NULL, NULL,
                          NULL);
-    a = XInternAtom(QX11Info::display(), "_NET_WM_CM_S0", False);
+    Atom a = XInternAtom(QX11Info::display(), "_NET_WM_CM_S0", False);
     XSetSelectionOwner(QX11Info::display(), a, w, 0);
 
     xoverlay = XCompositeGetOverlayWindow(QX11Info::display(),
