@@ -20,6 +20,8 @@ DEPENDPATH += .
 
 include(../duiconfig.pri)
 
+DEFINES += WINDOW_DEBUG
+
 # Input
 HEADERS += \
 	duitexturepixmapitem.h \
