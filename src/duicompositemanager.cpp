@@ -1432,7 +1432,6 @@ void DuiCompositeManagerPrivate::setWindowDebugProperties(Window w)
     
 #else
     Q_UNUSED(w);
-    Q_UNUSED(func);
 #endif    
 }
 
