@@ -115,6 +115,8 @@ public:
         // DUI-specific
         _DUI_DECORATOR_WINDOW,
         _DUI_STATUSBAR_OVERLAY,
+        _DUI_GLOBAL_ALPHA,
+
 #ifdef WINDOW_DEBUG 
         _DUI_WM_INFO,
         _DUI_WM_WINDOW_ZVALUE,
@@ -137,6 +139,7 @@ public:
     QVector<Atom> netWmStates(Window w);
     unsigned int get_opacity_prop(Display *dpy, Window w, unsigned int def);
     double get_opacity_percent(Display *dpy, Window w, double def);
+    int globalAlphaFromWindow(Window w);
 
     Atom getAtom(const unsigned int name);
     Atom getType(Window w);
@@ -213,6 +216,8 @@ DuiCompAtoms::DuiCompAtoms()
 	    "_DUI_DECORATOR_WINDOW",
     	    // TODO: remove this when statusbar in-scene approach is done
 	    "_DUI_STATUSBAR_OVERLAY",
+	    "_DUI_GLOBAL_ALPHA",
+
 #ifdef WINDOW_DEBUG 
             // custom properties for CITA
 	    "_DUI_WM_INFO",
@@ -396,6 +401,27 @@ double DuiCompAtoms::get_opacity_percent(Display *dpy, Window w, double def)
     return opacity * 1.0 / OPAQUE;
 }
 
+int DuiCompAtoms::globalAlphaFromWindow(Window w)
+{
+    Atom actual;
+    int format;
+    unsigned long n, left;
+
+    unsigned char *data;
+    int result = XGetWindowProperty(QX11Info::display(), w, atoms[_DUI_GLOBAL_ALPHA], 0L, 1L, False,
+                                    XA_CARDINAL, &actual, &format,
+                                    &n, &left, &data);
+    if (result == Success && data != NULL) {
+        unsigned int i;
+        memcpy(&i, data, sizeof(unsigned int));
+        XFree((void *) data);
+        double opacity = i * 1.0 / OPAQUE;
+        return (opacity * 255);
+    }
+    
+    return 255;
+}
+
 Atom DuiCompAtoms::getAtom(const unsigned int name)
 {
     return atoms[name];
@@ -552,6 +578,36 @@ static void fullscreen_wm_state(DuiCompositeManagerPrivate *priv,
     } break;
     default: break;
     }
+}
+
+static void toggle_global_alpha_blend(unsigned int state, int manager = 0)
+{
+    FILE *out;
+    char path[256];
+    
+    snprintf(path, 256, "/sys/devices/platform/omapdss/manager%d/alpha_blending_enabled", manager);
+    
+    out = fopen(path, "w");
+    
+    if (out) {
+        fprintf(out, "%d", state);
+        fclose(out);
+    }
+}
+
+static void set_global_alpha(unsigned int plane, unsigned int level)
+{
+  FILE *out;
+  char path[256];
+
+  snprintf(path, 256, "/sys/devices/platform/omapdss/overlay%d/global_alpha", plane);
+
+  out = fopen(path, "w");
+
+  if (out) {
+    fprintf(out, "%d", level);
+    fclose(out);
+  }
 }
 
 DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
@@ -750,6 +806,9 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     updateWinList();
     disableCompositing();
 
+    toggle_global_alpha_blend(0);
+    set_global_alpha(0,255);
+
     if (e->window == stack[APPLICATION_LAYER]) {
 	/* go to home screen if the current application closes */
 	stack[APPLICATION_LAYER] = 0;
@@ -834,8 +893,12 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
         if (stack[DESKTOP_LAYER] && need_geometry_modify(stack[DESKTOP_LAYER]))
             XMoveResizeWindow(QX11Info::display(), stack[DESKTOP_LAYER], r.x(), r.y(), r.width(), r.height());
 
-        if (stack[APPLICATION_LAYER] && need_geometry_modify(stack[APPLICATION_LAYER]))
-            XMoveResizeWindow(QX11Info::display(), stack[APPLICATION_LAYER], r.x(), r.y(), r.width(), r.height());
+        if (stack[APPLICATION_LAYER]) {
+            if(need_geometry_modify(stack[APPLICATION_LAYER]))
+                XMoveResizeWindow(QX11Info::display(), stack[APPLICATION_LAYER],
+                                  r.x(), r.y(), r.width(), r.height());
+            XRaiseWindow(QX11Info::display(),stack[APPLICATION_LAYER]);
+        }
 
         if (stack[INPUT_LAYER] && need_geometry_modify(stack[INPUT_LAYER]))
             XMoveResizeWindow(QX11Info::display(), stack[INPUT_LAYER], r.x(), r.y(), r.width(), r.height());
@@ -1204,6 +1267,16 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
     }
 
     activateWindow(win, CurrentTime, false);
+    
+    // TODO: this should probably be done on the focus level. Rewrite this
+    // once new stacking code from Kimmo is done
+    int g_alpha = atom->globalAlphaFromWindow(win);
+    if (g_alpha == 255) 
+        toggle_global_alpha_blend(0);
+    else if (g_alpha < 255) 
+        toggle_global_alpha_blend(1);
+    set_global_alpha(0, g_alpha);
+    
     DuiCompositeWindow *item = texturePixmapItem(win);
     // Compositing is assumed to be enabled at this point if a window
     // has alpha channels
