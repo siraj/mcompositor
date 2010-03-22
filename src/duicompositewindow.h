@@ -160,6 +160,12 @@ public:
         window_type = type;
     }
 
+    Atom windowTypeAtom() const { return window_type_atom; }
+
+    void setWindowTypeAtom(Atom atom) {
+        window_type_atom = atom;
+    }
+
     /*!
      * Returns true if this window needs a decoration
      */
@@ -194,6 +200,16 @@ public:
     void update();
 
     bool blurred();
+
+    /*!
+     * Returns value of TRANSIENT_FOR property.
+     */
+    Window transientFor();
+
+    /*!
+     * Returns true if we should give focus to this window.
+     */
+    bool wantsFocus();
 
     /*!
      * Returns if window is hung or not.
@@ -333,6 +349,9 @@ private:
     bool is_decorator;
     bool window_visible;
     WindowType window_type;
+    Atom window_type_atom;
+    Window transient_for;
+    bool wants_focus;
 
     static bool window_transitioning;
 

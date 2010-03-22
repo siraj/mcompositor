@@ -67,11 +67,11 @@ public:
     QGraphicsScene *scene();
 
     void prepare();
-    void activateWindow(Window w, bool disableCompositing = true);
+    void activateWindow(Window w, Time timestamp,
+		        bool disableCompositing = true);
     void updateWinList(bool stackingOnly = false);
     void setWindowState(Window , int);
     void setWindowDebugProperties(Window w);
-    void topmostWindowsRaise();
     void positionWindow(Window w, StackPosition pos);
     void addItem(DuiCompositeWindow *item);
     void damageEvent(XDamageNotifyEvent *);
@@ -88,6 +88,7 @@ public:
     void mapOverlayWindow();
     void enableRedirection();
     void setExposeDesktop(bool exposed);
+    void checkStacking();
 
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
@@ -107,6 +108,8 @@ public:
     DuiCompositeWindow *damage_cache;
 
     QList<Window> stacking_list;
+    QList<Window> windows_as_mapped;
+
     QHash<Window, DuiCompositeWindow *> windows;
     struct FrameData {
         FrameData(): frame(0), parentWindow(0), mapped(false) {}

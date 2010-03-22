@@ -62,15 +62,18 @@ Qt::HANDLE DuiDecoratorFrame::winId() const
 
 void DuiDecoratorFrame::lower()
 {
+	/*  checkStacking() handles this
     if (decorator_window)
         XLowerWindow(QX11Info::display(), decorator_window);
+	*/
     if (decorator_item)
         decorator_item->setVisible(false);
 }
 
 void DuiDecoratorFrame::raise()
 {
-    XRaiseWindow(QX11Info::display(), decorator_window);
+    /* checkStacking() handles this */
+    //XRaiseWindow(QX11Info::display(), decorator_window);
     if (decorator_item)
         decorator_item->setVisible(true);
 }
@@ -90,6 +93,7 @@ void DuiDecoratorFrame::setManagedWindow(Qt::HANDLE window)
     DuiCompositeWindow *w = DuiCompositeWindow::compositeWindow(window);
     if (w && w->needDecoration()) {
         XWindowAttributes a;
+	qDebug() << "decorator_window is" << decorator_window;
         XGetWindowAttributes(QX11Info::display(), decorator_window, &a);
         QRegion d = QRegion(a.x, a.y, a.width, a.height);
         QRect r = (d - QRegion(a.x, a.y, a.width, 65)).boundingRect();

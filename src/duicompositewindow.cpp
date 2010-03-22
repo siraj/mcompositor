@@ -45,6 +45,8 @@ DuiCompositeWindow::DuiCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       need_decor(false),
       is_decorator(false),
       window_visible(true),
+      transient_for(0),
+      wants_focus(false),
       win_id(window)
 {
     anim = new DuiCompWindowAnimator(this);
@@ -224,6 +226,34 @@ bool DuiCompositeWindow::isScaled() const
 void DuiCompositeWindow::setScaled(bool s)
 {
     scaled = s;
+}
+
+Window DuiCompositeWindow::transientFor()
+{
+    static bool first_call = 1;
+    /* TODO: make this update the property based on PropertyNotifys */
+    if (first_call) {
+        XGetTransientForHint(QX11Info::display(), win_id, &transient_for);
+	first_call = 0;
+    }
+    return transient_for;
+}
+
+bool DuiCompositeWindow::wantsFocus()
+{
+    static bool first_call = 1;
+    if (first_call) {
+        bool val = true;
+        XWMHints *h = XGetWMHints(QX11Info::display(), win_id);
+        if (h) {
+            if ((h->flags & InputHint) && (h->input == False))
+                val = false;
+            XFree(h);
+        }
+	wants_focus = val;
+	first_call = 0;
+    }
+    return wants_focus;
 }
 
 void DuiCompositeWindow::hoverEnterEvent(QGraphicsSceneHoverEvent *e)

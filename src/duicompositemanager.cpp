@@ -89,6 +89,7 @@ public:
         _NET_WM_WINDOW_TYPE_DOCK,
         _NET_WM_WINDOW_TYPE_INPUT,
         _NET_WM_WINDOW_TYPE_NOTIFICATION,
+        _NET_WM_WINDOW_TYPE_DIALOG,
         _NET_WM_STATE_ABOVE,
         _NET_WM_STATE_SKIP_TASKBAR,
         _NET_WM_STATE_FULLSCREEN,
@@ -138,16 +139,16 @@ public:
     double get_opacity_percent(Display *dpy, Window w, double def);
 
     Atom getAtom(const unsigned int name);
+    Atom getType(Window w);
+
+    static Atom atoms[ATOMS_TOTAL];
 
 private:
     explicit DuiCompAtoms();
     static DuiCompAtoms* d;
 
     int intValueProperty(Window w, Atom property);
-    Atom getType(Window w);
     Atom getAtom(Window w, Atoms atomtype);
-
-    static Atom atoms[ATOMS_TOTAL];
 
     Display *dpy;
 };
@@ -171,69 +172,96 @@ DuiCompAtoms* DuiCompAtoms::instance()
 
 DuiCompAtoms::DuiCompAtoms()
 {
+    const char *atom_names[] = {
+	    "WM_PROTOCOLS",
+	    "WM_DELETE_WINDOW",
+
+	    "_NET_SUPPORTED",
+	    "_NET_SUPPORTING_WM_CHECK",
+	    "_NET_WM_NAME",
+	    "_NET_WM_WINDOW_TYPE",
+	    "_NET_WM_WINDOW_TYPE_DESKTOP",
+	    "_NET_WM_WINDOW_TYPE_NORMAL",
+	    "_NET_WM_WINDOW_TYPE_DOCK",
+	    "_NET_WM_WINDOW_TYPE_INPUT",
+	    "_NET_WM_WINDOW_TYPE_NOTIFICATION",
+	    "_NET_WM_WINDOW_TYPE_DIALOG",
+
+	    // window states
+	    "_NET_WM_STATE_ABOVE",
+	    "_NET_WM_STATE_SKIP_TASKBAR",
+	    "_NET_WM_STATE_FULLSCREEN",
+    	    // uses the KDE standard for frameless windows
+	    "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE",
+
+	    "_NET_WM_WINDOW_OPACITY",
+            "_NET_WM_STATE",
+	    "_NET_WM_ICON_GEOMETRY",
+	    "WM_STATE",
+
+	    // misc
+	    "_NET_WM_PID",
+	    "_NET_WM_PING",
+
+	    // root messages
+	    "_NET_ACTIVE_WINDOW",
+	    "_NET_CLOSE_WINDOW",
+	    "_NET_CLIENT_LIST",
+	    "_NET_CLIENT_LIST_STACKING",
+	    "WM_CHANGE_STATE",
+
+	    "_DUI_DECORATOR_WINDOW",
+    	    // TODO: remove this when statusbar in-scene approach is done
+	    "_DUI_STATUSBAR_OVERLAY",
+#ifdef WINDOW_DEBUG 
+            // custom properties for CITA
+	    "_DUI_WM_INFO",
+	    "_DUI_WM_WINDOW_ZVALUE",
+	    "_DUI_WM_WINDOW_COMPOSITED_VISIBLE",
+	    "_DUI_WM_WINDOW_COMPOSITED_INVISIBLE",
+	    "_DUI_WM_WINDOW_DIRECT_VISIBLE",
+	    "_DUI_WM_WINDOW_DIRECT_INVISIBLE",
+#endif
+    };
+
+    Q_ASSERT(sizeof(atom_names) == ATOMS_TOTAL);
+
     dpy = QX11Info::display();
     
-    atoms[WM_PROTOCOLS]                = XInternAtom(dpy, "WM_PROTOCOLS", False);
-    atoms[WM_DELETE_WINDOW]            = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+    if (!XInternAtoms(dpy, (char**)atom_names, ATOMS_TOTAL, False, atoms))
+      qCritical("XInternAtoms failed");
 
-    // fetch all the atoms
-    atoms[_NET_SUPPORTED]              = XInternAtom(dpy, "_NET_SUPPORTED", False);
-    atoms[_NET_SUPPORTING_WM_CHECK]    = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
-    atoms[_NET_WM_NAME]                = XInternAtom(dpy, "_NET_WM_NAME", False);
-    atoms[_NET_WM_PID]                 = XInternAtom(dpy, "_NET_WM_PID", False);
-    atoms[_NET_WM_PING]                = XInternAtom(dpy, "_NET_WM_PING", False);
-    atoms[_NET_WM_WINDOW_TYPE]         = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
-    atoms[_NET_WM_WINDOW_OPACITY]      = XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
-    atoms[_NET_WM_WINDOW_TYPE_DESKTOP] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DESKTOP", False);
-    atoms[_NET_WM_WINDOW_TYPE_NORMAL]  = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NORMAL", False);
-    atoms[_NET_WM_WINDOW_TYPE_DOCK]    = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
-    atoms[_NET_WM_WINDOW_TYPE_INPUT]   = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_INPUT", False);
-    atoms[_NET_WM_WINDOW_TYPE_NOTIFICATION] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NOTIFICATION", False);
-
-    // window states
-    atoms[_NET_WM_STATE]               = XInternAtom(dpy, "_NET_WM_STATE", False);
-    atoms[_NET_WM_STATE_ABOVE]         = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
-    atoms[_NET_WM_STATE_SKIP_TASKBAR]  = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
-    atoms[_NET_WM_STATE_FULLSCREEN]    = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
-    // uses the KDE standard for frameless windows
-    atoms[_KDE_NET_WM_WINDOW_TYPE_OVERRIDE]
-    = XInternAtom(dpy, "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE", False);
-    atoms[_NET_CLIENT_LIST]            = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
-    atoms[_NET_CLIENT_LIST_STACKING]   = XInternAtom(dpy, "_NET_CLIENT_LIST_STACKING", False);
-    atoms[_NET_WM_ICON_GEOMETRY]       = XInternAtom(dpy, "_NET_WM_ICON_GEOMETRY", False);
-
-    atoms[WM_CHANGE_STATE]             = XInternAtom(dpy, "WM_CHANGE_STATE", False);
-    atoms[WM_STATE]                    = XInternAtom(dpy, "WM_STATE", False);
-
-    atoms[_NET_ACTIVE_WINDOW]          = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
-    atoms[_NET_CLOSE_WINDOW]           = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
-    atoms[_DUI_DECORATOR_WINDOW]       = XInternAtom(dpy, "_DUI_DECORATOR_WINDOW", False);
-    // remove this when statusbar in-scene approach is done
-    atoms[_DUI_STATUSBAR_OVERLAY]       = XInternAtom(dpy, "_DUI_STATUSBAR_OVERLAY", False);
-
-#ifdef WINDOW_DEBUG 
-     // custom properties for CITA
-    atoms[_DUI_WM_INFO]                = XInternAtom (dpy, "_DUI_WM_INFO", False);
-    atoms[_DUI_WM_WINDOW_ZVALUE]       = XInternAtom (dpy, "_DUI_WM_WINDOW_ZVALUE", False);
-    atoms[_DUI_WM_WINDOW_COMPOSITED_VISIBLE]    
-        = XInternAtom (dpy, "_DUI_WM_WINDOW_COMPOSITED_VISIBLE", False);
-    atoms[_DUI_WM_WINDOW_COMPOSITED_INVISIBLE]    
-        = XInternAtom (dpy, "_DUI_WM_WINDOW_COMPOSITED_INVISIBLE", False);
-    atoms[_DUI_WM_WINDOW_DIRECT_VISIBLE]    
-        = XInternAtom (dpy, "_DUI_WM_WINDOW_DIRECT_VISIBLE", False);
-    atoms[_DUI_WM_WINDOW_DIRECT_INVISIBLE]    
-        = XInternAtom (dpy, "_DUI_WM_WINDOW_DIRECT_INVISIBLE", False);
-#endif
     XChangeProperty(dpy, QX11Info::appRootWindow(), atoms[_NET_SUPPORTED], 
                     XA_ATOM, 32, PropModeReplace,(unsigned char *)atoms, 
                     ATOMS_TOTAL);
+}
+
+/* FIXME Workaround for bug NB#161282 */
+static bool is_desktop_window(Window w, Atom type = 0)
+{
+    Atom a;
+    if (!type)
+        a = DuiCompAtoms::instance()->getType(w);
+    else
+	a = type;
+    if (a == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
+	return true;
+    XTextProperty textp;
+    if (!XGetWMName(QX11Info::display(), w, &textp))
+	return false;
+    //qDebug() << __func__ << ": '" << (const char*) textp.value << "'" << "for" << w;
+    if (strcmp((const char*)textp.value, "duihome") == 0
+        && a == ATOM(_NET_WM_WINDOW_TYPE_NORMAL)) {
+	return true;
+    }
+    return false;
 }
 
 DuiCompAtoms::Type DuiCompAtoms::windowType(Window w)
 {
     // freedesktop.org window type
     Atom a = getType(w);
-    if (a == atoms[_NET_WM_WINDOW_TYPE_DESKTOP])
+    if (is_desktop_window(w, a))
         return DESKTOP;
     else if (a == atoms[_NET_WM_WINDOW_TYPE_NORMAL])
         return NORMAL;
@@ -481,7 +509,8 @@ static bool need_geometry_modify(Window window)
     return true;
 }
 
-static void fullscreen_wm_state(int toggle, Window window)
+static void fullscreen_wm_state(DuiCompositeManagerPrivate *priv,
+		                int toggle, Window window)
 {
     Atom fullscreen = ATOM(_NET_WM_STATE_FULLSCREEN);
     Display* dpy = QX11Info::display();
@@ -504,8 +533,7 @@ static void fullscreen_wm_state(int toggle, Window window)
             XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
         }
         
-        DuiCompositeManager *p = (DuiCompositeManager *) qApp;      
-        p->topmostWindowsRaise();
+        priv->checkStacking();
     } break;
     case 1: {        
         if (i != -1 || states.isEmpty()) {
@@ -518,7 +546,9 @@ static void fullscreen_wm_state(int toggle, Window window)
         int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
         int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
         XMoveResizeWindow(dpy, window, 0,0, xres, yres);        
-        XRaiseWindow(dpy, window);
+	/* FIXME: is raising a fullscreen window necessary? We could
+	 * have several fullscreen applications open at the same time. */
+	priv->activateWindow(window, CurrentTime);
     } break;
     default: break;
     }
@@ -605,11 +635,12 @@ void DuiCompositeManagerPrivate::prepare()
 
 bool DuiCompositeManagerPrivate::needDecoration(Window window)
 {
-    return (atom->windowType(window)    != DuiCompAtoms::FRAMELESS
-            && atom->windowType(window) != DuiCompAtoms::DESKTOP
-            && atom->windowType(window) != DuiCompAtoms::NOTIFICATION
-            && atom->windowType(window) != DuiCompAtoms::INPUT
-            && atom->windowType(window) != DuiCompAtoms::DOCK
+    DuiCompAtoms::Type t = atom->windowType(window);
+    return (t != DuiCompAtoms::FRAMELESS
+            && t != DuiCompAtoms::DESKTOP
+            && t != DuiCompAtoms::NOTIFICATION
+            && t != DuiCompAtoms::INPUT
+            && t != DuiCompAtoms::DOCK
             && !transient_for(window));
 }
 
@@ -719,10 +750,12 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     updateWinList();
     disableCompositing();
 
-    int wp = stacking_list.indexOf(e->window) - 1;
-    if (wp == -1 || wp >= stacking_list.size())
-        return;
-    activateWindow(stacking_list.at(wp));
+    if (e->window == stack[APPLICATION_LAYER]) {
+	/* go to home screen if the current application closes */
+	stack[APPLICATION_LAYER] = 0;
+        if (stack[DESKTOP_LAYER])
+            positionWindow(stack[DESKTOP_LAYER], STACK_TOP);
+    }
 }
 
 void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
@@ -739,6 +772,8 @@ void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
 
         Window above = e->above;
         if (above != None) {
+	    qDebug() << __func__ << "win:" << e->window << e->send_event
+		    << "above:" << above;
             if (item->needDecoration() && DuiDecoratorFrame::instance()->decoratorItem()) {
                 DuiDecoratorFrame::instance()->setManagedWindow(e->window);
                 DuiDecoratorFrame::instance()->decoratorItem()->setVisible(true);
@@ -747,8 +782,9 @@ void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
                 item->update();
             }
             item->setIconified(false);            
-            positionWindow(e->window, DuiCompositeManagerPrivate::STACK_TOP);
-            
+            positionWindow(e->window, STACK_TOP);
+
+#if 0
             if ((atom->getState(e->window) == ATOM(_NET_WM_STATE_ABOVE)) ||
                 (atom->windowType(e->window) == DuiCompAtoms::DOCK))
                 return;
@@ -756,9 +792,12 @@ void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
             Window main_w = transient_for(e->window);
             if(main_w && atom->getState(main_w) == ATOM(_NET_WM_STATE_ABOVE))
                 return;
+#endif
             
-            topmostWindowsRaise();
+            //checkStacking();
         } else {
+	    qDebug() << __func__ << "win:" << e->window << e->send_event
+		    << "above:" << above;
             if (e->window == DuiDecoratorFrame::instance()->managedWindow())
                 DuiDecoratorFrame::instance()->lower();
             item->setIconified(true);
@@ -785,6 +824,9 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
     if (atom->isDecorator(e->window))
         return;
 
+    qDebug() << __func__ << "CONFIGURE REQUEST FOR:" << e->window
+	    << e->x << e->y << e->width << e->height;
+
     // dock changed
     if (hasDock && (atom->windowType(e->window) == DuiCompAtoms::DOCK)) {
         dock_region = QRegion(e->x, e->y, e->width, e->height);
@@ -810,10 +852,14 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
 
     if ((e->detail == Above) && (e->above == None) && !isInput ) {
         XWindowAttributes a;
-        XGetWindowAttributes(QX11Info::display(), e->window, &a);
+        if (!XGetWindowAttributes(QX11Info::display(), e->window, &a)) {
+	    qWarning("XGetWindowAttributes for 0x%lx failed", e->window);
+	    return;
+	}
         if ((a.map_state == IsViewable) && (atom->windowType(e->window) != DuiCompAtoms::DOCK)) {
             setWindowState(e->window, NormalState);
             setExposeDesktop(false);
+	    qDebug() << __func__ << "set active app:" << e->window;
             stack[APPLICATION_LAYER] = e->window;
 
             // selective compositing support
@@ -832,6 +878,8 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
     } else if ((e->detail == Below) && (e->above == None) && !isInput)
         setWindowState(e->window, IconicState);
 
+    qDebug() << __func__ << "XConfigureWindow" << e->window
+	    << wc.x << wc.y << wc.width << wc.height;
     unsigned int value_mask = e->value_mask;
     XConfigureWindow(QX11Info::display(), e->window, value_mask, &wc);
 }
@@ -842,7 +890,8 @@ void DuiCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     Display *dpy  = QX11Info::display();
     bool hasAlpha = false;
 
-    XGetWindowAttributes(QX11Info::display(), e->window, &a);
+    if (!XGetWindowAttributes(QX11Info::display(), e->window, &a))
+	return;
     if (!hasDock) {
         hasDock = (atom->windowType(e->window) == DuiCompAtoms::DOCK);
         if (hasDock)
@@ -941,30 +990,162 @@ void DuiCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     }
 }
 
-void DuiCompositeManagerPrivate::topmostWindowsRaise()
+static void send_window_obscured(Window w, bool obscured)
 {
-    bool hasFullScreen = false;
+	 XVisibilityEvent c;
+	 c.type       = VisibilityNotify;
+	 c.send_event = True;
+	 c.window     = w;
+	 c.state      = obscured ? VisibilityFullyObscured :
+		                   VisibilityUnobscured;
+	 XSendEvent(QX11Info::display(), w, true,
+		    VisibilityChangeMask, (XEvent *)&c);
+}
 
-    for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
-         it != windows.end(); ++it) {
-        if((atom->getState(it.key()) == ATOM(_NET_WM_STATE_FULLSCREEN)) &&
-           (it.value()->windowVisible())) {
-            hasFullScreen = true;
-            break;
-        }
+/* recursion is needed to handle transients that are transient for other
+ * transients */
+static void raise_transients(DuiCompositeManagerPrivate *priv,
+		             Window w, int last_i)
+{
+    for (int i = 0; i < last_i; ++i) {
+	 Window iw = priv->stacking_list.at(i);
+	 DuiCompositeWindow *cw = priv->windows.value(iw);
+	 if (cw && cw->transientFor() == w) {
+	     priv->stacking_list.move(i, last_i);
+	     raise_transients(priv, iw, last_i);
+	 }
+    }
+}
+
+/* Go through stacking_list and verify that it is in order.
+ * If it isn't, reorder it and call XRestackWindows.
+ * NOTE: stacking_list needs to be reversed before giving it to
+ * XRestackWindows.*/
+void DuiCompositeManagerPrivate::checkStacking()
+{
+    static QList<Window> prev_list;
+    Window active_app = stack[APPLICATION_LAYER],
+	   duihome = stack[DESKTOP_LAYER];
+    int last_i = stacking_list.size() - 1;
+    int app_i = active_app ? stacking_list.indexOf(active_app) : -1;
+    bool desktop_up = false;
+
+    /* check if desktop is above or below the active application */
+    if (duihome && active_app && app_i >= 0) {
+	for (int i = last_i; i >= 0; --i) {
+	     if (stacking_list.at(i) == stack[DESKTOP_LAYER])
+	     {
+	        qDebug() << __func__ << "desktop is UP";
+		 desktop_up = true;
+		 break;
+	     }
+	     else if (stacking_list.at(i) == stack[APPLICATION_LAYER])
+		 break;
+	}
+    } else if (!active_app || app_i < 0)
+        desktop_up = true;
+
+    /* raise active app with its transients, or duihome if
+     * there is no active application */
+    if (!desktop_up && active_app && app_i >= 0) {
+	qDebug() << "active_app:" << active_app;
+	if (duihome) {
+            /* stack duihome right below the application, so that other
+	     * applications are sent VisibilityFullyObscured events below */
+	    stacking_list.move(stacking_list.indexOf(duihome), last_i);
+	}
+	app_i = stacking_list.indexOf(active_app);
+	stacking_list.move(app_i, last_i);
+	/* raise decorator above the application */
+	if (DuiDecoratorFrame::instance()->managedWindow() == active_app) {
+	    int deco_i = stacking_list.indexOf(
+	           DuiDecoratorFrame::instance()->decoratorItem()->window());
+	    if (deco_i >= 0)
+	        stacking_list.move(deco_i, last_i);
+	}
+	/* raise transients recursively */
+	raise_transients(this, active_app, last_i);
+    } else if (duihome) {
+	qDebug() << "raising home window" << duihome;
+	stacking_list.move(stacking_list.indexOf(duihome), last_i);
     }
 
-    for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
-            it != windows.end(); ++it) {
-        Window w = it.key();
-        
-        if (atom->isDecorator(w))
-            continue;
-        if ((atom->getState(w) == ATOM(_NET_WM_STATE_ABOVE)) ||
-            (!hasFullScreen && (atom->windowType(w) == DuiCompAtoms::DOCK))) {
-            XRaiseWindow(QX11Info::display(), w);
-            positionWindow(w, DuiCompositeManagerPrivate::STACK_TOP);
-        }
+    /* raise docks if either the desktop is up or the application is
+     * non-fullscreen */
+    if (desktop_up || !active_app || app_i < 0 ||
+        !(atom->getState(active_app) == ATOM(_NET_WM_STATE_FULLSCREEN))) {
+	for (int i = 0; i < last_i; ++i) {
+	     DuiCompositeWindow *cw = windows.value(stacking_list.at(i));
+	     if (cw && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
+	     {
+	     qDebug() << "raise dock" << stacking_list.at(i);
+		 stacking_list.move(i, last_i);
+	     }
+	}
+    }
+    /* raise all system-modal dialogs */
+    for (int i = 0; i < last_i; ++i) {
+     	 DuiCompositeWindow *cw = windows.value(stacking_list.at(i));
+	 if (cw && !cw->transientFor()
+	     && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
+	 {
+	qDebug() << "raise system-modal" << stacking_list.at(i);
+	     stacking_list.move(i, last_i);
+	 }
+    }
+    /* raise all above-flagged (includes input methods) */
+    for (int i = 0; i < last_i; ++i) {
+	 /* FIXME: this causes 1-2 round trips to the X server for each window,
+	  * the properties should be kept up-to-date by PropertyNotifys. */
+         if (atom->isDecorator(stacking_list.at(i)))
+             continue;
+	 if (atom->getState(stacking_list.at(i)) == ATOM(_NET_WM_STATE_ABOVE))
+	 {
+	qDebug() << "raise above-flagged" << stacking_list.at(i);
+	     stacking_list.move(i, last_i);
+	 }
+    }
+    /* raise all non-transient notifications (transient ones were already
+     * handled above) */
+    for (int i = 0; i < last_i; ++i) {
+     	 DuiCompositeWindow *cw = windows.value(stacking_list.at(i));
+	 if (cw && !cw->transientFor()
+	     && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
+	 {
+	qDebug() << "raise notification" << stacking_list.at(i);
+	     stacking_list.move(i, last_i);
+	 }
+    }
+
+    /* check if the stacking order changed */
+    if (prev_list != stacking_list) {
+	QList<Window> reverse;
+	for (int i = last_i; i >= 0; --i)
+	     reverse.append(stacking_list.at(i));
+        qDebug() << __func__ << "stack:" << reverse.toVector();
+
+	XRestackWindows(QX11Info::display(), reverse.toVector().data(),
+			reverse.size());
+    	XChangeProperty(QX11Info::display(),
+			RootWindow(QX11Info::display(), 0),
+                    	ATOM(_NET_CLIENT_LIST_STACKING),
+                    	XA_WINDOW, 32, PropModeReplace,
+                    	(unsigned char *)stacking_list.toVector().data(),
+                    	stacking_list.size());
+      	prev_list = QList<Window>(stacking_list);
+
+        /* Send synthetic visibility events. Note: obscuring is done
+	 * elsewhere */
+	if (0 && compositing) {
+	    int home_i = stacking_list.indexOf(duihome);
+	    /* FIXME: don't send this to already visible windows */
+	    for (int i = 0; i <= last_i; ++i) {
+		 if (duihome && i > home_i)
+		     send_window_obscured(stacking_list.at(i), false);
+		 else if (!duihome)
+		     send_window_obscured(stacking_list.at(i), false);
+	    }
+	}
     }
 }
 
@@ -973,19 +1154,17 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
     Window win = e->window;
     Window transient_for = 0;
 
+    qDebug() << __func__ << win;
     if (win == xoverlay) {
         enableRedirection();
         return;
     }
 
-    // For menus and popups
-    XGetTransientForHint(QX11Info::display(), win, &transient_for);
-
     FrameData fd = framed_windows.value(win);
     if (fd.frame) {
         XWindowAttributes a;
-        XGetWindowAttributes(QX11Info::display(), e->window, &a);
-
+        if (!XGetWindowAttributes(QX11Info::display(), e->window, &a))
+	    return;
         XConfigureEvent c;
         c.type = ConfigureNotify;
         c.send_event = True;
@@ -1003,10 +1182,12 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
 
     // simple stacking model fulfills the current DUI concept,
     if (atom->windowType(e->window) == DuiCompAtoms::DESKTOP) {
+	qDebug() << __func__ << "desktop window:" << e->window;
         stack[DESKTOP_LAYER] = e->window; // below topmost
     } else if (atom->windowType(e->window) == DuiCompAtoms::INPUT) {
         stack[INPUT_LAYER] = e->window; // topmost
     } else if (atom->windowType(e->window) == DuiCompAtoms::DOCK) {
+	qDebug() << __func__ << "dock window:" << e->window;
         stack[DOCK_LAYER] = e->window; // topmost
     } else {
         if ((atom->windowType(e->window)    == DuiCompAtoms::FRAMELESS ||
@@ -1015,14 +1196,14 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 && (parentWindow(win) == RootWindow(QX11Info::display(), 0))
                 && (e->event == QX11Info::appRootWindow())) {
             hideLaunchIndicator();
+	    qDebug() << __func__ << "set active app:" << e->window;
             stack[APPLICATION_LAYER] = e->window; // between
             
-            if (stack[DESKTOP_LAYER])
-                setExposeDesktop(false);
+            setExposeDesktop(false);
         }
     }
 
-    activateWindow(win, false);
+    activateWindow(win, CurrentTime, false);
     DuiCompositeWindow *item = texturePixmapItem(win);
     // Compositing is assumed to be enabled at this point if a window
     // has alpha channels
@@ -1031,6 +1212,8 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         return;
     }
     if (item) {
+    	transient_for = item->transientFor();
+	item->setWindowTypeAtom(atom->getType(win));
         item->saveBackingStore(true);
         if (!item->hasAlpha()) {
             item->setVisible(true);
@@ -1079,6 +1262,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
             DuiDecoratorFrame::instance()->decoratorItem()->setVisible(true);
             DuiDecoratorFrame::instance()->raise();
             DuiDecoratorFrame::instance()->decoratorItem()->setZValue(item->zValue()+1);
+	    qDebug() << __func__ << "set active app:" << e->window;
             stack[APPLICATION_LAYER] = e->window;
         }
         setWindowDebugProperties(win);
@@ -1087,17 +1271,16 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
 
 void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
 {
-    Q_UNUSED(event);
     DuiCompositeWindow *i = texturePixmapItem(event->window);
     FrameData fd = framed_windows.value(event->window);
 
     if (event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
         got_active_window = true;
 
+	qDebug() << "_NET_ACTIVE_WINDOW for" << event->window;
         // Visibility notification to desktop window. Ensure this is sent
         // before transitions are started
-        if (stack[DESKTOP_LAYER])
-            setExposeDesktop(false);
+        setExposeDesktop(false);
 
         Window raise = event->window;
         DuiCompositeWindow *d_item = texturePixmapItem(stack[DESKTOP_LAYER]);
@@ -1118,7 +1301,7 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             setWindowState(fd.frame->managedWindow(), NormalState);
         else
             setWindowState(event->window, NormalState);
-        activateWindow(event->window, false);
+        activateWindow(event->window, CurrentTime, false);
     } else if (event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
         Window close_window = event->window;
 
@@ -1166,7 +1349,7 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         if (event->data.l[1] == (long)  ATOM(_NET_WM_STATE_SKIP_TASKBAR))
             skiptaskbar_wm_state(event->data.l[0], event->window);
         else if(event->data.l[1] == (long) ATOM(_NET_WM_STATE_FULLSCREEN))
-            fullscreen_wm_state(event->data.l[0], event->window);
+            fullscreen_wm_state(this, event->data.l[0], event->window);
     }
 }
 
@@ -1211,6 +1394,7 @@ void DuiCompositeManagerPrivate::iconifyOnLower(DuiCompositeWindow *window)
     if(window->iconifyState() != DuiCompositeWindow::TransitionIconifyState)
         return;
 
+	qDebug() << __func__;
     // TODO: (work for more)
     // Handle minimize request coming from a managed window itself,
     // if there are any
@@ -1222,11 +1406,10 @@ void DuiCompositeManagerPrivate::iconifyOnLower(DuiCompositeWindow *window)
             i->iconify();
     }
 
-    XLowerWindow(QX11Info::display(), window->window());
-    if (stack[DESKTOP_LAYER]) 
-        XRaiseWindow(QX11Info::display(), stack[DESKTOP_LAYER]);
-    
     enableCompositing();
+    if (stack[DESKTOP_LAYER])
+        positionWindow(stack[DESKTOP_LAYER], STACK_TOP);
+
     for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
          it != windows.end(); ++it) {
         DuiCompositeWindow *i  = it.value();
@@ -1243,7 +1426,9 @@ void DuiCompositeManagerPrivate::iconifyOnLower(DuiCompositeWindow *window)
 
 void DuiCompositeManagerPrivate::raiseOnRestore(DuiCompositeWindow *window)
 {
-    XRaiseWindow(QX11Info::display(), window->window());
+    qDebug() << __func__ << "set active app:" << window->window();
+    stack[APPLICATION_LAYER] = window->window();
+    positionWindow(window->window(), STACK_TOP);
 }
 
 void DuiCompositeManagerPrivate::setExposeDesktop(bool exposed)
@@ -1253,7 +1438,8 @@ void DuiCompositeManagerPrivate::setExposeDesktop(bool exposed)
         desk_notify.type       = VisibilityNotify;
         desk_notify.send_event = True;
         desk_notify.window     = stack[DESKTOP_LAYER];
-        desk_notify.state      = exposed ? VisibilityUnobscured : VisibilityFullyObscured;
+        desk_notify.state      = exposed ? VisibilityUnobscured :
+		                           VisibilityFullyObscured;
         XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER], true,
                    VisibilityChangeMask, (XEvent *)&desk_notify);
     }
@@ -1262,7 +1448,8 @@ void DuiCompositeManagerPrivate::setExposeDesktop(bool exposed)
         desk_notify.type       = VisibilityNotify;
         desk_notify.send_event = True;
         desk_notify.window     = stack[DOCK_LAYER];
-        desk_notify.state      = exposed ? VisibilityUnobscured : VisibilityFullyObscured;
+        desk_notify.state      = exposed ? VisibilityUnobscured :
+		                           VisibilityFullyObscured;
         XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER], true,
                    VisibilityChangeMask, (XEvent *)&desk_notify);
     }
@@ -1277,27 +1464,56 @@ void DuiCompositeManagerPrivate::exposeDesktop()
 
 bool DuiCompositeManagerPrivate::isSelfManagedFocus(Window w)
 {
+    /* FIXME: store these to the object */
     XWindowAttributes attr;
-    XGetWindowAttributes(QX11Info::display(), w, &attr);
+    if (!XGetWindowAttributes(QX11Info::display(), w, &attr))
+	return false;
     if (attr.override_redirect || atom->windowType(w) == DuiCompAtoms::INPUT)
         return false;
 
-    bool ret = true;
-    XWMHints *h = 0;
-    h = XGetWMHints(QX11Info::display(), w);
-    if (h) {
-        if ((h->flags & InputHint) && (h->input == False))
-            ret = false;
-        XFree(h);
-    }
-
-    return ret;
+    DuiCompositeWindow *cw = windows.value(w);
+    return cw && cw->wantsFocus();
 }
 
-void DuiCompositeManagerPrivate::activateWindow(Window w, bool disableCompositing)
+static Bool
+timestamp_predicate(Display *display,
+                    XEvent  *xevent,
+                    XPointer arg)
 {
-    if (!isSelfManagedFocus(w))
+  Q_UNUSED(arg);
+  if (xevent->type == PropertyNotify &&
+      xevent->xproperty.window == RootWindow(display, 0) &&
+      xevent->xproperty.atom == ATOM(_NET_CLIENT_LIST))
+    return True;
+
+  return False;
+}
+
+static Time get_server_time()
+{
+  XEvent xevent;
+  long data = 0;
+
+  /* zero-length append to get timestamp in the PropertyNotify */
+  XChangeProperty (QX11Info::display(), RootWindow(QX11Info::display(), 0), 
+                   ATOM(_NET_CLIENT_LIST),
+                   XA_WINDOW, 32, PropModeAppend,
+                   (unsigned char*)&data, 0);
+
+  XIfEvent (QX11Info::display(), &xevent, timestamp_predicate, NULL);
+
+  return xevent.xproperty.time;
+}
+
+void DuiCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
+		                                bool disableCompositing)
+{
+    if (!isSelfManagedFocus(w)) {
+	qDebug() << __func__ << "ignore" << w;
+	// FIXME: this ignores stacking changes
         return;
+    }
+    qDebug() << __func__ << w;
     
     if (DuiDecoratorFrame::instance()->managedWindow() == w)
         DuiDecoratorFrame::instance()->activate();
@@ -1312,12 +1528,22 @@ void DuiCompositeManagerPrivate::activateWindow(Window w, bool disableCompositin
     if (prev_focus == w)
         return;
     prev_focus = w;
+
+    /* CurrentTime for XSetInputFocus brings trouble
+     * (a lesson learned from Fremantle) */
+    if (timestamp == CurrentTime)
+	timestamp = get_server_time();
                 
+    /* FIXME: add more intelligence to handle transient windows */
     XSetInputFocus(QX11Info::display(), w, RevertToPointerRoot, CurrentTime);
     if ((atom->windowType(w) != DuiCompAtoms::DESKTOP) &&
             (atom->windowType(w) != DuiCompAtoms::DOCK)) {
-        XRaiseWindow(QX11Info::display(), w);
+        qDebug() << __func__ << "set active app (type "
+		     << atom->windowType(w) << "):" << w;
         stack[APPLICATION_LAYER] = w;
+        setExposeDesktop(false);
+        positionWindow(w, STACK_TOP);
+	checkStacking();
     }
 }
 
@@ -1392,8 +1618,8 @@ bool DuiCompositeManagerPrivate::x11EventFilter(XEvent *event)
         clientMessageEvent(&event->xclient); break;
     case ButtonRelease:
     case ButtonPress:
-        XAllowEvents(QX11Info::display(), ReplayPointer, CurrentTime);
-        activateWindow(event->xbutton.window);
+        XAllowEvents(QX11Info::display(), ReplayPointer, event->xbutton.time);
+        activateWindow(event->xbutton.window, event->xbutton.time);
         // Qt needs to handle this event for the window frame buttons
         return false;
     default:
@@ -1416,11 +1642,15 @@ void DuiCompositeManagerPrivate::redirectWindows()
     XMapWindow(QX11Info::display(), xoverlay);
     QDesktopWidget *desk = QApplication::desktop();
 
-    XQueryTree(QX11Info::display(), desk->winId(),
-               &r, &p, &kids, &children);
+    if (!XQueryTree(QX11Info::display(), desk->winId(),
+                    &r, &p, &kids, &children)) {
+	qCritical("XQueryTree failed");
+	return;
+    }
 
     for (i = 0; i < children; ++i)  {
-        XGetWindowAttributes(QX11Info::display(), kids[i], &attr);
+        if (!XGetWindowAttributes(QX11Info::display(), kids[i], &attr))
+            continue;
         if (attr.map_state == IsViewable &&
                 localwin != kids[i] &&
                 (attr.width > 1 && attr.height > 1)) {
@@ -1450,12 +1680,15 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::texturePixmapItem(Window w)
 
 bool DuiCompositeManagerPrivate::removeWindow(Window w)
 {
+    windows_as_mapped.removeAll(w);
     if (windows.remove(w) == 0)
         return false;
 
     stacking_list.removeAll(w);
 
-    if (stack[APPLICATION_LAYER] == w) stack[APPLICATION_LAYER] = 0;
+    for (int i = 0; i < TOTAL_LAYERS; ++i)
+         if (stack[i] == w) stack[i] = 0;
+
     updateWinList();
     return true;
 }
@@ -1465,6 +1698,7 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
     Display *display = QX11Info::display();
     bool is_decorator = atom->isDecorator(window);
 
+    qDebug() << __func__ << window;
     XSelectInput(display, window,  StructureNotifyMask | PropertyChangeMask | ButtonPressMask);
     XCompositeRedirectWindow(display, window, CompositeRedirectManual);
 
@@ -1473,6 +1707,10 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
     item->setZValue(wtype);
     item->saveState();
     windows[window] = item;
+
+    if (!is_decorator && !item->isOverrideRedirect())
+        windows_as_mapped.append(window);
+
     if (needDecoration(window)) {
         item->setDecorated(true);
         DuiDecoratorFrame::instance()->setManagedWindow(window);
@@ -1480,28 +1718,38 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
 
     item->updateWindowPixmap();
     // _NET_CLIENT_LIST_STACKING. Oldest windows first
-    if (!is_decorator && (atom->windowType(window) != DuiCompAtoms::DOCK))
+    //if (!is_decorator && (atom->windowType(window) != DuiCompAtoms::DOCK))
+    if (!is_decorator) {
+	    qDebug() << "append" << window;
         stacking_list.append(window);
+    }
     addItem(item);
+    item->setWindowTypeAtom(atom->getType(window));
 
     if (wtype == DuiCompAtoms::INPUT) {
         item->updateWindowPixmap();
         return item;
-    } if (wtype == DuiCompAtoms::DESKTOP) {
+    } else if (wtype == DuiCompAtoms::DESKTOP) {
         // just in case startup sequence changes
+	qDebug() << __func__ <<  "desktop window:" << window;
         stack[DESKTOP_LAYER] = window;
         connect(this, SIGNAL(inputEnabled()), item,
                 SLOT(setUnBlurred()));
         return item;
     }
+#if 0
+    else if (wtype == DuiCompAtoms::DOCK) {
+	qDebug() << __func__ << "dock window:" << window;
+        stack[DOCK_LAYER] = window;
+    }
+#endif
 
     item->manipulationEnabled(true);
-    topmostWindowsRaise();
 
     // the decorator got mapped. this is here because the compositor
     // could be restarted at any point
     if (is_decorator && !DuiDecoratorFrame::instance()->decoratorItem()) {
-        XLowerWindow(QX11Info::display(), window);
+        //XLowerWindow(QX11Info::display(), window);
         // initially update the texture for this window because this
         // will be hidden on first show
         item->updateWindowPixmap();
@@ -1510,15 +1758,16 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
     } else
         item->setVisible(true);
 
-    XWMHints *h = 0;
-    h = XGetWMHints(display, window);
+    XWMHints *h = XGetWMHints(display, window);
     if (h) {
         if ((h->flags & StateHint) && (h->initial_state == IconicState)) {
             setWindowState(window, IconicState);
-            XLowerWindow(display, window);
+            //XLowerWindow(display, window);
         }
         XFree(h);
     }
+
+    checkStacking();
 
     Atom *ping = 0;
     int   num;
@@ -1562,38 +1811,28 @@ void DuiCompositeManagerPrivate::addItem(DuiCompositeWindow *item)
 void DuiCompositeManagerPrivate::updateWinList(bool stackingOnly)
 {
     if (!stackingOnly) {
-        Window *w = 0;
-        w = (Window *) malloc(sizeof(Window) * windows.size());
-
-        unsigned int i = 0;
-        Window win;
-
-        for (QHash<Window, DuiCompositeWindow *>::const_iterator it = windows.constBegin();
-                it != windows.constEnd(); ++it) {
-
-            win = it.key();
-            DuiCompositeWindow *d = it.value();
-            if (!d->isOverrideRedirect() && !atom->isDecorator(it.key())
-                && d->windowVisible())
-                w[i++] = it.key();
+    	static QList<Window> prev_list;
+	/* windows_as_mapped may contain invisible windows, so we need to
+	 * make a new list without them */
+	QList<Window> new_list;
+        for (int i = 0; i < windows_as_mapped.size(); ++i) {
+            Window w = windows_as_mapped.at(i);
+            DuiCompositeWindow *d = windows.value(w);
+            if (d->windowVisible()) new_list.append(w);
         }
 
-        XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
-                        ATOM(_NET_CLIENT_LIST),
-                        XA_WINDOW, 32, PropModeReplace,
-                        (unsigned char *)w, windows.size());
+	if (new_list != prev_list) {
+            XChangeProperty(QX11Info::display(),
+			    RootWindow(QX11Info::display(), 0),
+                            ATOM(_NET_CLIENT_LIST),
+                            XA_WINDOW, 32, PropModeReplace,
+                            (unsigned char *)new_list.toVector().data(),
+			    new_list.size());
 
-        topmostWindowsRaise();
-        if (w)
-            free(w);
+	    prev_list = QList<Window>(new_list);
+	}
     }
-    // Use the safer and easier to manipulate separate QList to handle
-    // the _NET_CLIENT_LIST_STACKING.
-    XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
-                    ATOM(_NET_CLIENT_LIST_STACKING),
-                    XA_WINDOW, 32, PropModeReplace,
-                    (unsigned char *)stacking_list.toVector().data(),
-                    stacking_list.size());
+    checkStacking();
 }
 
 /*!
@@ -1609,11 +1848,13 @@ DuiCompositeManagerPrivate::positionWindow(Window w,
         return;
 
     switch (pos) {
-    case DuiCompositeManagerPrivate::STACK_BOTTOM: {
+    case STACK_BOTTOM: {
+        qDebug() << __func__ << "to bottom:" << w;
         stacking_list.move(wp, 0);
         break;
     }
-    case DuiCompositeManagerPrivate::STACK_TOP: {
+    case STACK_TOP: {
+        qDebug() << __func__ << "to top:" << w;
         stacking_list.move(wp, stacking_list.size() - 1);
         break;
     }
@@ -1621,12 +1862,8 @@ DuiCompositeManagerPrivate::positionWindow(Window w,
         break;
 
     }
-    // Force the inputmethod window to be really on top of the rest
-    wp = stacking_list.indexOf(stack[INPUT_LAYER]);
-    if (wp >= 0 && wp < stacking_list.size())
-        stacking_list.move(wp, stacking_list.size() - 1);
     
-    if (pos == DuiCompositeManagerPrivate::STACK_TOP) {
+    if (pos == STACK_TOP) {
         for (int i = 0; i < stacking_list.size(); i++) {
             DuiCompositeWindow* witem = texturePixmapItem(stacking_list.at(i));
             if (witem && (witem->windowType() != DuiCompositeWindow::Transient))
@@ -1643,7 +1880,10 @@ void DuiCompositeManagerPrivate::enableCompositing(bool forced)
         return;
 
     XWindowAttributes a;
-    XGetWindowAttributes(QX11Info::display(), xoverlay, &a);
+    if (!XGetWindowAttributes(QX11Info::display(), xoverlay, &a)) {
+	qCritical("XGetWindowAttributes for the overlay failed");
+        return;
+    }
     if (a.map_state == IsUnmapped)
         mapOverlayWindow();
     else
@@ -1765,6 +2005,7 @@ void DuiCompositeManagerPrivate::gotHungWindow(DuiCompositeWindow *w)
     // responding to any X messages
     DuiDecoratorFrame::instance()->setManagedWindow(window);
     DuiDecoratorFrame::instance()->raise();
+    checkStacking();
     DuiCompositeWindow *p = DuiDecoratorFrame::instance()->decoratorItem();
     int z = atom->windowType(window);
     w->setZValue(z);
@@ -1873,5 +2114,5 @@ void DuiCompositeManager::hideLaunchIndicator()
 
 void DuiCompositeManager::topmostWindowsRaise()
 {
-    d->topmostWindowsRaise();
+    d->checkStacking();
 }
