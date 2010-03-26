@@ -212,6 +212,16 @@ public:
     bool wantsFocus();
 
     /*!
+     * Returns the window group or 0.
+     */
+    XID windowGroup();
+
+    /*!
+     * Returns list of WM_PROTOCOLS of the window.
+     */
+    const QList<Atom>& supportedProtocols();
+
+    /*!
      * Returns if window is hung or not.
      */
     ProcessStatus status() const;
@@ -352,6 +362,7 @@ private:
     Atom window_type_atom;
     Window transient_for;
     bool wants_focus;
+    QList<Atom> wm_protocols;
 
     static bool window_transitioning;
 

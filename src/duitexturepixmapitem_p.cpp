@@ -212,7 +212,10 @@ void DuiTexturePixmapPrivate::init()
     }
     
     XWindowAttributes a;
-    XGetWindowAttributes(QX11Info::display(), item->window(), &a);
+    if (!XGetWindowAttributes(QX11Info::display(), item->window(), &a)) {
+        qWarning("%s: invalid window 0x%lx", __func__, item->window());
+	return;
+    }
 
     XRenderPictFormat *format = XRenderFindVisualFormat(QX11Info::display(), a.visual);
     has_alpha = (format && format->type == PictTypeDirect && format->direct.alphaMask);
@@ -249,7 +252,10 @@ DuiTexturePixmapPrivate::~DuiTexturePixmapPrivate()
 void DuiTexturePixmapPrivate::saveBackingStore(bool renew)
 {
     XWindowAttributes a;
-    XGetWindowAttributes(QX11Info::display(), item->window(), &a);
+    if (!XGetWindowAttributes(QX11Info::display(), item->window(), &a)) {
+        qWarning("%s: invalid window 0x%lx", __func__, item->window());
+	return;
+    }
     if (a.map_state != IsViewable)
         return;
 
