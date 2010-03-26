@@ -1291,7 +1291,8 @@ void DuiCompositeManagerPrivate::checkStacking(Time timestamp)
 	}
 	stacking_list.move(app_i, last_i);
 	/* raise decorator above the application */
-	if (DuiDecoratorFrame::instance()->managedWindow() == active_app) {
+	if (DuiDecoratorFrame::instance()->decoratorItem() &&
+	    DuiDecoratorFrame::instance()->managedWindow() == active_app) {
 	    int deco_i = stacking_list.indexOf(
 	           DuiDecoratorFrame::instance()->decoratorItem()->window());
 	    if (deco_i >= 0)
@@ -1478,20 +1479,19 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         return;
     }
     if (item) {
-	bool disable_comp = false;
 	item->setWindowTypeAtom(atom->getType(win));
         item->saveBackingStore(true);
         if (!item->hasAlpha()) {
             item->setVisible(true);
             item->updateWindowPixmap();
-            disable_comp = true;
+	    disableCompositing();
         } else {
             ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
             item->delayShow(100);
         }
         /* do this after bindWindow() so that the window is in
 	 * stacking_list */
-        activateWindow(win, CurrentTime, disable_comp);
+        activateWindow(win, CurrentTime, false);
         return;
     }
     
@@ -1502,7 +1502,6 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
                 GrabModeSync, GrabModeSync, None, None);
 
-    bool disable_comp = false;
     // only composite top-level windows
     if ((parentWindow(win) == RootWindow(QX11Info::display(), 0))
             && (e->event == QX11Info::appRootWindow())) {
@@ -1512,7 +1511,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         else
             item->setWindowType(DuiCompositeWindow::Normal);
         if (!item->hasAlpha())
-            disable_comp = true;
+	    disableCompositing(true);
         else
             item->delayShow(500);
         
@@ -1530,7 +1529,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         setWindowDebugProperties(win);
     }
     /* do this after bindWindow() so that the window is in stacking_list */
-    activateWindow(win, CurrentTime, disable_comp);
+    activateWindow(win, CurrentTime, false);
 }
 
 void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
@@ -1629,12 +1628,12 @@ void DuiCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
             
             DuiCompositeWindow *i = texturePixmapItem(event->window);
             DuiCompositeWindow *d_item = texturePixmapItem(stack[DESKTOP_LAYER]);
-            if (d_item) 
+            if (d_item && i) {
                 d_item->setZValue(i->zValue()-1);
             
-            Window lower = event->window;
-            setExposeDesktop(false);
-            if (i) {
+                Window lower = event->window;
+                setExposeDesktop(false);
+
                 bool needComp = false;
                 if(i->isDirectRendered()) {
                     enableCompositing();
