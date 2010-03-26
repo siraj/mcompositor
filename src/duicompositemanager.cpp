@@ -731,9 +731,10 @@ void DuiCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
     XFixesDestroyRegion(QX11Info::display(), r);
 
     if (damage_cache && damage_cache->window() == e->drawable) {
-        damage_cache->updateWindowPixmap(rects, num);
-        if (rects)
+        if (rects) {
+            damage_cache->updateWindowPixmap(rects, num);
             XFree(rects);
+        }
         return;
     }
     DuiCompositeWindow *item = texturePixmapItem(e->drawable);
