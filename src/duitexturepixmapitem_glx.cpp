@@ -252,7 +252,8 @@ void DuiTexturePixmapItem::cleanup()
     } else
         glDeleteTextures(1, &d->ctextureId);
 
-    XFreePixmap(QX11Info::display(), d->windowp);
+    if (d->windowp)
+        XFreePixmap(QX11Info::display(), d->windowp);
 }
 
 void DuiTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
@@ -264,16 +265,15 @@ void DuiTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
         return;
 
     // Our very own custom texture from pixmap
-    if (d->custom_tfp) {
+    if (d->custom_tfp && d->windowp) {
         QPixmap qp = QPixmap::fromX11Pixmap(d->windowp);
 
         QImage img = d->glwidget->convertToGLFormat(qp.toImage());
         glBindTexture(GL_TEXTURE_2D, d->ctextureId);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width(), img.height(), 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
-        update();
-    } else
-        update();
+    }
+    update();
 }
 
 void DuiTexturePixmapItem::paint(QPainter *painter,

@@ -26,6 +26,7 @@
 #include <QX11Info>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
+#include <X11/Xatom.h>
 
 bool DuiCompositeWindow::window_transitioning = false;
 
@@ -230,30 +231,60 @@ void DuiCompositeWindow::setScaled(bool s)
 
 Window DuiCompositeWindow::transientFor()
 {
-    static bool first_call = 1;
     /* TODO: make this update the property based on PropertyNotifys */
-    if (first_call) {
-        XGetTransientForHint(QX11Info::display(), win_id, &transient_for);
-	first_call = 0;
-    }
+    XGetTransientForHint(QX11Info::display(), win_id, &transient_for);
     return transient_for;
 }
 
 bool DuiCompositeWindow::wantsFocus()
 {
-    static bool first_call = 1;
-    if (first_call) {
-        bool val = true;
-        XWMHints *h = XGetWMHints(QX11Info::display(), win_id);
-        if (h) {
-            if ((h->flags & InputHint) && (h->input == False))
-                val = false;
-            XFree(h);
-        }
-	wants_focus = val;
-	first_call = 0;
+    /* FIXME: check if it is enough to cache this... */
+    bool val = true;
+    XWMHints *h = XGetWMHints(QX11Info::display(), win_id);
+    if (h) {
+        if ((h->flags & InputHint) && (h->input == False))
+            val = false;
+        XFree(h);
     }
+    wants_focus = val;
     return wants_focus;
+}
+
+XID DuiCompositeWindow::windowGroup()
+{
+    /* FIXME: check if it is enough to cache this... */
+    XID val = 0;
+    XWMHints *h = XGetWMHints(QX11Info::display(), win_id);
+    if (h) {
+        if (h->flags & WindowGroupHint)
+            val = h->window_group;
+        XFree(h);
+    }
+    return val;
+}
+
+const QList<Atom>& DuiCompositeWindow::supportedProtocols()
+{
+    static Atom atom = 0;
+    Atom actual_type;
+    int actual_format;
+    unsigned long actual_n, left;
+    unsigned char *data = NULL;
+    if (!atom)
+	atom = XInternAtom(QX11Info::display(), "WM_PROTOCOLS", False);
+    int result = XGetWindowProperty(QX11Info::display(), win_id,
+		                    atom, 0, 100,
+			            False, XA_ATOM, &actual_type,
+				    &actual_format,
+				    &actual_n, &left, &data);
+    if (result == Success && data && actual_type == XA_ATOM) {
+	wm_protocols.clear();
+	for (unsigned int i = 0; i < actual_n; ++i)
+	     wm_protocols.append(((Atom *)data)[i]);
+    }
+    if (data) XFree(data);
+
+    return wm_protocols;
 }
 
 void DuiCompositeWindow::hoverEnterEvent(QGraphicsSceneHoverEvent *e)

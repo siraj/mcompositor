@@ -88,7 +88,8 @@ public:
     void mapOverlayWindow();
     void enableRedirection();
     void setExposeDesktop(bool exposed);
-    void checkStacking();
+    void checkStacking(Time timestamp = CurrentTime);
+    void checkInputFocus(Time timestamp = CurrentTime);
 
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
