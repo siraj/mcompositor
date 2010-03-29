@@ -2121,6 +2121,7 @@ void DuiCompositeManagerPrivate::enableRedirection()
     scene()->views()[0]->setUpdatesEnabled(true);
 
     usleep(50000);
+    qDebug() << __func__;
     // At this point everything should be rendered off-screen
     emit compositingEnabled();
 }
