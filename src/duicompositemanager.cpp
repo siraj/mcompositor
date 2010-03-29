@@ -863,7 +863,7 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 	    return;
         /* either lower window of the application (in chained window case),
          * or duihome is activated */
-        activateWindow(stacking_list.at(wp), false);
+        activateWindow(stacking_list.at(wp), CurrentTime, false);
     }
 }
 
@@ -1150,6 +1150,7 @@ static void raise_transients(DuiCompositeManagerPrivate *priv,
     }
 }
 
+#if 0 // disabled due to bugs in applications (e.g. widgetsgallery)
 static Bool
 timestamp_predicate(Display *display,
                     XEvent  *xevent,
@@ -1179,6 +1180,7 @@ static Time get_server_time()
 
   return xevent.xproperty.time;
 }
+#endif
 
 /* NOTE: this assumes that stacking is correct */
 void DuiCompositeManagerPrivate::checkInputFocus(Time timestamp)
@@ -1216,6 +1218,7 @@ void DuiCompositeManagerPrivate::checkInputFocus(Time timestamp)
         return;
     prev_focus = w;
 
+#if 0 // disabled due to bugs in applications (e.g. widgetsgallery)
     DuiCompositeWindow *cw = windows.value(w);
     if (cw && cw->supportedProtocols().indexOf(ATOM(WM_TAKE_FOCUS)) != -1) {
         /* CurrentTime for WM_TAKE_FOCUS brings trouble
@@ -1234,6 +1237,7 @@ void DuiCompositeManagerPrivate::checkInputFocus(Time timestamp)
 
         XSendEvent(QX11Info::display(), w, False, NoEventMask, &ev);
     } else
+#endif
         XSetInputFocus(QX11Info::display(), w, RevertToPointerRoot, timestamp);
 }
 
