@@ -79,7 +79,7 @@ void DuiDecoratorFrame::setManagedWindow(Qt::HANDLE window)
     if (client == window)
         return;
     client = window;
-    
+
     if (!decorator_item)
         return;
 
@@ -88,9 +88,9 @@ void DuiDecoratorFrame::setManagedWindow(Qt::HANDLE window)
     if (w && w->needDecoration()) {
         XWindowAttributes a;
         if (!XGetWindowAttributes(QX11Info::display(), decorator_window, &a)) {
-	    qWarning("%s: invalid window 0x%lx", __func__, decorator_window);
-	    return;
-	}
+            qWarning("%s: invalid window 0x%lx", __func__, decorator_window);
+            return;
+        }
         QRegion d = QRegion(a.x, a.y, a.width, a.height);
         QRect r = (d - QRegion(a.x, a.y, a.width, 65)).boundingRect();
         XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());

@@ -102,9 +102,9 @@ void DuiCompWindowAnimator::translateScale(qreal fromSx, qreal fromSy,
         anim.setPosAt(0, item->pos());
         anim.setPosAt(1.0, newPos);
     } else {
-        if(item->transform().m22() == 1.0 && item->transform().m11() == 1.0)
+        if (item->transform().m22() == 1.0 && item->transform().m11() == 1.0)
             item->scale(toSx, toSy);
-        
+
         anim.setScaleAt(0, toSx, toSy);
         anim.setScaleAt(1.0, fromSx, fromSy);
         anim.setPosAt(0, item->pos());

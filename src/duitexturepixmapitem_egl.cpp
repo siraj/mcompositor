@@ -304,12 +304,12 @@ void DuiTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
 {
     if (isTransitioning() || d->direct_fb_render || !windowVisible())
         return;
-    
+
     QRegion r;
-    for(int i = 0; i < num; ++i) 
+    for (int i = 0; i < num; ++i)
         r += QRegion(rects[i].x, rects[i].y, rects[i].width, rects[i].height);
     d->damageRegion = r;
-    
+
     // Our very own custom texture from pixmap
     if (d->custom_tfp) {
         QPixmap qp = QPixmap::fromX11Pixmap(d->windowp);
@@ -340,7 +340,7 @@ void DuiTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
         if (!valid)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 0, GL_RGBA,
                          GL_UNSIGNED_BYTE, 0);
-        else 
+        else
             d->glwidget->update();
     }
 }
@@ -377,13 +377,13 @@ void DuiTexturePixmapItem::paint(QPainter *painter,
 
     if (d->damageRegion.numRects() > 1) {
         d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
-        glEnable(GL_SCISSOR_TEST);        
-        for(int i = 0; i < d->damageRegion.numRects(); ++i) {
+        glEnable(GL_SCISSOR_TEST);
+        for (int i = 0; i < d->damageRegion.numRects(); ++i) {
             glScissor(d->damageRegion.rects().at(i).x(),
-                      d->brect.height() - 
-                      (d->damageRegion.rects().at(i).y() + 
+                      d->brect.height() -
+                      (d->damageRegion.rects().at(i).y() +
                        d->damageRegion.rects().at(i).height()),
-                      d->damageRegion.rects().at(i).width(), 
+                      d->damageRegion.rects().at(i).width(),
                       d->damageRegion.rects().at(i).height());
             d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
         }

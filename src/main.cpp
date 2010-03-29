@@ -62,9 +62,9 @@ int main(int argc, char *argv[])
     QGLWidget *w = new QGLWidget(fmt);
     w->setAutoFillBackground(false);
     w->setMinimumSize(QApplication::desktop()->width(),
-                        QApplication::desktop()->height());
+                      QApplication::desktop()->height());
     w->setMaximumSize(QApplication::desktop()->width(),
-                        QApplication::desktop()->height());
+                      QApplication::desktop()->height());
     app.setGLWidget(w);
     view.setViewport(w);
     w->makeCurrent();
