@@ -630,15 +630,40 @@ static void set_global_alpha(unsigned int plane, unsigned int level)
   }
 }
 
+#include <mce/dbus-names.h>
+#include <mce/mode-names.h>
+
 DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
     : QObject(p),
       glwidget(0),
       damage_cache(0),
       arranged(false),
-      compositing(true)
+      compositing(true),
+      display_off(false)
 {
     watch = new DuiCompositeScene(this);
     atom = DuiCompAtoms::instance();
+
+    systembus_conn = new QDBusConnection(QDBusConnection::systemBus());
+    systembus_conn->connect(MCE_SERVICE, MCE_SIGNAL_PATH, MCE_SIGNAL_IF,
+                            MCE_DISPLAY_SIG, this,
+                            SLOT(mceDisplayStatusIndSignal(QString)));
+    if (!systembus_conn->isConnected())
+        qWarning("Failed to connect to the D-Bus system bus");
+
+    /* FIXME: Temporary workaround, current MCE does not seem to provide
+     * get_display_status interface */
+    QFile file("/sys/class/backlight/himalaya/brightness");
+    if (file.open(QIODevice::ReadOnly)) {
+        char buf[50];
+        qint64 len = file.readLine(buf, sizeof(buf));
+        buf[49] = '\0';
+        if (len != -1) {
+            int i = atoi(buf);
+            if (i == 0) display_off = true;
+        }
+        file.close();
+    }
 }
 
 DuiCompositeManagerPrivate::~DuiCompositeManagerPrivate()
@@ -722,6 +747,8 @@ bool DuiCompositeManagerPrivate::needDecoration(Window window)
 
 void DuiCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 {
+    if (display_off)
+        return;
     XserverRegion r = XFixesCreateRegion(QX11Info::display(), 0, 0);
     int num;
     XDamageSubtract(QX11Info::display(), e->damage, None, r);
@@ -965,7 +992,7 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
                 // we don't see the animated transition
                 if (!i->hasAlpha() && !i->needDecoration()) {
                     i->setIconified(false);        
-                    disableCompositing(true);
+                    disableCompositing(FORCED);
                 } else if (DuiDecoratorFrame::instance()->managedWindow() == e->window)
                     enableCompositing();                
                 i->restore();
@@ -1298,10 +1325,19 @@ void DuiCompositeManagerPrivate::checkStacking(Time timestamp)
 	/* raise decorator above the application */
 	if (DuiDecoratorFrame::instance()->decoratorItem() &&
 	    DuiDecoratorFrame::instance()->managedWindow() == active_app) {
-	    int deco_i = stacking_list.indexOf(
-	           DuiDecoratorFrame::instance()->decoratorItem()->window());
-	    if (deco_i >= 0)
+            Window deco_w = 
+                     DuiDecoratorFrame::instance()->decoratorItem()->window();
+	    int deco_i = stacking_list.indexOf(deco_w);
+	    if (deco_i >= 0) {
 	        stacking_list.move(deco_i, last_i);
+                if (!compositing) {
+                    // decor requires compositing
+                    enableCompositing(true);
+	            DuiCompositeWindow *cw = windows.value(deco_w);
+                    cw->updateWindowPixmap();
+                    cw->setVisible(true);
+                }
+            }
 	}
 	/* raise transients recursively */
 	raise_transients(this, active_app, last_i);
@@ -1486,11 +1522,11 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
     if (item) {
 	item->setWindowTypeAtom(atom->getType(win));
         item->saveBackingStore(true);
-        if (!item->hasAlpha()) {
+        if (!display_off && !item->hasAlpha() && !item->needDecoration()) {
             item->setVisible(true);
             item->updateWindowPixmap();
 	    disableCompositing();
-        } else {
+        } else if (!display_off) {
             ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
             item->delayShow(100);
         }
@@ -1516,7 +1552,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         else
             item->setWindowType(DuiCompositeWindow::Normal);
         if (!item->hasAlpha())
-	    disableCompositing(true);
+	    disableCompositing(FORCED);
         else
             item->delayShow(500);
         
@@ -1545,8 +1581,6 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     if (event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
         got_active_window = true;
 
-	//qDebug() << "_NET_ACTIVE_WINDOW for" << event->window;
-
         // Visibility notification to desktop window. Ensure this is sent
         // before transitions are started
 	if (event->window != stack[DESKTOP_LAYER])
@@ -1564,7 +1598,8 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             QRectF iconGeometry = atom->iconGeometry(raise);
             i->setPos(iconGeometry.topLeft());
             i->restore(iconGeometry, needComp);
-            if(event->window != stack[DESKTOP_LAYER])
+            if (event->window != stack[DESKTOP_LAYER] &&
+                i->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK))
                 i->startPing();
         }
         if (fd.frame)
@@ -1611,7 +1646,7 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                     DuiDecoratorFrame::instance()->lower();
                     DuiDecoratorFrame::instance()->setManagedWindow(0);
                     if(!ping_source->hasAlpha()) 
-                        disableCompositing(true);
+                        disableCompositing(FORCED);
                 }
             }
         }
@@ -1775,6 +1810,17 @@ void DuiCompositeManagerPrivate::directRenderDesktop()
     disableCompositing();
 }
 
+void DuiCompositeManagerPrivate::mceDisplayStatusIndSignal(QString mode)
+{
+    if (mode == MCE_DISPLAY_OFF_STRING) {
+        disableCompositing(REALLY_FORCED);
+        display_off = true;
+    } else {
+        display_off = false;
+        enableCompositing(false);
+    }
+}
+
 void DuiCompositeManagerPrivate::setWindowState(Window w, int state)
 {
     CARD32 d[2];
@@ -1936,15 +1982,15 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
         DuiDecoratorFrame::instance()->setManagedWindow(window);
     }
 
-    item->updateWindowPixmap();
-    if (!is_decorator) {
-        stacking_list.append(window);
-    }
+    if (!display_off)
+        item->updateWindowPixmap();
+    stacking_list.append(window);
     addItem(item);
     item->setWindowTypeAtom(atom->getType(window));
 
     if (wtype == DuiCompAtoms::INPUT) {
-        item->updateWindowPixmap();
+        if (!display_off)
+            item->updateWindowPixmap();
         return item;
     } else if (wtype == DuiCompAtoms::DESKTOP) {
         // just in case startup sequence changes
@@ -1961,7 +2007,8 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
     if (is_decorator && !DuiDecoratorFrame::instance()->decoratorItem()) {
         // initially update the texture for this window because this
         // will be hidden on first show
-        item->updateWindowPixmap();
+        if (!display_off)
+            item->updateWindowPixmap();
         item->setVisible(false);
         DuiDecoratorFrame::instance()->setDecoratorItem(item);
     } else
@@ -1977,18 +2024,10 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
 
     checkStacking();
 
-    Atom *ping = 0;
-    int   num;
-    if (XGetWMProtocols(QX11Info::display(), window, &ping, &num)) {
-        for (int i = 0; i < num; i++) {
-            if (ping[i] == ATOM(_NET_WM_PING) && !is_decorator) {
-                item->startPing();
-                break;
-            }
-        }
-        if (ping)
-            XFree(ping);
-    }
+    if (item->supportedProtocols().indexOf(ATOM(_NET_WM_PING)) != -1
+        && item->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)
+        && !is_decorator)
+        item->startPing();
 
     return item;
 }
@@ -2075,7 +2114,7 @@ DuiCompositeManagerPrivate::positionWindow(Window w,
 
 void DuiCompositeManagerPrivate::enableCompositing(bool forced)
 {
-    if (compositing && !forced)
+    if (display_off || (compositing && !forced))
         return;
 
     XWindowAttributes a;
@@ -2108,6 +2147,8 @@ void DuiCompositeManagerPrivate::mapOverlayWindow()
 
 void DuiCompositeManagerPrivate::enableRedirection()
 {
+    if (display_off)
+        return;
     for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
             it != windows.end(); ++it) {
         DuiCompositeWindow *tp  = it.value();
@@ -2129,23 +2170,24 @@ void DuiCompositeManagerPrivate::enableRedirection()
     emit compositingEnabled();
 }
 
-void DuiCompositeManagerPrivate::disableCompositing(bool forced)
+void DuiCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
 {
-    if (DuiCompositeWindow::isTransitioning())
+    if (DuiCompositeWindow::isTransitioning() && forced != REALLY_FORCED)
         return;
-    if (!compositing && !forced)
+    if (!compositing && forced == NO_FORCED)
         return;
     
-    // we could still have exisisting decorator on-screen.
-    // ensure we don't accidentally disturb it
-    for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
-         it != windows.end(); ++it) {
-        DuiCompositeWindow *i  = it.value();
-        if (i->isDecorator())
-            continue;
-        if (i->windowVisible() && (i->hasAlpha() || i->needDecoration())) 
-            return;
-    }
+    if (forced != REALLY_FORCED)
+        // we could still have existing decorator on-screen.
+        // ensure we don't accidentally disturb it
+        for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
+             it != windows.end(); ++it) {
+            DuiCompositeWindow *i  = it.value();
+            if (i->isDecorator())
+                continue;
+            if (i->windowVisible() && (i->hasAlpha() || i->needDecoration())) 
+                return;
+        }
 
     scene()->views()[0]->setUpdatesEnabled(false);
 
@@ -2159,7 +2201,8 @@ void DuiCompositeManagerPrivate::disableCompositing(bool forced)
     }
 
     XSync(QX11Info::display(), False);
-    usleep(50000);
+    if (forced != REALLY_FORCED)
+        usleep(50000);
 
     XUnmapWindow(QX11Info::display(), xoverlay);
     XFlush(QX11Info::display());

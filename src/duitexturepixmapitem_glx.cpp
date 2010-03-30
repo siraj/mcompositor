@@ -186,6 +186,8 @@ void DuiTexturePixmapItem::rebindPixmap()
 
 void DuiTexturePixmapItem::enableDirectFbRendering()
 {
+    d->damageTracking(false);
+
     if ((d->direct_fb_render || d->glpixmap == 0) && !d->custom_tfp)
         return;
 
@@ -210,6 +212,8 @@ void DuiTexturePixmapItem::enableDirectFbRendering()
 
 void DuiTexturePixmapItem::enableRedirectedRendering()
 {
+    d->damageTracking(true);
+
     if ((!d->direct_fb_render || d->glpixmap != 0) && !d->custom_tfp)
         return;
 

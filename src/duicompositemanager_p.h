@@ -23,6 +23,7 @@
 #include <QObject>
 #include <QHash>
 #include <QPixmap>
+#include <QtDBus>
 
 #include <X11/Xutil.h>
 #include <X11/Xlib.h>
@@ -56,6 +57,11 @@ public:
     enum StackPosition {
         STACK_BOTTOM = 0,
         STACK_TOP
+    };
+    enum ForcingLevel {
+        NO_FORCED = 0,
+        FORCED,
+        REALLY_FORCED
     };
 
     DuiCompositeManagerPrivate(QObject *p);
@@ -127,6 +133,8 @@ public:
     bool arranged;
     bool compositing;
     bool got_active_window;
+    QDBusConnection *systembus_conn;
+    bool display_off;
 
 signals:
     void inputEnabled();
@@ -139,13 +147,14 @@ public slots:
     void enableInput();
     void disableInput();
     void enableCompositing(bool forced = false);
-    void disableCompositing(bool forced = false);
+    void disableCompositing(ForcingLevel forced = NO_FORCED);
     void showLaunchIndicator(int timeout);
     void hideLaunchIndicator();
     void iconifyOnLower(DuiCompositeWindow *window);
     void raiseOnRestore(DuiCompositeWindow *window);
     void exposeDesktop();
     void directRenderDesktop();
+    void mceDisplayStatusIndSignal(QString mode);
 };
 
 #endif
