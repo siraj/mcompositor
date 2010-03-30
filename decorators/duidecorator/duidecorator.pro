@@ -5,7 +5,7 @@ INCLUDEPATH += . ../libdecorator
 CONFIG += dui release
 QT += opengl
 
-LIBS += ../libdecorator/libdecorator.so.1.0.0
+LIBS += ../libdecorator/libdecorator.so
 
 SOURCES += main.cpp duidecoratorwindow.cpp
 HEADERS += duidecoratorwindow.h
