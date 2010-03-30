@@ -330,7 +330,8 @@ void DuiCompositeWindow::setVisible(bool visible)
 {
     // Set the iconification status as well
     iconified_final = !visible;
-    emit visualized(visible);
+    if (visible != window_visible)
+        emit visualized(visible);
     window_visible = visible;
 
     QGraphicsItem::setVisible(visible);
