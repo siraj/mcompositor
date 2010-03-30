@@ -52,12 +52,12 @@ int main(int argc, char **argv)
     DuiNavigationBar navigationBar;
     QObject::connect(&window, SIGNAL(windowTitleChanged(const QString&)), &navigationBar,
                      SLOT(setViewMenuDescription(const QString&)));
-    
+
     window.init(sceneManager);
 
-    sceneManager.showWindowNow(&navigationBar);
-    sceneManager.showWindowNow(&homeButtonPanel);
-    sceneManager.showWindowNow(&escapeButtonPanel);
+    sceneManager.appearSceneWindowNow(&navigationBar);
+    sceneManager.appearSceneWindowNow(&homeButtonPanel);
+    sceneManager.appearSceneWindowNow(&escapeButtonPanel);
 
     QRegion region;
     region += windowRectFromGraphicsItem(window, navigationBar);
