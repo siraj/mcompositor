@@ -86,7 +86,7 @@ DuiDecoratorWindow::DuiDecoratorWindow(QWidget *parent)
 {
     setTranslucentBackground(true);
     // We do not rotate (change orientation) at all.
-    setOrientationAngle(Dui::Angle0, Dui::ImmediateOrientationChange);
+    setOrientationAngle(Dui::Angle0);
     setOrientationAngleLocked(true);
 
     DuiDecorator *d = new DuiDecorator(this);
