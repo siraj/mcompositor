@@ -600,6 +600,8 @@ static void fullscreen_wm_state(DuiCompositeManagerPrivate *priv,
     }
 }
 
+#ifdef GLES2_VERSION
+// This is a Harmattan hardware-specific feature to maniplute the graphics overlay
 static void toggle_global_alpha_blend(unsigned int state, int manager = 0)
 {
     FILE *out;
@@ -629,6 +631,7 @@ static void set_global_alpha(unsigned int plane, unsigned int level)
         fclose(out);
     }
 }
+#endif
 
 DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
     : QObject(p),
@@ -851,8 +854,10 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     updateWinList();
     disableCompositing();
 
+#ifdef GLES2_VERSION
     toggle_global_alpha_blend(0);
     set_global_alpha(0, 255);
+#endif
 
     for (int i = 0; i < TOTAL_LAYERS; ++i)
         if (stack[i] == e->window) stack[i] = 0;
@@ -1467,6 +1472,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
         }
     }
 
+#ifdef GLES2_VERSION
     // TODO: this should probably be done on the focus level. Rewrite this
     // once new stacking code from Kimmo is done
     int g_alpha = atom->globalAlphaFromWindow(win);
@@ -1475,6 +1481,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
     else if (g_alpha < 255)
         toggle_global_alpha_blend(1);
     set_global_alpha(0, g_alpha);
+#endif
 
     DuiCompositeWindow *item = texturePixmapItem(win);
     // Compositing is assumed to be enabled at this point if a window
