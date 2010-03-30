@@ -1,8 +1,10 @@
 TEMPLATE = subdirs
 CONFIG+=ordered
 SUBDIRS = \
-	src \
-    decorators
+    decorators \
+    src \
+
+src.depends=decorators
 
 QMAKE_CLEAN += \ 
 	configure-stamp \

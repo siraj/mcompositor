@@ -49,35 +49,35 @@ class DuiDecorator: public DuiAbstractDecorator
 public:
     DuiDecorator(DuiDecoratorWindow *p)
         : DuiAbstractDecorator(p)
-    { 
+    {
         connect(this, SIGNAL(windowTitleChanged(const QString&)),
                 p, SIGNAL(windowTitleChanged(const QString&)));
     }
-    
+
     ~DuiDecorator() {
     }
 
 protected:
     virtual void activateEvent() {
     }
-    
+
     virtual void manageEvent(Qt::HANDLE window)
     {
         XTextProperty p;
         QString title;
-        
+
         if(XGetWMName(QX11Info::display(), window, &p)) {
             if (p.value) {
                 title = (char*) p.value;
                 XFree(p.value);
             }
         }
-        
+
         emit windowTitleChanged(title);
-    }    
+    }
 
 signals:
-    
+
     void windowTitleChanged(const QString&);
 };
 
@@ -86,7 +86,7 @@ DuiDecoratorWindow::DuiDecoratorWindow(QWidget *parent)
 {
     setTranslucentBackground(true);
     // We do not rotate (change orientation) at all.
-    setOrientationAngle(Dui::Angle0, Dui::ImmediateOrientationChange);
+    setOrientationAngle(Dui::Angle0);
     setOrientationAngleLocked(true);
 
     DuiDecorator *d = new DuiDecorator(this);
@@ -99,7 +99,7 @@ DuiDecoratorWindow::~DuiDecoratorWindow()
 }
 
 void DuiDecoratorWindow::init(DuiSceneManager &sceneManager)
-{    
+{
     setFocusPolicy(Qt::NoFocus);
     setSceneSize(sceneManager);
     setDuiDecoratorWindowProperty();

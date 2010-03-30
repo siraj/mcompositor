@@ -243,7 +243,7 @@ void DuiTexturePixmapItem::initCustomTfp()
     glBindTexture(GL_TEXTURE_2D, d->ctextureId);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
+
     d->inverted_texture = false;
 }
 
@@ -306,9 +306,9 @@ void DuiTexturePixmapItem::paint(QPainter *painter,
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glColor4f(1.0, 1.0, 1.0, opacity());
     }
-    
+
     glBindTexture(GL_TEXTURE_2D, d->custom_tfp ? d->ctextureId : d->textureId);
-    
+
     d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
 
 #if (QT_VERSION >= 0x040600)

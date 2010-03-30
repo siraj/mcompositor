@@ -271,16 +271,16 @@ const QList<Atom>& DuiCompositeWindow::supportedProtocols()
     unsigned long actual_n, left;
     unsigned char *data = NULL;
     if (!atom)
-	atom = XInternAtom(QX11Info::display(), "WM_PROTOCOLS", False);
+        atom = XInternAtom(QX11Info::display(), "WM_PROTOCOLS", False);
     int result = XGetWindowProperty(QX11Info::display(), win_id,
-		                    atom, 0, 100,
-			            False, XA_ATOM, &actual_type,
-				    &actual_format,
-				    &actual_n, &left, &data);
+                                    atom, 0, 100,
+                                    False, XA_ATOM, &actual_type,
+                                    &actual_format,
+                                    &actual_n, &left, &data);
     if (result == Success && data && actual_type == XA_ATOM) {
-	wm_protocols.clear();
-	for (unsigned int i = 0; i < actual_n; ++i)
-	     wm_protocols.append(((Atom *)data)[i]);
+        wm_protocols.clear();
+        for (unsigned int i = 0; i < actual_n; ++i)
+            wm_protocols.append(((Atom *)data)[i]);
     }
     if (data) XFree(data);
 
@@ -454,7 +454,7 @@ QVariant DuiCompositeWindow::itemChange(GraphicsItemChange change, const QVarian
 
     if (zvalChanged || change == ItemVisibleHasChanged || change == ItemParentHasChanged)
         p->d->glwidget->update();
-    
+
     return QGraphicsItem::itemChange(change, value);
 }
 

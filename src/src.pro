@@ -22,25 +22,26 @@ QT += dbus
 include(../duiconfig.pri)
 
 # Input
+INCLUDEPATH += ../decorators/libdecorator/
 HEADERS += \
 	duitexturepixmapitem.h \
 	duicompositescene.h \
 	duicompositewindow.h \
 	duicompwindowanimator.h \
 	duicompositemanager.h \
-    duisimplewindowframe.h \
-    duicompositemanager_p.h \
-    duidecoratorframe.h
+        duisimplewindowframe.h \
+        duicompositemanager_p.h \
+        duidecoratorframe.h
 
 SOURCES += \
 	main.cpp \
-    duitexturepixmapitem_p.cpp \
-	duicompositescene.cpp \
-	duicompositewindow.cpp \
-	duicompwindowanimator.cpp \
-	duicompositemanager.cpp \
-    duisimplewindowframe.cpp \
-    duidecoratorframe.cpp
+        duitexturepixmapitem_p.cpp \
+        duicompositescene.cpp \
+        duicompositewindow.cpp \
+        duicompwindowanimator.cpp \
+        duicompositemanager.cpp \
+        duisimplewindowframe.cpp \
+        duidecoratorframe.cpp
 
 RESOURCES = tools.qrc
 
@@ -50,7 +51,7 @@ QT += core gui opengl
 target.path += /usr/bin
 INSTALLS += target 
 
-LIBS += -lXdamage -lXcomposite -lXfixes -ldui
+LIBS += -lXdamage -lXcomposite -lXfixes ../decorators/libdecorator/libdecorator.so
 
 QMAKE_EXTRA_TARGETS += check
 check.depends = $$TARGET
