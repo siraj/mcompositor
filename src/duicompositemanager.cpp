@@ -37,6 +37,11 @@
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
 
+#ifdef GLES2_VERSION
+#include <mce/dbus-names.h>
+#include <mce/mode-names.h>
+#endif
+
 #define TRANSLUCENT 0xe0000000
 #define OPAQUE      0xffffffff
 
@@ -631,11 +636,6 @@ static void set_global_alpha(unsigned int plane, unsigned int level)
         fclose(out);
     }
 }
-#endif
-
-#ifdef GLES2_VERSION
-#include <mce/dbus-names.h>
-#include <mce/mode-names.h>
 #endif
 
 DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)

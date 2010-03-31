@@ -201,20 +201,6 @@ void DuiTexturePixmapPrivate::drawTexture(const QTransform &transform, const QRe
     glActiveTexture(GL_TEXTURE0);
 }
 
-void DuiTexturePixmapPrivate::damageTracking(bool enabled)
-{
-    if (enabled) {
-        if (!damage_object)
-            damage_object = XDamageCreate(QX11Info::display(), window,
-                                          XDamageReportNonEmpty); 
-    } else {
-        if (damage_object) {
-            XDamageDestroy(QX11Info::display(), damage_object);
-            damage_object = NULL;
-        }
-    }
-}
-
 void DuiTexturePixmapPrivate::init()
 {
     if (!glresource) {
@@ -259,6 +245,20 @@ DuiTexturePixmapPrivate::DuiTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w
 DuiTexturePixmapPrivate::~DuiTexturePixmapPrivate()
 {
     damageTracking(false);
+}
+
+void DuiTexturePixmapPrivate::damageTracking(bool enabled)
+{
+    if (enabled) {
+        if (!damage_object)
+            damage_object = XDamageCreate(QX11Info::display(), window,
+                                          XDamageReportNonEmpty); 
+    } else {
+        if (damage_object) {
+            XDamageDestroy(QX11Info::display(), damage_object);
+            damage_object = NULL;
+        }
+    }
 }
 
 void DuiTexturePixmapPrivate::saveBackingStore(bool renew)
