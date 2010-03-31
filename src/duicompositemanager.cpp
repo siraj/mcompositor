@@ -1584,6 +1584,17 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
     activateWindow(win, CurrentTime, false);
 }
 
+static bool should_be_pinged(DuiCompositeWindow *cw)
+{
+    if (cw && cw->supportedProtocols().indexOf(ATOM(_NET_WM_PING)) != -1
+        && cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)
+        && cw->iconifyState() == DuiCompositeWindow::NoIconifyState
+        && !is_desktop_window(cw->window())
+        && !DuiCompAtoms::instance()->isDecorator(cw->window()))
+        return true;
+    return false;
+}
+
 void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
 {
     DuiCompositeWindow *i = texturePixmapItem(event->window);
@@ -1609,8 +1620,7 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             QRectF iconGeometry = atom->iconGeometry(raise);
             i->setPos(iconGeometry.topLeft());
             i->restore(iconGeometry, needComp);
-            if (event->window != stack[DESKTOP_LAYER] &&
-                i->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK))
+            if (!display_off && should_be_pinged(i))
                 i->startPing();
         }
         if (fd.frame)
@@ -1827,9 +1837,22 @@ void DuiCompositeManagerPrivate::mceDisplayStatusIndSignal(QString mode)
     if (mode == MCE_DISPLAY_OFF_STRING) {
         disableCompositing(REALLY_FORCED);
         display_off = true;
-    } else {
+        /* stop pinging to save some battery */
+        for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
+             it != windows.end(); ++it) {
+             DuiCompositeWindow *i  = it.value();
+             i->stopPing();
+        }
+    } else if (mode == MCE_DISPLAY_ON_STRING) {
         display_off = false;
         enableCompositing(false);
+        /* start pinging again */
+        for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
+             it != windows.end(); ++it) {
+             DuiCompositeWindow *i  = it.value();
+             if (should_be_pinged(i))
+                 i->startPing();
+        }
     }
 }
 #endif
@@ -2037,9 +2060,7 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
 
     checkStacking();
 
-    if (item->supportedProtocols().indexOf(ATOM(_NET_WM_PING)) != -1
-        && item->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)
-        && !is_decorator)
+    if (!display_off && should_be_pinged(item))
         item->startPing();
 
     return item;

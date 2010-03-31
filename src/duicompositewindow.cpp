@@ -135,6 +135,8 @@ void DuiCompositeWindow::setIconified(bool iconified)
     iconify_state = ManualIconifyState;
     if (iconified && !anim->pendingAnimation())
         emit itemIconified(this);
+    else if (!iconified && !anim->pendingAnimation())
+        iconify_state = NoIconifyState;
 }
 
 DuiCompositeWindow::IconifyState DuiCompositeWindow::iconifyState() const
@@ -185,6 +187,7 @@ void DuiCompositeWindow::finalizeState()
         iconify_state = TransitionIconifyState;
         emit itemIconified(this);
     } else {
+        iconify_state = NoIconifyState;
         iconified_final = false;
         show();
         QTimer::singleShot(200, this, SLOT(q_itemRestored()));
@@ -341,6 +344,8 @@ void DuiCompositeWindow::setVisible(bool visible)
 
 void DuiCompositeWindow::startPing()
 {
+    if (t_ping->isActive())
+        t_ping->stop();
     // this could be configurable. But will do for now. Most WMs use 5s delay
     t_ping->start(5000);
 }
