@@ -10,7 +10,7 @@ contains(QT_CONFIG, opengles2) {
      SOURCES += duitexturepixmapitem_glx.cpp
 } 
 
-exists(/usr/include/X11/extensions/shapeconst.h) {
+exists($$DUI_PREFIX/include/X11/extensions/shapeconst.h) {
      DEFINES += HAVE_SHAPECONST
 }
 
@@ -48,7 +48,7 @@ RESOURCES = tools.qrc
 CONFIG +=  release
 QT += core gui opengl
 
-target.path += /usr/bin
+target.path += $$DUI_INSTALL_BIN
 INSTALLS += target 
 
 LIBS += -lXdamage -lXcomposite -lXfixes ../decorators/libdecorator/libdecorator.so
