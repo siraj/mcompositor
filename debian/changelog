@@ -1,6 +1,8 @@
 duicompositor (0.3.7~1) unstable; urgency=low
 
   * New version [UNRELEASED]
+  * Fixes: NB#161212 - application window is invisible after rotation
+  * Fixes: NB#161363 - able to control application when it is minimized to switcher
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Mon, 29 Mar 2010 18:48:14 +0300
 
