@@ -60,9 +60,11 @@ public:
     void resize(int w, int h);
     void windowRaised();
     void drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
+    void damageTracking(bool enabled);
                 
     QGLContext *ctx;
     QGLWidget *glwidget;
+    Window window;
     Pixmap windowp;
     GLSurface glpixmap;
     GLuint textureId;

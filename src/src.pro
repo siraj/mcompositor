@@ -17,6 +17,7 @@ exists(/usr/include/X11/extensions/shapeconst.h) {
 TEMPLATE = app
 TARGET = duicompositor
 DEPENDPATH += .
+QT += dbus
 
 include(../duiconfig.pri)
 

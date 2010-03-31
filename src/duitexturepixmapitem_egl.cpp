@@ -226,6 +226,8 @@ void DuiTexturePixmapItem::rebindPixmap()
 
 void DuiTexturePixmapItem::enableDirectFbRendering()
 {
+    d->damageTracking(false);
+
     if (d->direct_fb_render || d->glpixmap == EGL_NO_SURFACE)
         return;
 
@@ -251,6 +253,8 @@ void DuiTexturePixmapItem::enableDirectFbRendering()
 
 void DuiTexturePixmapItem::enableRedirectedRendering()
 {
+    d->damageTracking(true);
+
     if (!d->direct_fb_render || d->glpixmap != EGL_NO_SURFACE)
         return;
 
