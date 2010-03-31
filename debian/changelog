@@ -2,7 +2,11 @@ duicompositor (0.3.7~1) unstable; urgency=low
 
   * New version [UNRELEASED]
   * Fixes: NB#161212 - application window is invisible after rotation
-  * Fixes: NB#161363 - able to control application when it is minimized to switcher
+  * Fixes: NB#161363 - able to control application when it is minimized to
+    switcher
+  * Fixes: NB#159759 - The duicompositor is causing very high wakeups which
+    prevents the device to go in idle mode.
+  * Fixes: NB#146931 - duicompositor doesn't build in non-/usr prefix
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Mon, 29 Mar 2010 18:48:14 +0300
 
