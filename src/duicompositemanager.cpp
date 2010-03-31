@@ -633,8 +633,10 @@ static void set_global_alpha(unsigned int plane, unsigned int level)
 }
 #endif
 
+#ifdef GLES2_VERSION
 #include <mce/dbus-names.h>
 #include <mce/mode-names.h>
+#endif
 
 DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
     : QObject(p),
@@ -647,6 +649,7 @@ DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
     watch = new DuiCompositeScene(this);
     atom = DuiCompAtoms::instance();
 
+#ifdef GLES2_VERSION
     systembus_conn = new QDBusConnection(QDBusConnection::systemBus());
     systembus_conn->connect(MCE_SERVICE, MCE_SIGNAL_PATH, MCE_SIGNAL_IF,
                             MCE_DISPLAY_SIG, this,
@@ -667,6 +670,7 @@ DuiCompositeManagerPrivate::DuiCompositeManagerPrivate(QObject *p)
         }
         file.close();
     }
+#endif
 }
 
 DuiCompositeManagerPrivate::~DuiCompositeManagerPrivate()
@@ -1817,6 +1821,7 @@ void DuiCompositeManagerPrivate::directRenderDesktop()
     disableCompositing();
 }
 
+#ifdef GLES2_VERSION
 void DuiCompositeManagerPrivate::mceDisplayStatusIndSignal(QString mode)
 {
     if (mode == MCE_DISPLAY_OFF_STRING) {
@@ -1827,6 +1832,7 @@ void DuiCompositeManagerPrivate::mceDisplayStatusIndSignal(QString mode)
         enableCompositing(false);
     }
 }
+#endif
 
 void DuiCompositeManagerPrivate::setWindowState(Window w, int state)
 {

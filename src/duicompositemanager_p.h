@@ -154,7 +154,9 @@ public slots:
     void raiseOnRestore(DuiCompositeWindow *window);
     void exposeDesktop();
     void directRenderDesktop();
+#ifdef GLES2_VERSION
     void mceDisplayStatusIndSignal(QString mode);
+#endif
 };
 
 #endif
