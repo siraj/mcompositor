@@ -1601,7 +1601,9 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         bool needComp = false;
         if (d_item && d_item->isDirectRendered()) {
             needComp = true;
-            enableCompositing(true);
+            // _NET_ACTIVE_WINDOW comes from duihome when tapping on thumbnail
+            // so display will be on soon if it's not already
+            enableCompositing(true, true);
         }
         if (i) {
             i->setZValue(windows.size() + 1);
@@ -2137,9 +2139,10 @@ DuiCompositeManagerPrivate::positionWindow(Window w,
     updateWinList(true);
 }
 
-void DuiCompositeManagerPrivate::enableCompositing(bool forced)
+void DuiCompositeManagerPrivate::enableCompositing(bool forced,
+                                                   bool ignore_display_off)
 {
-    if (display_off || (compositing && !forced))
+    if ((!ignore_display_off && display_off) || (compositing && !forced))
         return;
 
     XWindowAttributes a;
@@ -2172,8 +2175,6 @@ void DuiCompositeManagerPrivate::mapOverlayWindow()
 
 void DuiCompositeManagerPrivate::enableRedirection()
 {
-    if (display_off)
-        return;
     for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
             it != windows.end(); ++it) {
         DuiCompositeWindow *tp  = it.value();

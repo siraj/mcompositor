@@ -148,7 +148,8 @@ public slots:
     void sendPing(DuiCompositeWindow *window);
     void enableInput();
     void disableInput();
-    void enableCompositing(bool forced = false);
+    void enableCompositing(bool forced = false,
+                           bool ignore_display_off = false);
     void disableCompositing(ForcingLevel forced = NO_FORCED);
     void showLaunchIndicator(int timeout);
     void hideLaunchIndicator();
