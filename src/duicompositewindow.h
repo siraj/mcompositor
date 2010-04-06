@@ -93,6 +93,12 @@ public:
                  bool deferAnimation = false);
 
     /*!
+     * Sets whether or not the window is obscured and generates the
+     * proper VisibilityNotify for the window.
+     */
+    void setWindowObscured(bool obscured, bool no_notify = false);
+
+    /*!
      * Returns whether this item is iconified or not
      */
     bool isIconified() const;
@@ -182,9 +188,9 @@ public:
     bool isDecorator() const;
 
     /*!
-     * Indicates that this item is the decorator window.
+     * Sets whether or not this window is a decorator window.
      */
-    void setDecoratorWindow(bool decorator);
+    void setIsDecorator(bool decorator);
 
     /*!
      * Restores window with animation. If deferAnimation is set to true
@@ -363,6 +369,7 @@ private:
     Window transient_for;
     bool wants_focus;
     QList<Atom> wm_protocols;
+    bool window_obscured;
 
     static bool window_transitioning;
 

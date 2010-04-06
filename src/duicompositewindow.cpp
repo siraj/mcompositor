@@ -48,6 +48,7 @@ DuiCompositeWindow::DuiCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       window_visible(true),
       transient_for(0),
       wants_focus(false),
+      window_obscured(false),
       win_id(window)
 {
     anim = new DuiCompWindowAnimator(this);
@@ -142,6 +143,24 @@ void DuiCompositeWindow::setIconified(bool iconified)
 DuiCompositeWindow::IconifyState DuiCompositeWindow::iconifyState() const
 {
     return iconify_state;
+}
+
+void DuiCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
+{
+    if (obscured == window_obscured)
+        return;
+    window_obscured = obscured;
+
+    if (!no_notify) {
+        XVisibilityEvent c;
+        c.type       = VisibilityNotify;
+        c.send_event = True;
+        c.window     = window();
+        c.state      = obscured ? VisibilityFullyObscured :
+                                  VisibilityUnobscured;
+        XSendEvent(QX11Info::display(), window(), true,
+                   VisibilityChangeMask, (XEvent *)&c);
+    }
 }
 
 void DuiCompositeWindow::startTransition()
@@ -415,7 +434,7 @@ bool DuiCompositeWindow::isDecorator() const
     return is_decorator;
 }
 
-void DuiCompositeWindow::setDecoratorWindow(bool decorator)
+void DuiCompositeWindow::setIsDecorator(bool decorator)
 {
     is_decorator = decorator;
 }

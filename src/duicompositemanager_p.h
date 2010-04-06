@@ -94,8 +94,10 @@ public:
     void mapOverlayWindow();
     void enableRedirection();
     void setExposeDesktop(bool exposed);
-    void checkStacking(Time timestamp = CurrentTime);
+    void checkStacking(bool force_visibility_check,
+                       Time timestamp = CurrentTime);
     void checkInputFocus(Time timestamp = CurrentTime);
+    Window getTopmostApp(int *index_in_stacking_list = 0);
 
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);

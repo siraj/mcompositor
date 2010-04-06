@@ -113,7 +113,7 @@ void DuiDecoratorFrame::setDecoratorWindow(Qt::HANDLE window)
 void DuiDecoratorFrame::setDecoratorItem(DuiCompositeWindow *window)
 {
     decorator_item = window;
-    decorator_item->setDecoratorWindow(true);
+    decorator_item->setIsDecorator(true);
     connect(decorator_item, SIGNAL(destroyed()), SLOT(destroyDecorator()));
 
     DuiTexturePixmapItem *item = (DuiTexturePixmapItem *) window;
