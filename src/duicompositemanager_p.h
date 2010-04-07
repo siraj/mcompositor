@@ -98,6 +98,7 @@ public:
                        Time timestamp = CurrentTime);
     void checkInputFocus(Time timestamp = CurrentTime);
     Window getTopmostApp(int *index_in_stacking_list = 0);
+    bool possiblyUnredirectTopmostWindow();
 
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
@@ -134,7 +135,6 @@ public:
 
     bool arranged;
     bool compositing;
-    bool got_active_window;
     QDBusConnection *systembus_conn;
     bool display_off;
 
@@ -156,7 +156,6 @@ public slots:
     void iconifyOnLower(DuiCompositeWindow *window);
     void raiseOnRestore(DuiCompositeWindow *window);
     void exposeDesktop();
-    void directRenderDesktop();
 #ifdef GLES2_VERSION
     void mceDisplayStatusIndSignal(QString mode);
 #endif

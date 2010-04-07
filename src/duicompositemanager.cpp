@@ -857,12 +857,71 @@ Window DuiCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list)
     return topmost_app;
 }
 
+bool DuiCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
+{
+    bool ret = false;
+    Window top = 0;
+    int win_i = -1;
+    DuiCompositeWindow *cw = 0;
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+        Window w = stacking_list.at(i);
+        if (!(cw = windows.value(w)))
+            continue;
+        if (w == stack[DESKTOP_LAYER]) {
+            top = w;
+            win_i = i;
+            break;
+        }
+        if (cw->isVisible() &&
+            (cw->hasAlpha() || cw->needDecoration() || cw->isDecorator()))
+            // this window prevents direct rendering
+            return false;
+        if (cw->isVisible() && is_app_window(cw)) {
+            top = w;
+            win_i = i;
+            break;
+        }
+    }
+    if (top && cw) {
+        // unredirect the chosen window and any docks above it
+        ((DuiTexturePixmapItem *)cw)->enableDirectFbRendering();
+        setWindowDebugProperties(top);
+        // make sure unobscured event is sent when compositing again
+        cw->setWindowObscured(true, true);
+        for (int i = win_i + 1; i < stacking_list.size(); ++i) {
+            Window w = stacking_list.at(i);
+            if ((cw = windows.value(w)) && cw->isVisible() &&
+                cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK)) {
+                ((DuiTexturePixmapItem *)cw)->enableDirectFbRendering();
+                setWindowDebugProperties(w);
+                cw->setWindowObscured(true, true);
+            }
+        }
+        if (compositing) {
+            scene()->views()[0]->setUpdatesEnabled(false);
+            XUnmapWindow(QX11Info::display(), xoverlay);
+            compositing = false;
+        }
+        ret = true;
+    }
+    return ret;
+}
+
 void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 {
     if (e->window == xoverlay)
         return;
 
-    Window topmost_app = getTopmostApp();
+    Window topmost_win = 0;
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+        Window w = stacking_list.at(i);
+        DuiCompositeWindow *cw = windows.value(w);
+        if (cw && cw->isVisible() && !cw->isDecorator() &&
+            cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)) {
+            topmost_win = w;
+            break;
+        }
+    }
 
     DuiCompositeWindow *item = texturePixmapItem(e->window);
     if (item) {
@@ -894,16 +953,7 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     for (int i = 0; i < TOTAL_LAYERS; ++i)
         if (stack[i] == e->window) stack[i] = 0;
 
-    if (topmost_app == e->window) {
-        /* check if compositing should be disabled
-         * TODO: handle decorated dialogs */
-        Window topmost = getTopmostApp();
-        if (topmost) {
-            DuiCompositeWindow *cw = windows.value(topmost);
-            if (cw && !cw->hasAlpha() && !cw->needDecoration())
-                disableCompositing();
-        }
-
+    if (topmost_win == e->window) {
 #ifdef GLES2_VERSION
         toggle_global_alpha_blend(0);
         set_global_alpha(0, 255);
@@ -914,7 +964,7 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
             return;
         /* either lower window of the application (in chained window case),
          * or duihome is activated */
-        activateWindow(stacking_list.at(wp), CurrentTime, false);
+        activateWindow(stacking_list.at(wp), CurrentTime, true);
     }
 }
 
@@ -1427,25 +1477,22 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         prev_list = QList<Window>(stacking_list);
 
         checkInputFocus(timestamp);
-        // FIXME: handle errors
         XSync(QX11Info::display(), False);
     }
     if (order_changed || force_visibility_check) {
-        /* Send synthetic visibility events when compositing */
-        if (compositing) {
-            int home_i = stacking_list.indexOf(duihome);
-            for (int i = 0; i <= last_i; ++i) {
-                DuiCompositeWindow *cw = windows.value(stacking_list.at(i));
-                if (!cw) continue;
-                if (duihome && i > home_i)
-                    cw->setWindowObscured(false);
-                else if (i == home_i && desktop_up)
-                    cw->setWindowObscured(false);
-                else if (!duihome)
-                    cw->setWindowObscured(false);
-                else
-                    cw->setWindowObscured(true);
-            }
+        /* Send synthetic visibility events for composited windows */
+        int home_i = stacking_list.indexOf(duihome);
+        for (int i = 0; i <= last_i; ++i) {
+            DuiCompositeWindow *cw = windows.value(stacking_list.at(i));
+            if (!cw || cw->isDirectRendered()) continue;
+            if (duihome && i > home_i)
+                cw->setWindowObscured(false);
+            else if (i == home_i && desktop_up)
+                cw->setWindowObscured(false);
+            else if (!duihome)
+                cw->setWindowObscured(false);
+            else
+                cw->setWindowObscured(true);
         }
     }
 }
@@ -1589,8 +1636,6 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     FrameData fd = framed_windows.value(event->window);
 
     if (event->message_type == ATOM(_NET_ACTIVE_WINDOW)) {
-        got_active_window = true;
-
         // Visibility notification to desktop window. Ensure this is sent
         // before transitions are started
         if (event->window != stack[DESKTOP_LAYER])
@@ -1674,7 +1719,6 @@ void DuiCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
     // Handle iconify requests
     if (event->message_type == ATOM(WM_CHANGE_STATE))
         if (event->data.l[0] == IconicState && event->format == 32) {
-            got_active_window = true;
             setWindowState(event->window, IconicState);
 
             DuiCompositeWindow *i = texturePixmapItem(event->window);
@@ -1722,9 +1766,10 @@ void DuiCompositeManagerPrivate::iconifyOnLower(DuiCompositeWindow *window)
     }
 
     if (stack[DESKTOP_LAYER]) {
-        // compositing is required for application thumbnails
         enableCompositing();
         positionWindow(stack[DESKTOP_LAYER], STACK_TOP);
+        if (compositing)
+            possiblyUnredirectTopmostWindow();
     }
 }
 
@@ -1734,9 +1779,8 @@ void DuiCompositeManagerPrivate::raiseOnRestore(DuiCompositeWindow *window)
     positionWindow(window->window(), STACK_TOP);
 
     /* the animation is finished, compositing needs to be reconsidered */
-    DuiCompositeWindow *i = windows.value(window->window());
-    if (i && !i->hasAlpha() && !i->needDecoration())
-        disableCompositing(FORCED);
+    if (compositing)
+        possiblyUnredirectTopmostWindow();
 }
 
 void DuiCompositeManagerPrivate::setExposeDesktop(bool exposed)
@@ -1788,14 +1832,6 @@ void DuiCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
 {
     if (DuiDecoratorFrame::instance()->managedWindow() == w)
         DuiDecoratorFrame::instance()->activate();
-    got_active_window = false;
-
-    /* TODO: check for decorated dialog before switching off compositing */
-    if (w != stack[DESKTOP_LAYER] && disableCompositing) {
-        DuiCompositeWindow *i = texturePixmapItem(w);
-        if (i && !i->isDirectRendered() && !i->hasAlpha() && !i->needDecoration())
-            QTimer::singleShot(100, this, SLOT(directRenderDesktop()));
-    }
 
     if ((atom->windowType(w) != DuiCompAtoms::DESKTOP) &&
             (atom->windowType(w) != DuiCompAtoms::DOCK)) {
@@ -1807,13 +1843,10 @@ void DuiCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         positionWindow(w, STACK_TOP);
     } else
         checkInputFocus(timestamp);
-}
 
-void DuiCompositeManagerPrivate::directRenderDesktop()
-{
-    if (got_active_window)
-        return;
-    disableCompositing();
+    /* do this after possibly reordering the window stack */
+    if (disableCompositing)
+        possiblyUnredirectTopmostWindow();
 }
 
 #ifdef GLES2_VERSION
@@ -1831,12 +1864,7 @@ void DuiCompositeManagerPrivate::mceDisplayStatusIndSignal(QString mode)
     } else if (mode == MCE_DISPLAY_ON_STRING) {
         display_off = false;
 
-        Window topmost_app = getTopmostApp();
-        if (topmost_app) {
-            DuiCompositeWindow *i = windows.value(topmost_app);
-            if (!i || i->hasAlpha() || i->needDecoration())
-                enableCompositing(false);
-        } else /* duihome is on top */
+        if (!possiblyUnredirectTopmostWindow())
             enableCompositing(false);
         /* start pinging again */
         for (QHash<Window, DuiCompositeWindow *>::iterator it = windows.begin();
@@ -1961,6 +1989,7 @@ void DuiCompositeManagerPrivate::redirectWindows()
     if (kids)
         XFree(kids);
     scene()->views()[0]->setUpdatesEnabled(true);
+    checkStacking(false);
 }
 
 bool DuiCompositeManagerPrivate::isRedirected(Window w)
