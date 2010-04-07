@@ -99,6 +99,8 @@ public:
     void checkInputFocus(Time timestamp = CurrentTime);
     Window getTopmostApp(int *index_in_stacking_list = 0);
     bool possiblyUnredirectTopmostWindow();
+    Window getLastVisibleParent(DuiCompositeWindow *cw);
+    bool isAppWindow(DuiCompositeWindow *cw);
 
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);

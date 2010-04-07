@@ -192,6 +192,9 @@ public:
      */
     void setIsDecorator(bool decorator);
 
+    void setIsMapped(bool mapped) { window_mapped = mapped; }
+    bool isMapped() const { return window_mapped; }
+
     /*!
      * Restores window with animation. If deferAnimation is set to true
      * call startTransition() manually.
@@ -370,6 +373,7 @@ private:
     bool wants_focus;
     QList<Atom> wm_protocols;
     bool window_obscured;
+    bool window_mapped;
 
     static bool window_transitioning;
 

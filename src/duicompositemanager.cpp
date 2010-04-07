@@ -828,9 +828,22 @@ void DuiCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
     */
 }
 
-static bool is_app_window(DuiCompositeWindow *cw)
+Window DuiCompositeManagerPrivate::getLastVisibleParent(DuiCompositeWindow *cw)
 {
-    if (cw && !cw->transientFor() &&
+    Window last = 0, parent;
+    while (cw && (parent = cw->transientFor())) {
+       cw = windows.value(parent);
+       if (cw && cw->isMapped())
+           last = parent;
+       else // no-good parent, bail out
+           break;
+    }
+    return last;
+}
+
+bool DuiCompositeManagerPrivate::isAppWindow(DuiCompositeWindow *cw)
+{
+    if (cw && !getLastVisibleParent(cw) &&
             (cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
              cw->windowTypeAtom() == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE))
             && !cw->isDecorator())
@@ -847,7 +860,7 @@ Window DuiCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list)
             /* desktop is above all applications */
             break;
         DuiCompositeWindow *cw = windows.value(w);
-        if (cw && cw->isVisible() && is_app_window(cw)) {
+        if (cw && cw->isMapped() && isAppWindow(cw)) {
             topmost_app = w;
             if (index_in_stacking_list)
                 *index_in_stacking_list = i;
@@ -872,11 +885,11 @@ bool DuiCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
             win_i = i;
             break;
         }
-        if (cw->isVisible() &&
+        if (cw->isMapped() &&
             (cw->hasAlpha() || cw->needDecoration() || cw->isDecorator()))
             // this window prevents direct rendering
             return false;
-        if (cw->isVisible() && is_app_window(cw)) {
+        if (cw->isMapped() && isAppWindow(cw)) {
             top = w;
             win_i = i;
             break;
@@ -890,7 +903,7 @@ bool DuiCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         cw->setWindowObscured(true, true);
         for (int i = win_i + 1; i < stacking_list.size(); ++i) {
             Window w = stacking_list.at(i);
-            if ((cw = windows.value(w)) && cw->isVisible() &&
+            if ((cw = windows.value(w)) && cw->isMapped() &&
                 cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK)) {
                 ((DuiTexturePixmapItem *)cw)->enableDirectFbRendering();
                 setWindowDebugProperties(w);
@@ -916,7 +929,7 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);
         DuiCompositeWindow *cw = windows.value(w);
-        if (cw && cw->isVisible() && !cw->isDecorator() &&
+        if (cw && cw->isMapped() && !cw->isDecorator() &&
             cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)) {
             topmost_win = w;
             break;
@@ -925,6 +938,7 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 
     DuiCompositeWindow *item = texturePixmapItem(e->window);
     if (item) {
+        item->setIsMapped(false);
         setWindowState(e->window, IconicState);
         if (item->isVisible()) {
             item->setVisible(false);
@@ -959,12 +973,16 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         set_global_alpha(0, 255);
 #endif
 
-        int wp = stacking_list.indexOf(e->window) - 1;
-        if (wp < 0)
-            return;
-        /* either lower window of the application (in chained window case),
-         * or duihome is activated */
-        activateWindow(stacking_list.at(wp), CurrentTime, true);
+        // activate next mapped window
+        for (int i = stacking_list.indexOf(e->window) - 1; i >= 0; --i) {
+             DuiCompositeWindow *cw = windows.value(stacking_list.at(i));
+             if (cw && cw->isMapped()) {
+                 /* either lower window of the application (in chained window
+                  * case), or duihome is activated */
+                 activateWindow(stacking_list.at(i), CurrentTime, true);
+                 break;
+             }
+        }
     }
 }
 
@@ -1088,7 +1106,11 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
                 checkStacking(false);
             }
         } else {
-            positionWindow(e->window, STACK_TOP);
+            Window parent = transient_for(e->window);
+            if (parent)
+                positionWindow(parent, STACK_TOP);
+            else
+                positionWindow(e->window, STACK_TOP);
         }
     } else if (win_i >= 0 && e->detail == Below) {
         if (e->above != None) {
@@ -1101,7 +1123,11 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
                 checkStacking(false);
             }
         } else {
-            positionWindow(e->window, STACK_BOTTOM);
+            Window parent = transient_for(e->window);
+            if (parent)
+                positionWindow(parent, STACK_BOTTOM);
+            else
+                positionWindow(e->window, STACK_BOTTOM);
         }
     }
 
@@ -1359,7 +1385,7 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 	if (cw && (group = cw->windowGroup())) {
 	    for (int i = 0; i < app_i; ) {
 	         cw = windows.value(stacking_list.at(i));
-		 if (is_app_window(cw) && cw->windowGroup() == group) {
+		 if (isAppWindow(cw) && cw->windowGroup() == group) {
 	             stacking_list.move(i, last_i);
 	             /* active_app was moved, update the index */
 	             app_i = stacking_list.indexOf(active_app);
@@ -1559,6 +1585,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
 #endif
 
     DuiCompositeWindow *item = texturePixmapItem(win);
+    if (item) item->setIsMapped(true);
     // Compositing is assumed to be enabled at this point if a window
     // has alpha channels
     if (!compositing && (item && item->hasAlpha())) {
@@ -1837,7 +1864,13 @@ void DuiCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
             (atom->windowType(w) != DuiCompAtoms::DOCK)) {
         stack[APPLICATION_LAYER] = w;
         setExposeDesktop(false);
-        positionWindow(w, STACK_TOP);
+        // if this is a transient window, raise the "parent" instead
+        DuiCompositeWindow *cw = windows.value(w);
+        Window last = getLastVisibleParent(cw);
+        if (last)
+            positionWindow(last, STACK_TOP);
+        else
+            positionWindow(w, STACK_TOP);
     } else if (w == stack[DESKTOP_LAYER]) {
         setExposeDesktop(true);
         positionWindow(w, STACK_TOP);
@@ -2029,6 +2062,7 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
     DuiTexturePixmapItem *item = new DuiTexturePixmapItem(window, glwidget);
     item->setZValue(wtype);
     item->saveState();
+    item->setIsMapped(true);
     windows[window] = item;
 
     if (!is_decorator && !item->isOverrideRedirect())
@@ -2121,7 +2155,7 @@ void DuiCompositeManagerPrivate::updateWinList(bool stackingOnly)
         for (int i = 0; i < windows_as_mapped.size(); ++i) {
             Window w = windows_as_mapped.at(i);
             DuiCompositeWindow *d = windows.value(w);
-            if (d->windowVisible()) new_list.append(w);
+            if (d->isMapped()) new_list.append(w);
         }
 
         if (new_list != prev_list) {
