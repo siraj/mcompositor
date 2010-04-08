@@ -1689,7 +1689,11 @@ void DuiCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             setWindowState(fd.frame->managedWindow(), NormalState);
         else
             setWindowState(event->window, NormalState);
-        activateWindow(event->window, CurrentTime, false);
+        if (event->window == stack[DESKTOP_LAYER])
+            // raising home does not have a transition
+            activateWindow(event->window, CurrentTime, true);
+        else
+            activateWindow(event->window, CurrentTime, false);
     } else if (event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
         Window close_window = event->window;
 
@@ -1806,8 +1810,7 @@ void DuiCompositeManagerPrivate::raiseOnRestore(DuiCompositeWindow *window)
     positionWindow(window->window(), STACK_TOP);
 
     /* the animation is finished, compositing needs to be reconsidered */
-    if (compositing)
-        possiblyUnredirectTopmostWindow();
+    possiblyUnredirectTopmostWindow();
 }
 
 void DuiCompositeManagerPrivate::setExposeDesktop(bool exposed)
