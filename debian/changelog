@@ -1,6 +1,5 @@
-duicompositor (0.3.7~1) unstable; urgency=low
+duicompositor (0.3.7-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
   * Fixes: NB#161212 - application window is invisible after rotation
   * Fixes: NB#161363 - able to control application when it is minimized to
     switcher
@@ -9,7 +8,8 @@ duicompositor (0.3.7~1) unstable; urgency=low
   * Fixes: NB#146931 - duicompositor doesn't build in non-/usr prefix
   * Fixes: NB#162800 - DuiDialog Screen is not responding when its modality
     is set to true.
-
+  * New stacking manager	
+	
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Mon, 29 Mar 2010 18:48:14 +0300
 
 duicompositor (0.3.6-1) unstable; urgency=low
