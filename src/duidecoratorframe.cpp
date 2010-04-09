@@ -87,7 +87,7 @@ void DuiDecoratorFrame::setManagedWindow(Qt::HANDLE window)
     DuiCompositeWindow *w = DuiCompositeWindow::compositeWindow(window);
     if (w && w->needDecoration()) {
         XWindowAttributes a;
-        if (!XGetWindowAttributes(QX11Info::display(), decorator_window, &a)) {
+        if (!XGetWindowAttributes(dpy, decorator_window, &a)) {
             qWarning("%s: invalid window 0x%lx", __func__, decorator_window);
             return;
         }
@@ -99,7 +99,6 @@ void DuiDecoratorFrame::setManagedWindow(Qt::HANDLE window)
     qulonglong winid = client;
     remote_decorator->invoke("DuiAbstractDecorator",
                              "RemoteSetManagedWinId", winid);
-
     if (w)
         connect(w, SIGNAL(destroyed()), SLOT(destroyClient()));
 }
