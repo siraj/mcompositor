@@ -1,6 +1,6 @@
-duicompositor (0.3.8~1) unstable; urgency=low
+duicompositor (0.3.8-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fix for NB#161629 regression
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Fri, 09 Apr 2010 13:21:26 +0300
 
