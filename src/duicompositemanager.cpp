@@ -278,13 +278,15 @@ static bool is_desktop_dock(Window w, Atom type = 0)
         a = type;
     if (a != ATOM(_NET_WM_WINDOW_TYPE_DOCK))
         return false;
+    /*  // WMName of the dock is unstable, match all docks...
     XTextProperty textp;
     if (!XGetWMName(QX11Info::display(), w, &textp))
         return false;
     if (strcmp((const char *)textp.value, "duihome") == 0) {
         return true;
     }
-    return false;
+    */
+    return true;
 }
 
 DuiCompAtoms::Type DuiCompAtoms::windowType(Window w)
@@ -1304,12 +1306,7 @@ void DuiCompositeManagerPrivate::checkInputFocus(Time timestamp)
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window iw = stacking_list.at(i);
         DuiCompositeWindow *cw = windows.value(iw);
-        if (!cw)
-            continue;
-        /* FIXME: store mapping state somewhere to avoid this round trip */
-        XWindowAttributes a;
-        if (!XGetWindowAttributes(QX11Info::display(), iw, &a)
-                || a.map_state != IsViewable)
+        if (!cw || !cw->isMapped() || !cw->wantsFocus())
             continue;
         /* workaround for NB#161629 */
         if (is_desktop_dock(iw))
@@ -1318,8 +1315,7 @@ void DuiCompositeManagerPrivate::checkInputFocus(Time timestamp)
             w = iw;
             break;
         }
-        /* FIXME: do this based on geometry when geometry setting works well
-         * (now it doesn't) */
+        /* FIXME: do this based on geometry to cope with TYPE_NORMAL dialogs */
         /* don't focus a window that is obscured (assumes that NORMAL
          * and DESKTOP cover the whole screen) */
         if (cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
@@ -1366,6 +1362,7 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     int last_i = stacking_list.size() - 1;
     bool desktop_up = false;
     int app_i = -1;
+    DuiDecoratorFrame *deco = DuiDecoratorFrame::instance();
 
     active_app = getTopmostApp(&app_i);
     if (!active_app || app_i < 0)
@@ -1395,10 +1392,8 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 	}
 	stacking_list.move(app_i, last_i);
 	/* raise decorator above the application */
-	if (DuiDecoratorFrame::instance()->decoratorItem() &&
-	    DuiDecoratorFrame::instance()->managedWindow() == active_app) {
-            Window deco_w = 
-                     DuiDecoratorFrame::instance()->decoratorItem()->window();
+	if (deco->decoratorItem() && deco->managedWindow() == active_app) {
+            Window deco_w = deco->decoratorItem()->window();
 	    int deco_i = stacking_list.indexOf(deco_w);
 	    if (deco_i >= 0) {
 	        stacking_list.move(deco_i, last_i);
@@ -1430,6 +1425,14 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             if (cw && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK)) {
                 stacking_list.move(i, last_i);
                 if (!first_moved) first_moved = w;
+                /* possibly reposition the decorator so that it does not
+                 * go below the dock window */
+                if (active_app && deco->decoratorItem() &&
+                    deco->managedWindow() == active_app) {
+                    int h = (int)cw->boundingRect().height();
+                    XMoveWindow(QX11Info::display(),
+                                deco->decoratorItem()->window(), 0, h);
+                }
             } else ++i;
         }
     }
@@ -1852,9 +1855,7 @@ bool DuiCompositeManagerPrivate::isSelfManagedFocus(Window w)
         return false;
     if (attr.override_redirect || atom->windowType(w) == DuiCompAtoms::INPUT)
         return false;
-
-    DuiCompositeWindow *cw = windows.value(w);
-    return cw && cw->wantsFocus();
+    return true;
 }
 
 void DuiCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
@@ -2334,26 +2335,15 @@ void DuiCompositeManagerPrivate::sendPing(DuiCompositeWindow *w)
 
 void DuiCompositeManagerPrivate::gotHungWindow(DuiCompositeWindow *w)
 {
-    Window window = w->window();
     if (!DuiDecoratorFrame::instance()->decoratorItem())
         return;
 
     enableCompositing(true);
 
     // own the window so we could kill it if we want to.
-    // raise the items manually because at this time it is no longer
-    // responding to any X messages
-    DuiDecoratorFrame::instance()->setManagedWindow(window);
+    DuiDecoratorFrame::instance()->setManagedWindow(w->window());
     DuiDecoratorFrame::instance()->raise();
     checkStacking(false);
-    DuiCompositeWindow *p = DuiDecoratorFrame::instance()->decoratorItem();
-    int z = atom->windowType(window);
-    w->setZValue(z);
-    p->setZValue(z);
-#if (QT_VERSION >= 0x040600)
-    w->stackBefore(p);
-#endif
-
     w->updateWindowPixmap();
 }
 
