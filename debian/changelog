@@ -1,3 +1,9 @@
+duicompositor (0.3.8~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Fri, 09 Apr 2010 13:21:26 +0300
+
 duicompositor (0.3.7-1) unstable; urgency=low
 
   * Fixes: NB#161212 - application window is invisible after rotation
