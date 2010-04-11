@@ -1,3 +1,11 @@
+duicompositor (0.3.9-1~unreleased) unstable; urgency=low
+
+  * Fixes: NB#163799 - Taping on the text field minimizes the app but not
+    the VKB allowing to write to the text field
+  * Now reset decorator position to (0,0) for fullscreen decorated windows.
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Sun, 11 Apr 2010 16:18:10 +0300
+
 duicompositor (0.3.8-1) unstable; urgency=low
 
   * Fix for NB#161629 regression
@@ -15,7 +23,7 @@ duicompositor (0.3.7-1) unstable; urgency=low
   * Fixes: NB#162800 - DuiDialog Screen is not responding when its modality
     is set to true.
   * New stacking manager	
-	
+
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Mon, 29 Mar 2010 18:48:14 +0300
 
 duicompositor (0.3.6-1) unstable; urgency=low

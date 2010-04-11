@@ -872,6 +872,8 @@ Window DuiCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list)
     return topmost_app;
 }
 
+// TODO: merge this with disableCompositing() so that in the end we have
+// stacking order sensitive logic
 bool DuiCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 {
     bool ret = false;
@@ -976,6 +978,9 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 #endif
 
         // activate next mapped window
+        // FIXME: this is flawed because the unmapped window is already
+        // moved below home in stacking_list at this point. Needs to be fixed
+        // so that the chained window case does not break.
         for (int i = stacking_list.indexOf(e->window) - 1; i >= 0; --i) {
              DuiCompositeWindow *cw = windows.value(stacking_list.at(i));
              if (cw && cw->isMapped()) {
@@ -1002,6 +1007,9 @@ void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
 
         Window above = e->above;
         if (above != None) {
+            /* FIXME: this is flawed because it assumes the window is on top,
+             * which will break when we have one decorated window
+             * on top of this window */
             if (item->needDecoration() && DuiDecoratorFrame::instance()->decoratorItem()) {
                 DuiDecoratorFrame::instance()->setManagedWindow(e->window);
                 DuiDecoratorFrame::instance()->decoratorItem()->setVisible(true);
@@ -1397,13 +1405,12 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 	    int deco_i = stacking_list.indexOf(deco_w);
 	    if (deco_i >= 0) {
 	        stacking_list.move(deco_i, last_i);
-                if (!compositing) {
+                if (!compositing)
                     // decor requires compositing
                     enableCompositing(true);
-	            DuiCompositeWindow *cw = windows.value(deco_w);
-                    cw->updateWindowPixmap();
-                    cw->setVisible(true);
-                }
+	        DuiCompositeWindow *cw = windows.value(deco_w);
+                cw->updateWindowPixmap();
+                cw->setVisible(true);
             }
 	}
 	/* raise transients recursively */
@@ -1435,6 +1442,11 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 }
             } else ++i;
         }
+    } else if (active_app && deco->decoratorItem() &&
+               deco->managedWindow() == active_app &&
+               atom->getState(active_app) == ATOM(_NET_WM_STATE_FULLSCREEN)) {
+        // no dock => decorator starts from (0,0)
+        XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
     }
     /* raise all system-modal dialogs */
     first_moved = 0;
@@ -1514,14 +1526,19 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         for (int i = 0; i <= last_i; ++i) {
             DuiCompositeWindow *cw = windows.value(stacking_list.at(i));
             if (!cw || cw->isDirectRendered()) continue;
-            if (duihome && i > home_i)
+            if (duihome && i > home_i) {
                 cw->setWindowObscured(false);
-            else if (i == home_i && desktop_up)
+                cw->setVisible(true);
+            } else if (i == home_i && desktop_up) {
                 cw->setWindowObscured(false);
-            else if (!duihome)
+                cw->setVisible(true);
+            } else if (!duihome) {
                 cw->setWindowObscured(false);
-            else
+                cw->setVisible(true);
+            } else {
                 cw->setWindowObscured(true);
+                cw->setVisible(false);
+            }
         }
     }
 }
@@ -2247,10 +2264,6 @@ void DuiCompositeManagerPrivate::enableRedirection()
         DuiCompositeWindow *tp  = it.value();
         if (tp->windowVisible())
             ((DuiTexturePixmapItem *)tp)->enableRedirectedRendering();
-
-        // Hide if really not visible
-        if (tp->isIconified())
-            tp->hide();
         setWindowDebugProperties(it.key());
     }
     glwidget->update();
@@ -2342,8 +2355,8 @@ void DuiCompositeManagerPrivate::gotHungWindow(DuiCompositeWindow *w)
 
     // own the window so we could kill it if we want to.
     DuiDecoratorFrame::instance()->setManagedWindow(w->window());
-    DuiDecoratorFrame::instance()->raise();
     checkStacking(false);
+    DuiDecoratorFrame::instance()->raise();
     w->updateWindowPixmap();
 }
 
