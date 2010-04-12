@@ -1440,6 +1440,8 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                     XMoveWindow(QX11Info::display(),
                                 deco->decoratorItem()->window(), 0, h);
                 }
+	        /* raise transients recursively */
+	        raise_transients(this, w, last_i);
             } else ++i;
         }
     } else if (active_app && deco->decoratorItem() &&
