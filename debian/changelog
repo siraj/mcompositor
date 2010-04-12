@@ -1,3 +1,9 @@
+duicompositor (0.3.10~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Mon, 12 Apr 2010 16:06:12 +0300
+
 duicompositor (0.3.9-1) unstable; urgency=low
 
   * Fixes: NB#163799 - Taping on the text field minimizes the app but not
