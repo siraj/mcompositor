@@ -51,6 +51,7 @@ DuiCompositeWindow::DuiCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       window_obscured(false),
       win_id(window)
 {
+    memset(&req_geom, 0, sizeof(req_geom));
     anim = new DuiCompWindowAnimator(this);
     connect(anim, SIGNAL(transitionDone()),  SLOT(finalizeState()));
     connect(anim, SIGNAL(transitionDone()),  SLOT(windowSettled()));

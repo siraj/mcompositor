@@ -66,9 +66,15 @@ public:
     void raise();
 
     /*!
+     * Possibly resizes and moves the managed window to match the decorator
+     * and to fit to the screen.
+     */
+    void updateManagedWindowGeometry(int top_offset = 0);
+
+    /*!
      * Sets the managed window.
      */
-    void setManagedWindow(Qt::HANDLE window);
+    void setManagedWindow(DuiCompositeWindow *cw, int top_offset = 0);
 
     /*!
      * Sets the decorator window and maps that window if it is unmapped.
@@ -88,7 +94,7 @@ private:
     explicit DuiDecoratorFrame(QObject *object = 0);
     static DuiDecoratorFrame *d;
 
-    Qt::HANDLE client;
+    DuiCompositeWindow *client;
     Qt::HANDLE decorator_window;
     DuiCompositeWindow *decorator_item;
     DuiRmiClient *remote_decorator;

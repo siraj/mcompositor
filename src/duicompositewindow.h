@@ -172,6 +172,13 @@ public:
         window_type_atom = atom;
     }
 
+    void setRequestedGeometry(const QRect &rect) {
+        req_geom = rect;
+    }
+    const QRect requestedGeometry() const {
+        return req_geom;
+    }
+
     /*!
      * Returns true if this window needs a decoration
      */
@@ -374,6 +381,7 @@ private:
     QList<Atom> wm_protocols;
     bool window_obscured;
     bool window_mapped;
+    QRect req_geom;
 
     static bool window_transitioning;
 

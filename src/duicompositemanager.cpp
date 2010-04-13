@@ -572,15 +572,18 @@ static void fullscreen_wm_state(DuiCompositeManagerPrivate *priv,
     int i = states.indexOf(fullscreen);
 
     switch (toggle) {
-    case 0: {
+    case 0: /* remove */ {
         if (i != -1) {
-            states.remove(i);
-            XChangeProperty(QX11Info::display(), window,
+            do {
+                states.remove(i);
+                i = states.indexOf(fullscreen);
+            } while (i != -1);
+            XChangeProperty(dpy, window,
                             ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
                             (unsigned char *) states.data(), states.size());
         }
 
-        DuiCompositeWindow *win = DuiCompositeWindow::compositeWindow(window);
+        DuiCompositeWindow *win = priv->windows.value(window);
         if (win && need_geometry_modify(window) && !availScreenRect.isEmpty()) {
             QRect r = availScreenRect;
             XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
@@ -588,10 +591,10 @@ static void fullscreen_wm_state(DuiCompositeManagerPrivate *priv,
 
         priv->checkStacking(false);
     } break;
-    case 1: {
-        if (i != -1 || states.isEmpty()) {
+    case 1: /* add */ {
+        if (i == -1) {
             states.append(fullscreen);
-            XChangeProperty(QX11Info::display(), window,
+            XChangeProperty(dpy, window,
                             ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
                             (unsigned char *) states.data(), states.size());
         }
@@ -599,9 +602,18 @@ static void fullscreen_wm_state(DuiCompositeManagerPrivate *priv,
         int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
         int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
         XMoveResizeWindow(dpy, window, 0, 0, xres, yres);
+        DuiCompositeWindow *win = priv->windows.value(window);
+        if (win)
+            win->setRequestedGeometry(QRect(0, 0, xres, yres));
         /* FIXME: is raising a fullscreen window necessary? We could
          * have several fullscreen applications open at the same time. */
         priv->activateWindow(window, CurrentTime);
+    } break;
+    case 2: /* toggle */ {
+        if (i == -1)
+            fullscreen_wm_state(priv, 1, window);
+        else
+            fullscreen_wm_state(priv, 0, window);
     } break;
     default: break;
     }
@@ -745,6 +757,11 @@ void DuiCompositeManagerPrivate::prepare()
 
 bool DuiCompositeManagerPrivate::needDecoration(Window window)
 {
+    // fullscreen windows are not decorated
+    QVector<Atom> states = atom->netWmStates(window);
+    int fs_i = states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
+    if (fs_i != -1)
+        return false;
     DuiCompAtoms::Type t = atom->windowType(window);
     return (t != DuiCompAtoms::FRAMELESS
             && t != DuiCompAtoms::DESKTOP
@@ -784,36 +801,24 @@ void DuiCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 
 void DuiCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 {
-    bool already_unredirected = false;
-    DuiCompositeWindow *item = texturePixmapItem(e->window);
+    DuiCompositeWindow *item = windows.value(e->window);
     if (item) {
-        if (item->isDirectRendered())
-            already_unredirected = true;
         scene()->removeItem(item);
         delete item;
         if (!removeWindow(e->window))
             qWarning("destroyEvent(): Error removing window");
         glwidget->update();
-        damage_cache = 0;
+        if (damage_cache && damage_cache->window() == e->window)
+            damage_cache = 0;
     } else {
-        // We got a destroy event from a framed window
+        // We got a destroy event from a framed window (or a window that was
+        // never mapped)
         FrameData fd = framed_windows.value(e->window);
         if (!fd.frame)
             return;
-
-        XGrabServer(QX11Info::display());
-        XReparentWindow(QX11Info::display(), e->window,
-                        RootWindow(QX11Info::display(), 0), 0, 0);
-        XRemoveFromSaveSet(QX11Info::display(), e->window);
         framed_windows.remove(e->window);
-        XUngrabServer(QX11Info::display());
         delete fd.frame;
     }
-    if (!already_unredirected)
-        XCompositeUnredirectWindow(QX11Info::display(), e->window,
-                                   CompositeRedirectAutomatic);
-    XUngrabButton(QX11Info::display(), AnyButton, AnyModifier, e->window);
-    XSync(QX11Info::display(), False);
 }
 
 /*
@@ -987,9 +992,12 @@ void DuiCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
                  /* either lower window of the application (in chained window
                   * case), or duihome is activated */
                  activateWindow(stacking_list.at(i), CurrentTime, true);
-                 break;
+                 return;
              }
         }
+        // workaround for the flawedness...
+        if (stack[DESKTOP_LAYER])
+            activateWindow(stack[DESKTOP_LAYER], CurrentTime, true);
     }
 }
 
@@ -1011,7 +1019,7 @@ void DuiCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
              * which will break when we have one decorated window
              * on top of this window */
             if (item->needDecoration() && DuiDecoratorFrame::instance()->decoratorItem()) {
-                DuiDecoratorFrame::instance()->setManagedWindow(e->window);
+                DuiDecoratorFrame::instance()->setManagedWindow(item);
                 DuiDecoratorFrame::instance()->decoratorItem()->setVisible(true);
                 DuiDecoratorFrame::instance()->raise();
                 DuiDecoratorFrame::instance()->decoratorItem()->setZValue(item->zValue() + 1);
@@ -1075,6 +1083,22 @@ void DuiCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e
     wc.height = e->height;
     wc.sibling =  e->above;
     wc.stack_mode = e->detail;
+
+    if (e->value_mask & (CWX | CWY | CWWidth | CWHeight)) {
+        DuiCompositeWindow *i = windows.value(e->window);
+        if (i) {
+            QRect r = i->requestedGeometry();
+            if (e->value_mask & CWX)
+                r.setX(e->x);
+            if (e->value_mask & CWY)
+                r.setY(e->y);
+            if (e->value_mask & CWWidth)
+                r.setWidth(e->width);
+            if (e->value_mask & CWHeight)
+                r.setHeight(e->height);
+            i->setRequestedGeometry(r);
+        }
+    }
 
     if ((e->detail == Above) && (e->above == None) && !isInput) {
         XWindowAttributes a;
@@ -1190,6 +1214,11 @@ void DuiCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         enableCompositing();
         hasAlpha = true;
     }
+
+    QVector<Atom> states = atom->netWmStates(e->window);
+    int fs_i = states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
+    if (fs_i != -1)
+        fullscreen_wm_state(this, 1, e->window);
 
     if (needDecoration(e->window)) {
         XSelectInput(dpy, e->window,
@@ -1314,7 +1343,7 @@ void DuiCompositeManagerPrivate::checkInputFocus(Time timestamp)
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window iw = stacking_list.at(i);
         DuiCompositeWindow *cw = windows.value(iw);
-        if (!cw || !cw->isMapped() || !cw->wantsFocus())
+        if (!cw || !cw->isMapped() || !cw->wantsFocus() || cw->isDecorator())
             continue;
         /* workaround for NB#161629 */
         if (is_desktop_dock(iw))
@@ -1439,6 +1468,7 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                     int h = (int)cw->boundingRect().height();
                     XMoveWindow(QX11Info::display(),
                                 deco->decoratorItem()->window(), 0, h);
+                    deco->updateManagedWindowGeometry(h);
                 }
 	        /* raise transients recursively */
 	        raise_transients(this, w, last_i);
@@ -1449,6 +1479,7 @@ void DuiCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                atom->getState(active_app) == ATOM(_NET_WM_STATE_FULLSCREEN)) {
         // no dock => decorator starts from (0,0)
         XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
+        deco->updateManagedWindowGeometry(0);
     }
     /* raise all system-modal dialogs */
     first_moved = 0;
@@ -1625,8 +1656,7 @@ void DuiCompositeManagerPrivate::mapEvent(XMapEvent *e)
             ((DuiTexturePixmapItem *)item)->enableRedirectedRendering();
             item->delayShow(100);
         }
-        /* do this after bindWindow() so that the window is in
-             * stacking_list */
+        /* do this after bindWindow() so that the window is in stacking_list */
         activateWindow(win, CurrentTime, false);
         return;
     }
@@ -2033,7 +2063,7 @@ void DuiCompositeManagerPrivate::redirectWindows()
         if (attr.map_state == IsViewable &&
                 localwin != kids[i] &&
                 (attr.width > 1 && attr.height > 1)) {
-            bindWindow(kids[i]);
+            bindWindow(kids[i], &attr);
             if (kids[i] == localwin || kids[i] == parentWindow(localwin))
                 continue;
             XGrabButton(QX11Info::display(), AnyButton, AnyModifier, kids[i],
@@ -2060,9 +2090,10 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::texturePixmapItem(Window w)
 
 bool DuiCompositeManagerPrivate::removeWindow(Window w)
 {
+    bool ret = true;
     windows_as_mapped.removeAll(w);
     if (windows.remove(w) == 0)
-        return false;
+        ret = false;
 
     stacking_list.removeAll(w);
 
@@ -2070,10 +2101,11 @@ bool DuiCompositeManagerPrivate::removeWindow(Window w)
         if (stack[i] == w) stack[i] = 0;
 
     updateWinList();
-    return true;
+    return ret;
 }
 
-DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
+DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window,
+                XWindowAttributes *wa)
 {
     Display *display = QX11Info::display();
     bool is_decorator = atom->isDecorator(window);
@@ -2088,12 +2120,35 @@ DuiCompositeWindow *DuiCompositeManagerPrivate::bindWindow(Window window)
     item->setIsMapped(true);
     windows[window] = item;
 
+    QVector<Atom> states = atom->netWmStates(window);
+    int fs_i = states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
+    if (wa && fs_i == -1) {
+        item->setRequestedGeometry(QRect(wa->x, wa->y, wa->width, wa->height));
+    } else if (fs_i == -1) {
+        XWindowAttributes a;
+        if (!XGetWindowAttributes(display, window, &a)) {
+            qWarning("XGetWindowAttributes for 0x%lx failed", window);
+            windows.remove(window);
+            delete item;
+            return 0;
+        }
+        item->setRequestedGeometry(QRect(a.x, a.y, a.width, a.height));
+    } else {
+        int xres = ScreenOfDisplay(display, DefaultScreen(display))->width;
+        int yres = ScreenOfDisplay(display, DefaultScreen(display))->height;
+        item->setRequestedGeometry(QRect(0, 0, xres, yres));
+    }
+
     if (!is_decorator && !item->isOverrideRedirect())
         windows_as_mapped.append(window);
 
     if (needDecoration(window)) {
         item->setDecorated(true);
-        DuiDecoratorFrame::instance()->setManagedWindow(window);
+        /* FIXME when statusbar implementation changes */
+        if (atom->statusBarOverlayed(window))
+            DuiDecoratorFrame::instance()->setManagedWindow(item, 28);
+        else
+            DuiDecoratorFrame::instance()->setManagedWindow(item);
     }
     item->setIsDecorator(is_decorator);
 
@@ -2356,7 +2411,7 @@ void DuiCompositeManagerPrivate::gotHungWindow(DuiCompositeWindow *w)
     enableCompositing(true);
 
     // own the window so we could kill it if we want to.
-    DuiDecoratorFrame::instance()->setManagedWindow(w->window());
+    DuiDecoratorFrame::instance()->setManagedWindow(w);
     checkStacking(false);
     DuiDecoratorFrame::instance()->raise();
     w->updateWindowPixmap();
