@@ -899,7 +899,7 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
             break;
         }
     }
-    if (top && cw) {
+    if (top && cw && !MCompositeWindow::isTransitioning()) {
         // unredirect the chosen window and any docks above it
         ((MTexturePixmapItem *)cw)->enableDirectFbRendering();
         setWindowDebugProperties(top);
@@ -1539,7 +1539,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 cw->setVisible(true);
             } else {
                 cw->setWindowObscured(true);
-                cw->setVisible(false);
+                if (cw->window() != duihome)
+                    cw->setVisible(false);
             }
         }
     }
@@ -1772,7 +1773,6 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
     // Handle iconify requests
     if (event->message_type == ATOM(WM_CHANGE_STATE))
         if (event->data.l[0] == IconicState && event->format == 32) {
-            setWindowState(event->window, IconicState);
 
             MCompositeWindow *i = texturePixmapItem(event->window);
             MCompositeWindow *d_item = texturePixmapItem(stack[DESKTOP_LAYER]);
@@ -1783,8 +1783,9 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 setExposeDesktop(false);
 
                 bool needComp = false;
-                if (i->isDirectRendered()) {
-                    enableCompositing();
+                if (i->isDirectRendered() || d_item->isDirectRendered()) {
+                    d_item->setVisible(true);
+                    enableCompositing(FORCED);
                     needComp = true;
                 }
                 // Delayed transition is only available on platforms
@@ -1824,6 +1825,7 @@ void MCompositeManagerPrivate::iconifyOnLower(MCompositeWindow *window)
         if (compositing)
             possiblyUnredirectTopmostWindow();
     }
+    setWindowState(window->window(), IconicState);
 }
 
 void MCompositeManagerPrivate::raiseOnRestore(MCompositeWindow *window)

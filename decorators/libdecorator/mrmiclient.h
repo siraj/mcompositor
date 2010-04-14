@@ -22,7 +22,6 @@
 
 #include <QVariant>
 #include <QObject>
-#include <mexport.h>
 
 class MRmiClientPrivate;
 class MRmiClientPrivateSocket;
@@ -33,7 +32,7 @@ class MRmiClientPrivateSocket;
  * \brief The MRmiClient allows member functions of QObjects exported by
  * MRmiServer from another process to be invoked remotely.
  */
-class M_EXPORT MRmiClient: public QObject
+class MRmiClient: public QObject
 {
     Q_OBJECT
 

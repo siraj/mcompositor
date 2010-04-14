@@ -25,7 +25,6 @@
 #include <QGenericArgument>
 #include <QFile>
 #include <QTextStream>
-#include <MDebug>
 
 QGenericArgument unmarshall(const char*name, const void* data)
 {
@@ -73,7 +72,7 @@ void MRmiServerPrivateSocket::exportObject(QObject* p)
         QFile::remove("/tmp/" + key());
 
     if (!_serv.listen(key()))
-        mDebug("MRmiServerPrivateSocket") << "system error, can't listen to local socket";
+        qDebug() << "MRmiServerPrivateSocket" << "system error, can't listen to local socket";
 }
 
 void MRmiServerPrivateSocket::_q_incoming()

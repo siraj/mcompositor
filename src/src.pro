@@ -8,7 +8,8 @@ contains(QT_CONFIG, opengles2) {
      SOURCES += mtexturepixmapitem_glx.cpp
 } 
 
-exists($$M_PREFIX/include/X11/extensions/shapeconst.h) {
+# This is not a DUI prefix
+exists(/usr/include/X11/extensions/shapeconst.h) {
      DEFINES += HAVE_SHAPECONST
 }
 

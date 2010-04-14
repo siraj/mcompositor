@@ -23,8 +23,6 @@
 
 #include <QObject>
 
-#include "mexport.h"
-
 class MRmiServerPrivate;
 class MRmiServerPrivateSocket;
 
@@ -49,7 +47,7 @@ class MRmiServerPrivateSocket;
  * system using qRegisterMetaType(). Qt uses this class internally for
  * mashalling/unmarshalling types (see QMetaType for details).
  */
-class M_EXPORT MRmiServer: public QObject
+class MRmiServer: public QObject
 {
   Q_OBJECT
 

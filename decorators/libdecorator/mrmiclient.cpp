@@ -20,7 +20,6 @@
 #include "mrmiclient.h"
 #include <QDataStream>
 #include <QByteArray>
-#include <MDebug>
 
 MRmiClientPrivate:: MRmiClientPrivate(const QString& key)
         : _key(key)
@@ -63,13 +62,12 @@ void MRmiClientPrivateSocket::initConnection()
 
     connectToServer();
     if (!_socket.waitForConnected())
-        mDebug("MRmiClientPrivateSocket") << _socket.errorString() << key();
+        qDebug() << "MRmiClientPrivateSocket" << _socket.errorString() << key();
 }
 
 void MRmiClientPrivateSocket::finalizeConnection()
 {
     uint sz = _buf.size();
-    mDebug("MRmiClientPrivateSocket") << sz;
     _stream->device()->seek(0);
     *_stream << (quint16)(sz - sizeof(quint16));
 
