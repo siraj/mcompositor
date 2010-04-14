@@ -1,18 +1,18 @@
-Source: duicompositor
+Source: mcompositor
 Section: x11
 Priority: extra
 Maintainer: Abdiel Janulgue <abdiel.janulgue@nokia.com>
-Build-Depends: debhelper (>= 5), libqt4-dev, libdui-dev, libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel], libgl-dev [i386], libgl1 [i386], libqt4-opengl-dev, libxrender-dev, libxcomposite-dev, libxdamage-dev, libxtst-dev, libxi-dev, mce-dev [arm armel]
+Build-Depends: debhelper (>= 5), libqt4-dev, libmeegotouch-dev, libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel], libgl-dev [i386], libgl1 [i386], libqt4-opengl-dev, libxrender-dev, libxcomposite-dev, libxdamage-dev, libxtst-dev, libxi-dev, mce-dev [arm armel]
 Standards-Version: 3.7.2
 
-Package: duicompositor
+Package: mcompositor
 Architecture: any
-Depends: libdui0, ${shlibs:Depends}
-Description: Direct UI Compositor application
- Direct UI Compositor application
+Depends: libmeegotouchcore0, ${shlibs:Depends}
+Description: MeeGo Touch UI Compositor application
+ MeeGo Touch UI Compositor application
  
-Package: duicompositor-dbg
+Package: mcompositor-dbg
 Architecture: any
-Depends: duicompositor (=${Source-Version})
-Description: Direct UI Compositor debug symbols
- Direct UI Compositor debug symbols
+Depends: mcompositor (=${Source-Version})
+Description: MeeGo Touch UI Compositor debug symbols
+ MeeGo Touch UI Compositor debug symbols

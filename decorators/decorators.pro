@@ -8,7 +8,7 @@ SUBDIRS += \
 sub_lib.subdir=libdecorator
 
 sub_decorator.depends=sub_lib
-sub_decorator.subdir=duidecorator
+sub_decorator.subdir=mdecorator
 
 
 check.target = check 
