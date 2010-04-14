@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (directui@nokia.com)
 **
-** This file is part of duicompositor.
+** This file is part of mcompositor.
 **
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at directui@nokia.com.
@@ -19,19 +19,22 @@
 
 #include <QtGui>
 #include <QGLWidget>
-#include "duicompositescene.h"
-#include "duicompositemanager.h"
+#include "mcompositescene.h"
+#include "mcompositemanager.h"
 
 int main(int argc, char *argv[])
 {
     // Don't load any Qt plugins
     QCoreApplication::setLibraryPaths(QStringList());
-    DuiCompositeManager app(argc, argv);
+    MCompositeManager app(argc, argv);
 
     QGraphicsScene *scene = app.scene();
     QGraphicsView view(scene);
 
+    // TODO: Which property is valid now?
     view.setProperty("NoDuiStyle", true);
+    view.setProperty("NoMStyle", true);
+
     view.setUpdatesEnabled(false);
     view.setAutoFillBackground(false);
     view.setBackgroundBrush(Qt::NoBrush);
