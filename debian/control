@@ -8,11 +8,11 @@ Standards-Version: 3.7.2
 Package: mcompositor
 Architecture: any
 Depends: libmeegotouchcore0, ${shlibs:Depends}
-Description: MeeGo Touch UI Compositor application
+Description: MeeGo Touch UI Compositing Window Manager
  MeeGo Touch UI Compositor application
  
 Package: mcompositor-dbg
 Architecture: any
 Depends: mcompositor (=${Source-Version})
-Description: MeeGo Touch UI Compositor debug symbols
+Description: MeeGo Touch UI Compositing Window Manager debug symbols
  MeeGo Touch UI Compositor debug symbols
