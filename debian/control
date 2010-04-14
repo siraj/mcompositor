@@ -9,7 +9,7 @@ Package: mcompositor
 Architecture: any
 Depends: libmeegotouchcore0, ${shlibs:Depends}
 Description: MeeGo Touch UI Compositing Window Manager
- MeeGo Touch UI Compositor application
+ MeeGo Touch UI Compositing Window Manager
  
 Package: mcompositor-dbg
 Architecture: any
