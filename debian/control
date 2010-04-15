@@ -6,6 +6,8 @@ Build-Depends: debhelper (>= 5), libqt4-dev, libmeegotouch-dev, libgles2-sgx-img
 Standards-Version: 3.7.2
 
 Package: mcompositor
+Replaces: duicompositor
+Conflicts: duicompositor
 Architecture: any
 Depends: libmeegotouchcore0, ${shlibs:Depends}
 Description: MeeGo Touch UI Compositing Window Manager
