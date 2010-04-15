@@ -1,3 +1,9 @@
+mcompositor (0.4.0~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Thu, 15 Apr 2010 11:46:28 +0300
+
 mcompositor (0.3.10-2) unstable; urgency=low
 
   * Fixes: NB#163684 - Reboot needed to recover if device sleeps with USB
