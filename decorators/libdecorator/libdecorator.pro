@@ -1,20 +1,20 @@
-include(../../duiconfig.pri)
+include(../../meegotouch_config.pri)
 TEMPLATE = lib
 DEPENDPATH += .
 INCLUDEPATH += .
 CONFIG += dll release
 QT += opengl network
 TARGET = decorator
-VERSION = 0.3.7
+VERSION = 0.3.10
 
-HEADERS += duiabstractdecorator.h \
-           duirmiclient_p.h \
-           duirmiclient.h \
-           duirmiserver_p.h \
-           duirmiserver.h
-SOURCES += duiabstractdecorator.cpp \
-           duirmiclient.cpp \
-           duirmiserver.cpp
+HEADERS += mabstractdecorator.h \
+           mrmiclient_p.h \
+           mrmiclient.h \
+           mrmiserver_p.h \
+           mrmiserver.h
+SOURCES += mabstractdecorator.cpp \
+           mrmiclient.cpp \
+           mrmiserver.cpp
 
 target.path=/usr/lib
 INSTALLS += target
