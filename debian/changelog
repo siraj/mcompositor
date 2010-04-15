@@ -1,9 +1,9 @@
-mcompositor (0.3.10~1) unstable; urgency=low
+mcompositor (0.3.10-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
   * Fixes: NB#163684 - Reboot needed to recover if device sleeps with USB
     dialog open
   * Using the "MeeGo Touch UI" brand instead of "Direct UI"
+  * Fixed regression in window transitions	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Mon, 12 Apr 2010 16:06:12 +0300
 
