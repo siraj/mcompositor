@@ -118,19 +118,30 @@ static GLuint create_shader (GLenum type, const char *source)
   return shader;
 }
 
-#ifdef N900  /* accelerometer reading is N900-specific */
+#ifdef N900
 #define XA_ERR 36
 #define YA_ERR 54
+#define Y_SIGN 1
+#define ACC_FILE "/sys/class/i2c-adapter/i2c-3/3-001d/coord"
+#define ACC_DATA_FMT "%d %d"
+#else
+#define XA_ERR 18
+#define YA_ERR 18
+#define Y_SIGN -1
+#define ACC_FILE "/sys/devices/platform/lis3lv02d/position"
+#define ACC_DATA_FMT "(%d,%d,"
+#endif
 
 static void read_accel (GLfloat *xa, GLfloat *ya)
 {
   FILE *fd;
   int xi, yi;
-  if (!(fd = fopen("/sys/class/i2c-adapter/i2c-3/3-001d/coord", "r"))) {
+  if (!(fd = fopen(ACC_FILE, "r"))) {
     *xa = *ya = 0;
     return;
   }
-  if (fscanf(fd, "%d %d", &xi, &yi) != 2) xi = yi = 0;
+  if (fscanf(fd, ACC_DATA_FMT, &xi, &yi) != 2) xi = yi = 0;
+  yi *= Y_SIGN;
   fclose(fd);
   /* correct for error */
   if (xi <= XA_ERR && xi >= -XA_ERR) xi = 0;
@@ -140,7 +151,8 @@ static void read_accel (GLfloat *xa, GLfloat *ya)
   *xa = (float)xi;
   *ya = (float)yi;
 }
-#else
+
+#if 0
 #include <time.h>
 /* returns bogus values based on the time */
 static void read_accel (GLfloat *xa, GLfloat *ya)
