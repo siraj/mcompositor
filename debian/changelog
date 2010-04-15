@@ -1,4 +1,4 @@
-duicompositor (0.3.10~1) unstable; urgency=low
+mcompositor (0.3.10~1) unstable; urgency=low
 
   * New version [UNRELEASED]
   * Fixes: NB#163684 - Reboot needed to recover if device sleeps with USB
