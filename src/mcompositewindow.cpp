@@ -422,7 +422,7 @@ void MCompositeWindow::setDecorated(bool decorated)
 MCompositeWindow *MCompositeWindow::compositeWindow(Qt::HANDLE window)
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
-    return p->d->texturePixmapItem(window);
+    return p->d->windows.value(window, 0);
 }
 
 Qt::HANDLE MCompositeWindow::window() const
@@ -447,7 +447,13 @@ void MCompositeWindow::windowTransitioning()
 
 void MCompositeWindow::windowSettled()
 {
+    static Atom desktop_atom = 0;
     window_transitioning = false;
+    if (!desktop_atom)
+        desktop_atom = XInternAtom(QX11Info::display(),
+                                   "_NET_WM_WINDOW_TYPE_DESKTOP", False);
+    if (window_type_atom && window_type_atom == desktop_atom)
+        emit desktopActivated(this);
 }
 
 bool MCompositeWindow::isTransitioning()

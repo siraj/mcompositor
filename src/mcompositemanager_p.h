@@ -68,7 +68,6 @@ public:
     ~MCompositeManagerPrivate();
 
     static Window parentWindow(Window child);
-    MCompositeWindow *texturePixmapItem(Window w);
     MCompositeWindow *bindWindow(Window w, XWindowAttributes *attr = 0);
     QGraphicsScene *scene();
 
@@ -157,6 +156,7 @@ public slots:
     void hideLaunchIndicator();
     void iconifyOnLower(MCompositeWindow *window);
     void raiseOnRestore(MCompositeWindow *window);
+    void onDesktopActivated(MCompositeWindow*);
     void exposeDesktop();
 #ifdef GLES2_VERSION
     void mceDisplayStatusIndSignal(QString mode);

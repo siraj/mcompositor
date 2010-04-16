@@ -343,10 +343,12 @@ signals:
     void acceptingInput();
     void visualized(bool);
 
-    /*! Emmitted when this window gets restored from an iconified state */
+    /*! Emitted when this window gets restored from an iconified state */
     void itemRestored(MCompositeWindow *window);
-    /*! Emmitted just after this window gets iconified  */
+    /*! Emitted just after this window gets iconified  */
     void itemIconified(MCompositeWindow *window);
+    /*! Emitted when desktop is raised */
+    void desktopActivated(MCompositeWindow *window);
 
 protected:
 
