@@ -138,6 +138,9 @@ void MDecoratorFrame::destroyClient()
 
 void MDecoratorFrame::visualizeDecorator(bool visible)
 {
+    if (sender() == decorator_item)
+        return;
+
     if (decorator_item)
         decorator_item->setVisible(visible);
 }
