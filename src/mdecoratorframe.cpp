@@ -52,7 +52,7 @@ MDecoratorFrame::MDecoratorFrame(QObject *p)
 
 Qt::HANDLE MDecoratorFrame::managedWindow() const
 {
-    return client;
+    return client ? client->window() : 0;
 }
 
 Qt::HANDLE MDecoratorFrame::winId() const
@@ -72,35 +72,56 @@ void MDecoratorFrame::raise()
         decorator_item->setVisible(true);
 }
 
-void MDecoratorFrame::setManagedWindow(Qt::HANDLE window)
+void MDecoratorFrame::updateManagedWindowGeometry(int top_offset)
 {
-    Display *dpy = QX11Info::display();
-
-    if (client == window)
-        return;
-    client = window;
-
-    if (!decorator_item)
-        return;
-
-    // TODO: Make this dynamic based on decorator dimensions.
-    MCompositeWindow *w = MCompositeWindow::compositeWindow(window);
-    if (w && w->needDecoration()) {
+    if (client && client->needDecoration()) {
+        Display *dpy = QX11Info::display();
+#if 0
         XWindowAttributes a;
         if (!XGetWindowAttributes(dpy, decorator_window, &a)) {
             qWarning("%s: invalid window 0x%lx", __func__, decorator_window);
             return;
         }
-        QRegion d = QRegion(a.x, a.y, a.width, a.height);
-        QRect r = (d - QRegion(a.x, a.y, a.width, 65)).boundingRect();
-        XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
+#endif
+        // TODO: Make this dynamic based on decorator dimensions.
+        int deco_h;
+        if (decorator_window)
+            deco_h = 65;
+        else
+            deco_h = 0;
+        int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
+        int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
+        QRect wq = client->requestedGeometry();
+        QRect r = QRect(wq.x(), deco_h + top_offset, wq.width(), wq.height());
+        int excess = r.y() + r.height() - yres;
+        if (excess > 0)
+            r.setHeight(r.height() - excess);
+        excess = r.x() + r.width() - xres;
+        if (excess > 0)
+            r.setWidth(r.width() - excess);
+        XMoveResizeWindow(dpy, client->window(), r.x(), r.y(),
+                          r.width(), r.height());
     }
+}
 
-    qulonglong winid = client;
+void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
+                                       int top_offset)
+{
+    if (client == cw)
+        return;
+    client = cw;
+
+    if (!decorator_item)
+        return;
+
+    if (cw)
+        updateManagedWindowGeometry(top_offset);
+
+    qulonglong winid = client ? client->window() : 0;
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetManagedWinId", winid);
-    if (w)
-        connect(w, SIGNAL(destroyed()), SLOT(destroyClient()));
+    if (cw)
+        connect(cw, SIGNAL(destroyed()), SLOT(destroyClient()));
 }
 
 void MDecoratorFrame::setDecoratorWindow(Qt::HANDLE window)
