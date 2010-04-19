@@ -22,6 +22,7 @@
 #include <MNavigationBar>
 #include <MScene>
 #include <MSceneManager>
+#include "mstatusbar.h"
 
 #include "mdecoratorwindow.h"
 
@@ -43,6 +44,7 @@ int main(int argc, char **argv)
     MSceneManager sceneManager(&scene);
     MHomeButtonPanel homeButtonPanel;
     MEscapeButtonPanel escapeButtonPanel;
+    MStatusBar statusBar;
 
     QObject::connect(&homeButtonPanel, SIGNAL(buttonClicked()), &window,
                      SIGNAL(homeClicked()));
@@ -55,11 +57,13 @@ int main(int argc, char **argv)
 
     window.init(sceneManager);
 
+    sceneManager.appearSceneWindowNow(&statusBar);
     sceneManager.appearSceneWindowNow(&navigationBar);
     sceneManager.appearSceneWindowNow(&homeButtonPanel);
     sceneManager.appearSceneWindowNow(&escapeButtonPanel);
 
     QRegion region;
+    region += windowRectFromGraphicsItem(window, statusBar);
     region += windowRectFromGraphicsItem(window, navigationBar);
     region += windowRectFromGraphicsItem(window, homeButtonPanel);
     region += windowRectFromGraphicsItem(window, escapeButtonPanel);
