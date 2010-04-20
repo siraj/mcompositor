@@ -142,7 +142,7 @@ public:
     bool statusBarOverlayed(Window w);
     int getPid(Window w);
     long getWmState(Window w);
-    Atom getState(Window w);
+    bool hasState(Window w, Atom a);
     QRectF iconGeometry(Window w);
     QVector<Atom> netWmStates(Window w);
     unsigned int get_opacity_prop(Display *dpy, Window w, unsigned int def);
@@ -329,9 +329,10 @@ int MCompAtoms::getPid(Window w)
     return intValueProperty(w, atoms[_NET_WM_PID]);
 }
 
-Atom MCompAtoms::getState(Window w)
+bool MCompAtoms::hasState(Window w, Atom a)
 {
-    return getAtom(w, _NET_WM_STATE);
+    QVector<Atom> states = netWmStates(w);
+    return states.indexOf(a) != -1;
 }
 
 QRectF MCompAtoms::iconGeometry(Window w)
@@ -515,12 +516,15 @@ static void skiptaskbar_wm_state(int toggle, Window window)
     MCompAtoms *atom = MCompAtoms::instance();
     QVector<Atom> states = atom->netWmStates(window);
     bool update_root = false;
+    int i = states.indexOf(skip);
 
     switch (toggle) {
     case 0: {
-        int i = states.indexOf(skip);
         if (i != -1) {
-            states.remove(i);
+            do {
+                states.remove(i);
+                i = states.indexOf(skip);
+            } while (i != -1);
             XChangeProperty(QX11Info::display(), window,
                             ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
                             (unsigned char *) states.data(), states.size());
@@ -528,13 +532,19 @@ static void skiptaskbar_wm_state(int toggle, Window window)
         }
     } break;
     case 1: {
-        states.append(skip);
-        if (!states.isEmpty()) {
+        if (i == -1) {
+            states.append(skip);
             XChangeProperty(QX11Info::display(), window,
                             ATOM(_NET_WM_STATE), XA_ATOM, 32, PropModeReplace,
                             (unsigned char *) states.data(), states.size());
             update_root = true;
         }
+    } break;
+    case 2: {
+        if (i == -1)
+            skiptaskbar_wm_state(1, window);
+        else
+            skiptaskbar_wm_state(0, window);
     } break;
     default: break;
     }
@@ -557,7 +567,7 @@ static bool need_geometry_modify(Window window)
 {
     MCompAtoms *atom = MCompAtoms::instance();
 
-    if ((atom->getState(window) == ATOM(_NET_WM_STATE_FULLSCREEN)) ||
+    if (atom->hasState(window, ATOM(_NET_WM_STATE_FULLSCREEN)) ||
             (atom->statusBarOverlayed(window)))
         return false;
 
@@ -757,12 +767,16 @@ void MCompositeManagerPrivate::prepare()
     XDamageQueryExtension(QX11Info::display(), &damage_event, &damage_error);
 }
 
-bool MCompositeManagerPrivate::needDecoration(Window window)
+bool MCompositeManagerPrivate::needDecoration(Window window,
+                                              MCompositeWindow *cw)
 {
+    bool fs;
     // fullscreen windows are not decorated
-    QVector<Atom> states = atom->netWmStates(window);
-    int fs_i = states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
-    if (fs_i != -1)
+    if (!cw)
+        fs = atom->hasState(window, ATOM(_NET_WM_STATE_FULLSCREEN));
+    else
+        fs = cw->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1;
+    if (fs)
         return false;
     MCompAtoms::Type t = atom->windowType(window);
     return (t != MCompAtoms::FRAMELESS
@@ -1217,9 +1231,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         hasAlpha = true;
     }
 
-    QVector<Atom> states = atom->netWmStates(e->window);
-    int fs_i = states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
-    if (fs_i != -1)
+    if (atom->hasState(e->window, ATOM(_NET_WM_STATE_FULLSCREEN)))
         fullscreen_wm_state(this, 1, e->window);
 
     if (needDecoration(e->window)) {
@@ -1402,25 +1414,27 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     bool desktop_up = false;
     int app_i = -1;
     MDecoratorFrame *deco = MDecoratorFrame::instance();
+    MCompositeWindow *aw = 0;
 
     active_app = getTopmostApp(&app_i);
     if (!active_app || app_i < 0)
         desktop_up = true;
+    else
+        aw = COMPOSITE_WINDOW(active_app);
 
     /* raise active app with its transients, or duihome if
      * there is no active application */
-    if (!desktop_up && active_app && app_i >= 0) {
+    if (!desktop_up && active_app && app_i >= 0 && aw) {
         if (duihome) {
             /* stack duihome right below the application */
 	    stacking_list.move(stacking_list.indexOf(duihome), last_i);
 	    app_i = stacking_list.indexOf(active_app);
 	}
 	/* raise application windows belonging to the same group */
-	MCompositeWindow *cw = COMPOSITE_WINDOW(active_app);
 	XID group;
-	if (cw && (group = cw->windowGroup())) {
+	if ((group = aw->windowGroup())) {
 	    for (int i = 0; i < app_i; ) {
-	         cw = COMPOSITE_WINDOW(stacking_list.at(i));
+	         MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
 		 if (isAppWindow(cw) && cw->windowGroup() == group) {
 	             stacking_list.move(i, last_i);
 	             /* active_app was moved, update the index */
@@ -1432,7 +1446,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 	stacking_list.move(app_i, last_i);
 	/* raise decorator above the application */
 	if (deco->decoratorItem() && deco->managedWindow() == active_app &&
-            !(atom->getState(active_app) == ATOM(_NET_WM_STATE_FULLSCREEN))) {
+            (aw->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) == -1
+             || aw->status() == MCompositeWindow::HUNG)) {
             Window deco_w = deco->decoratorItem()->window();
 	    int deco_i = stacking_list.indexOf(deco_w);
 	    if (deco_i >= 0) {
@@ -1454,8 +1469,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 
     /* raise docks if either the desktop is up or the application is
      * non-fullscreen */
-    if (desktop_up || !active_app || app_i < 0 ||
-            !(atom->getState(active_app) == ATOM(_NET_WM_STATE_FULLSCREEN))) {
+    if (desktop_up || !active_app || app_i < 0 || !aw ||
+        aw->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) == -1) {
         first_moved = 0;
         for (int i = 0; i < last_i;) {
             Window w = stacking_list.at(i);
@@ -1477,9 +1492,10 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 	        raise_transients(this, w, last_i);
             } else ++i;
         }
-    } else if (active_app && deco->decoratorItem() &&
+    } else if (active_app && aw && deco->decoratorItem() &&
                deco->managedWindow() == active_app &&
-               atom->getState(active_app) == ATOM(_NET_WM_STATE_FULLSCREEN)) {
+               (aw->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1
+               || aw->status() == MCompositeWindow::HUNG)) {
         // no dock => decorator starts from (0,0)
         XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
     }
@@ -1509,7 +1525,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             continue;
         }
         if ((cw && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)) ||
-                atom->getState(w) == ATOM(_NET_WM_STATE_ABOVE)) {
+            atom->hasState(w, ATOM(_NET_WM_STATE_ABOVE))) {
             stacking_list.move(i, last_i);
             if (!first_moved) first_moved = w;
         } else ++i;
@@ -1800,6 +1816,10 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             skiptaskbar_wm_state(event->data.l[0], event->window);
         else if (event->data.l[1] == (long) ATOM(_NET_WM_STATE_FULLSCREEN))
             fullscreen_wm_state(this, event->data.l[0], event->window);
+        if (i) {
+            QVector<Atom> states = atom->netWmStates(event->window);
+            i->setNetWmState(states.toList());
+        }
     }
 }
 
@@ -2130,6 +2150,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     windows[window] = item;
 
     QVector<Atom> states = atom->netWmStates(window);
+    item->setNetWmState(states.toList());
     int fs_i = states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
     if (wa && fs_i == -1) {
         item->setRequestedGeometry(QRect(wa->x, wa->y, wa->width, wa->height));
@@ -2151,7 +2172,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     if (!is_decorator && !item->isOverrideRedirect())
         windows_as_mapped.append(window);
 
-    if (needDecoration(window)) {
+    if (needDecoration(window, item)) {
         item->setDecorated(true);
         /* FIXME when statusbar implementation changes */
         if (atom->statusBarOverlayed(window))
@@ -2372,7 +2393,8 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
             it != windows.end(); ++it) {
         MCompositeWindow *tp  = it.value();
         // checks above fail. somehow decorator got in. stop it at this point
-        if (!tp->isDecorator() && !tp->isIconified() && !tp->hasAlpha())
+        if (forced == REALLY_FORCED ||
+            (!tp->isDecorator() && !tp->isIconified() && !tp->hasAlpha()))
             ((MTexturePixmapItem *)tp)->enableDirectFbRendering();
         setWindowDebugProperties(it.key());
 

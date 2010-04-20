@@ -238,6 +238,15 @@ public:
     const QList<Atom>& supportedProtocols();
 
     /*!
+     * Returns list of _NET_WM_STATE of the window.
+     */
+    const QList<Atom>& netWmState() const { return net_wm_state; }
+
+    void setNetWmState(const QList<Atom>& s) {
+            net_wm_state = s;
+    }
+
+    /*!
      * Returns if window is hung or not.
      */
     ProcessStatus status() const;
@@ -381,6 +390,7 @@ private:
     Window transient_for;
     bool wants_focus;
     QList<Atom> wm_protocols;
+    QList<Atom> net_wm_state;
     bool window_obscured;
     bool window_mapped;
     QRect req_geom;
