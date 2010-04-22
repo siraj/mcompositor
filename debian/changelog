@@ -1,6 +1,5 @@
-mcompositor (0.4.0~1) unstable; urgency=low
+mcompositor (0.4.0-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
   * Fixes: NB#164133 - Unable to minimize applications after unlocking the device
   * Fixes: NB#163811 - Resizing and positioning of decorated (non-DUI) windows is broken
   * Fixes: NB#162344 - Window manager fails to obey the full screen hint	
