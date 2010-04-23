@@ -1576,7 +1576,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         int home_i = stacking_list.indexOf(duihome);
         for (int i = 0; i <= last_i; ++i) {
             MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
-            if (!cw || cw->isDirectRendered()) continue;
+            if (!cw || cw->isDirectRendered() || !cw->isMapped()) continue;
             if (duihome && i > home_i) {
                 cw->setWindowObscured(false);
                 cw->setVisible(true);
