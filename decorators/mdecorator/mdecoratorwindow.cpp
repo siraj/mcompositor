@@ -78,7 +78,6 @@ protected:
     }
 
     virtual void setAutoRotation(bool mode) {
-        printf("%s: %d\n", __func__, mode);
         window->setOrientationAngleLocked(!mode);
         if (!mode)
             window->setOrientationAngle(M::Angle0);
@@ -117,6 +116,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     homeButtonPanel = new MHomeButtonPanel();
     escapeButtonPanel = new MEscapeButtonPanel();
     navigationBar = new MNavigationBar();
+    statusBar = new MStatusBar();
 
     connect(homeButtonPanel, SIGNAL(buttonClicked()), this,
             SIGNAL(homeClicked()));
@@ -126,6 +126,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     connect(this, SIGNAL(windowTitleChanged(const QString&)),
             navigationBar, SLOT(setViewMenuDescription(const QString&)));
 
+    sceneManager()->appearSceneWindowNow(statusBar);
     sceneManager()->appearSceneWindowNow(navigationBar);
     sceneManager()->appearSceneWindowNow(homeButtonPanel);
     sceneManager()->appearSceneWindowNow(escapeButtonPanel);
@@ -195,6 +196,7 @@ XRectangle MDecoratorWindow::itemRectToScreenRect(const QRect& r)
 void MDecoratorWindow::setInputRegion()
 {
     QRegion region;
+    region += statusBar->boundingRect().toRect();
     region += navigationBar->boundingRect().toRect();
     region += homeButtonPanel->boundingRect().toRect();
     region += escapeButtonPanel->boundingRect().toRect();

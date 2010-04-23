@@ -23,6 +23,7 @@
 #include <MHomeButtonPanel>
 #include <MEscapeButtonPanel>
 #include <MNavigationBar>
+#include <mstatusbar.h>
 
 #include <X11/Xlib.h>
 #ifdef HAVE_SHAPECONST
@@ -68,6 +69,7 @@ private:
     MHomeButtonPanel *homeButtonPanel;
     MEscapeButtonPanel *escapeButtonPanel;
     MNavigationBar *navigationBar;
+    MStatusBar *statusBar;
 
     Q_DISABLE_COPY(MDecoratorWindow);
 };
