@@ -48,7 +48,8 @@ class MDecorator: public MAbstractDecorator
     Q_OBJECT
 public:
     MDecorator(MDecoratorWindow *p)
-        : MAbstractDecorator(p)
+        : MAbstractDecorator(p),
+        window(p)
     {
         connect(this, SIGNAL(windowTitleChanged(const QString&)),
                 p, SIGNAL(windowTitleChanged(const QString&)));
@@ -76,57 +77,138 @@ protected:
         emit windowTitleChanged(title);
     }
 
+    virtual void setAutoRotation(bool mode) {
+        printf("%s: %d\n", __func__, mode);
+        window->setOrientationAngleLocked(!mode);
+        if (!mode)
+            window->setOrientationAngle(M::Angle0);
+    }
+
 signals:
 
     void windowTitleChanged(const QString&);
+
+private:
+
+    MDecoratorWindow *window;
 };
+
+#if 0
+static QRect windowRectFromGraphicsItem(const QGraphicsView &view,
+                                        const QGraphicsItem &item)
+{
+    return view.mapFromScene(
+               item.mapToScene(
+                   item.boundingRect()
+               )
+           ).boundingRect();
+}
+#endif
 
 MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     : MWindow(parent)
 {
     setTranslucentBackground(true);
-    // We do not rotate (change orientation) at all.
+
+    // default setting is not to rotate automatically
     setOrientationAngle(M::Angle0);
     setOrientationAngleLocked(true);
+
+    homeButtonPanel = new MHomeButtonPanel();
+    escapeButtonPanel = new MEscapeButtonPanel();
+    navigationBar = new MNavigationBar();
+
+    connect(homeButtonPanel, SIGNAL(buttonClicked()), this,
+            SIGNAL(homeClicked()));
+    connect(escapeButtonPanel, SIGNAL(buttonClicked()), this,
+            SIGNAL(escapeClicked()));
+
+    connect(this, SIGNAL(windowTitleChanged(const QString&)),
+            navigationBar, SLOT(setViewMenuDescription(const QString&)));
+
+    sceneManager()->appearSceneWindowNow(navigationBar);
+    sceneManager()->appearSceneWindowNow(homeButtonPanel);
+    sceneManager()->appearSceneWindowNow(escapeButtonPanel);
 
     MDecorator *d = new MDecorator(this);
     connect(this, SIGNAL(homeClicked()), d, SLOT(minimize()));
     connect(this, SIGNAL(escapeClicked()), d, SLOT(close()));
+    connect(sceneManager(),
+            SIGNAL(orientationChanged(M::Orientation)),
+            this,
+            SLOT(screenRotated(M::Orientation)));
+
+    setFocusPolicy(Qt::NoFocus);
+    setSceneSize();
+    setMDecoratorWindowProperty();
+
+    setInputRegion();
 }
 
 MDecoratorWindow::~MDecoratorWindow()
 {
 }
 
-void MDecoratorWindow::init(MSceneManager &sceneManager)
+void MDecoratorWindow::screenRotated(const M::Orientation &orientation)
 {
-    setFocusPolicy(Qt::NoFocus);
-    setSceneSize(sceneManager);
-    setMDecoratorWindowProperty();
+    Q_UNUSED(orientation);
+    setInputRegion();
 }
 
-void MDecoratorWindow::setInputRegion(const QRegion &region)
+XRectangle MDecoratorWindow::itemRectToScreenRect(const QRect& r)
 {
+    XRectangle rect;
     Display *dpy = QX11Info::display();
-
-    int size = region.rects().size();
-
-    //we should receive correct pointer even if region is empty
-    XRectangle *rects = (XRectangle *)malloc(sizeof(XRectangle) * size);
-
-    XRectangle *rect = rects;
-    for (int i = 0; i < size; i ++, rect++) {
-        fillXRectangle(rect, region.rects().at(i));
+    int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
+    int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
+    switch (sceneManager()->orientationAngle()) {
+    case 0:
+            rect.x = r.x();
+            rect.y = r.y();
+            rect.width = r.width();
+            rect.height = r.height();
+            break;
+    case 90:
+            rect.x = xres - r.height();
+            rect.y = 0;
+            rect.width = r.height();
+            rect.height = r.width();
+            break;
+    case 270:
+            rect.x = rect.y = 0;
+            rect.width = r.height();
+            rect.height = r.width();
+            break;
+    case 180:
+            rect.x = 0;
+            rect.y = yres - r.height();
+            rect.width = r.width();
+            rect.height = r.height();
+            break;
+    default:
+            memset(&rect, 0, sizeof(rect));
+            break;
     }
+    return rect;
+}
 
+void MDecoratorWindow::setInputRegion()
+{
+    QRegion region;
+    region += navigationBar->boundingRect().toRect();
+    region += homeButtonPanel->boundingRect().toRect();
+    region += escapeButtonPanel->boundingRect().toRect();
+    QRect b = region.boundingRect();
 
-    XserverRegion shapeRegion = XFixesCreateRegion(dpy, rects, size);
+    XRectangle rect = itemRectToScreenRect(b);
+
+    Display *dpy = QX11Info::display();
+    XserverRegion shapeRegion = XFixesCreateRegion(dpy, &rect, 1);
     XFixesSetWindowShapeRegion(dpy, winId(), ShapeBounding, 0, 0, 0);
     XFixesSetWindowShapeRegion(dpy, winId(), ShapeInput, 0, 0, shapeRegion);
 
     XFixesDestroyRegion(dpy, shapeRegion);
 
-    free(rects);
     XSync(dpy, False);
 
     // selective compositing
@@ -137,20 +219,15 @@ void MDecoratorWindow::setInputRegion(const QRegion &region)
     }
 }
 
-void MDecoratorWindow::fillXRectangle(XRectangle *xRect, const QRect &rect) const
+void MDecoratorWindow::setSceneSize()
 {
-    xRect->x = rect.x();
-    xRect->y = rect.y();
-    xRect->width = rect.width();
-    xRect->height = rect.height();
-}
-
-void MDecoratorWindow::setSceneSize(MSceneManager &sceneManager)
-{
-    QSize sceneSize = sceneManager.visibleSceneSize();
-    scene()->setSceneRect(0, 0, sceneSize.width(), sceneSize.height());
-    setMinimumSize(sceneSize.width(), sceneSize.height());
-    setMaximumSize(sceneSize.width(), sceneSize.height());
+    // always keep landscape size
+    Display *dpy = QX11Info::display();
+    int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
+    int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
+    scene()->setSceneRect(0, 0, xres, yres);
+    setMinimumSize(xres, yres);
+    setMaximumSize(xres, yres);
 }
 
 void MDecoratorWindow::setMDecoratorWindowProperty()

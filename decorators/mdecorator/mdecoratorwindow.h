@@ -20,6 +20,9 @@
 #define MDECORATORWINDOW_H
 
 #include <MWindow>
+#include <MHomeButtonPanel>
+#include <MEscapeButtonPanel>
+#include <MNavigationBar>
 
 #include <X11/Xlib.h>
 #ifdef HAVE_SHAPECONST
@@ -40,15 +43,9 @@ public:
     explicit MDecoratorWindow(QWidget *parent = 0);
     virtual ~MDecoratorWindow();
 
-    void init(MSceneManager &sceneManager);
+private slots:
 
-    /*!
-     * \brief Sets the region of the window that can receive input events.
-     *
-     * Input events landing on the area outside this region will fall directly
-     * to the windows below.
-     */
-    void setInputRegion(const QRegion &region);
+    void screenRotated(const M::Orientation &orientation);
 
 signals:
 
@@ -57,9 +54,20 @@ signals:
     void windowTitleChanged(const QString& title);
     
 private:
-    void fillXRectangle(XRectangle *xRect, const QRect &rect) const;
-    void setSceneSize(MSceneManager &sceneManager);
+    void setSceneSize();
     void setMDecoratorWindowProperty();
+    /*!
+     * \brief Sets the region of the window that can receive input events.
+     *
+     * Input events landing on the area outside this region will fall directly
+     * to the windows below.
+     */
+    void setInputRegion();
+    XRectangle itemRectToScreenRect(const QRect& r);
+
+    MHomeButtonPanel *homeButtonPanel;
+    MEscapeButtonPanel *escapeButtonPanel;
+    MNavigationBar *navigationBar;
 
     Q_DISABLE_COPY(MDecoratorWindow);
 };

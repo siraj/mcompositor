@@ -57,6 +57,7 @@ public slots:
      */
     void RemoteSetManagedWinId(qulonglong window);
     void RemoteActivateWindow();
+    void RemoteSetAutoRotation(bool mode);
 
 protected:
 
@@ -71,6 +72,11 @@ protected:
       * Pure virtual function that gets called this decorator manages a window
       */
     virtual void manageEvent(Qt::HANDLE window) = 0;
+
+     /*!
+      * Pure virtual function to set automatic rotation mode.
+      */
+    virtual void setAutoRotation(bool mode) = 0;
 
 private:
     Qt::HANDLE client;

@@ -120,6 +120,8 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
     qulonglong winid = client ? client->window() : 0;
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetManagedWinId", winid);
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemoteSetAutoRotation", false);
     if (cw)
         connect(cw, SIGNAL(destroyed()), SLOT(destroyClient()));
 }
@@ -169,4 +171,10 @@ void MDecoratorFrame::visualizeDecorator(bool visible)
 void MDecoratorFrame::activate()
 {
     remote_decorator->invoke("MAbstractDecorator", "RemoteActivateWindow");
+}
+
+void MDecoratorFrame::setAutoRotation(bool mode)
+{
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemoteSetAutoRotation", mode);
 }

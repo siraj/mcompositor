@@ -2446,6 +2446,7 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w)
 
     // own the window so we could kill it if we want to.
     MDecoratorFrame::instance()->setManagedWindow(w);
+    MDecoratorFrame::instance()->setAutoRotation(true);
     checkStacking(false);
     MDecoratorFrame::instance()->raise();
     w->updateWindowPixmap();

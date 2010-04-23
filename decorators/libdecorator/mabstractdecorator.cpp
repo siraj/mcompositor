@@ -96,3 +96,8 @@ void MAbstractDecorator::RemoteActivateWindow()
 {
     activateEvent();
 }
+
+void MAbstractDecorator::RemoteSetAutoRotation(bool mode)
+{
+    setAutoRotation(mode);
+}

@@ -77,6 +77,11 @@ public:
     void setManagedWindow(MCompositeWindow *cw, int top_offset = 0);
 
     /*!
+     * Sets the automatic rotation mode.
+     */
+    void setAutoRotation(bool mode);
+
+    /*!
      * Sets the decorator window and maps that window if it is unmapped.
      */
     void setDecoratorWindow(Qt::HANDLE window);
