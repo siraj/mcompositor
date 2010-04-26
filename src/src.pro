@@ -28,6 +28,7 @@ HEADERS += \
     mcompositemanager.h \
     msimplewindowframe.h \
     mcompositemanager_p.h \
+    mdevicestate.h \
     mdecoratorframe.h
 
 SOURCES += \
@@ -38,6 +39,7 @@ SOURCES += \
     mcompwindowanimator.cpp \
     mcompositemanager.cpp \
     msimplewindowframe.cpp \
+    mdevicestate.cpp \
     mdecoratorframe.cpp
 
 RESOURCES = tools.qrc

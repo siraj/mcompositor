@@ -105,7 +105,7 @@ void MDecoratorFrame::updateManagedWindowGeometry(int top_offset)
 }
 
 void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
-                                       int top_offset)
+                                       int top_offset, bool no_resize)
 {
     if (client == cw)
         return;
@@ -114,7 +114,7 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
     if (!decorator_item)
         return;
 
-    if (cw)
+    if (cw && !no_resize)
         updateManagedWindowGeometry(top_offset);
 
     qulonglong winid = client ? client->window() : 0;

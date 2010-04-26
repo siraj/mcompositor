@@ -23,7 +23,6 @@
 #include <QObject>
 #include <QHash>
 #include <QPixmap>
-#include <QtDBus>
 
 #include <X11/Xutil.h>
 #include <X11/Xlib.h>
@@ -36,6 +35,7 @@ class MCompositeScene;
 class MSimpleWindowFrame;
 class MCompAtoms;
 class MCompositeWindow;
+class MDeviceState;
 
 enum {
     INPUT_LAYER = 0,
@@ -136,8 +136,7 @@ public:
 
     bool arranged;
     bool compositing;
-    QDBusConnection *systembus_conn;
-    bool display_off;
+    MDeviceState *device_state;
 
 signals:
     void inputEnabled();
@@ -158,9 +157,9 @@ public slots:
     void raiseOnRestore(MCompositeWindow *window);
     void onDesktopActivated(MCompositeWindow*);
     void exposeDesktop();
-#ifdef GLES2_VERSION
-    void mceDisplayStatusIndSignal(QString mode);
-#endif
+
+    void displayOff(bool display_off);
+    void callOngoing(bool call_ongoing);
 };
 
 #endif

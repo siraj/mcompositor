@@ -74,7 +74,8 @@ public:
     /*!
      * Sets the managed window.
      */
-    void setManagedWindow(MCompositeWindow *cw, int top_offset = 0);
+    void setManagedWindow(MCompositeWindow *cw, int top_offset = 0,
+                          bool no_resize = false);
 
     /*!
      * Sets the automatic rotation mode.
