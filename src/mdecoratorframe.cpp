@@ -178,3 +178,9 @@ void MDecoratorFrame::setAutoRotation(bool mode)
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetAutoRotation", mode);
 }
+
+void MDecoratorFrame::setOnlyStatusbar(bool mode)
+{
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemoteSetOnlyStatusbar", mode);
+}

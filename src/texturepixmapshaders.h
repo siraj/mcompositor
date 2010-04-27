@@ -41,6 +41,7 @@ static const char* TexpFragShaderSource = "\
     }";
 
 
+#if 0
 static const char *AlphaTestFragShaderSource = "\
     varying lowp vec2 fragTexCoord;\
     uniform sampler2D texture0;\
@@ -53,6 +54,7 @@ static const char *AlphaTestFragShaderSource = "\
         else\
             gl_FragColor = baseColor;\
     }";
+#endif
 
 static const char *blurshader = "\
 varying lowp vec2 fragTexCoord;\

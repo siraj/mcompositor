@@ -83,9 +83,14 @@ protected:
             window->setOrientationAngle(M::Angle0);
     }
 
+    virtual void setOnlyStatusbar(bool mode) {
+        emit onlyStatusbar(mode);
+    }
+
 signals:
 
     void windowTitleChanged(const QString&);
+    void onlyStatusbar(bool mode);
 
 private:
 
@@ -127,9 +132,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
             navigationBar, SLOT(setViewMenuDescription(const QString&)));
 
     sceneManager()->appearSceneWindowNow(statusBar);
-    sceneManager()->appearSceneWindowNow(navigationBar);
-    sceneManager()->appearSceneWindowNow(homeButtonPanel);
-    sceneManager()->appearSceneWindowNow(escapeButtonPanel);
+    setOnlyStatusbar(false);
 
     MDecorator *d = new MDecorator(this);
     connect(this, SIGNAL(homeClicked()), d, SLOT(minimize()));
@@ -138,6 +141,8 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
             SIGNAL(orientationChanged(M::Orientation)),
             this,
             SLOT(screenRotated(M::Orientation)));
+    connect(d, SIGNAL(onlyStatusbar(bool)),
+            this, SLOT(setOnlyStatusbar(bool)));
 
     setFocusPolicy(Qt::NoFocus);
     setSceneSize();
@@ -148,6 +153,20 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
 
 MDecoratorWindow::~MDecoratorWindow()
 {
+}
+
+void MDecoratorWindow::setOnlyStatusbar(bool mode)
+{
+    if (mode) {
+        sceneManager()->disappearSceneWindowNow(navigationBar);
+        sceneManager()->disappearSceneWindowNow(homeButtonPanel);
+        sceneManager()->disappearSceneWindowNow(escapeButtonPanel);
+    } else {
+        sceneManager()->appearSceneWindowNow(navigationBar);
+        sceneManager()->appearSceneWindowNow(homeButtonPanel);
+        sceneManager()->appearSceneWindowNow(escapeButtonPanel);
+    }
+    only_statusbar = mode;
 }
 
 void MDecoratorWindow::screenRotated(const M::Orientation &orientation)
@@ -197,9 +216,11 @@ void MDecoratorWindow::setInputRegion()
 {
     QRegion region;
     region += statusBar->boundingRect().toRect();
-    region += navigationBar->boundingRect().toRect();
-    region += homeButtonPanel->boundingRect().toRect();
-    region += escapeButtonPanel->boundingRect().toRect();
+    if (!only_statusbar) {
+        region += navigationBar->boundingRect().toRect();
+        region += homeButtonPanel->boundingRect().toRect();
+        region += escapeButtonPanel->boundingRect().toRect();
+    }
     QRect b = region.boundingRect();
 
     XRectangle rect = itemRectToScreenRect(b);

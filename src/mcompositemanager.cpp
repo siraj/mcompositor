@@ -1018,6 +1018,11 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
              * on top of this window */
             if (item->needDecoration() && MDecoratorFrame::instance()->decoratorItem()) {
                 MDecoratorFrame::instance()->setManagedWindow(item);
+                if (FULLSCREEN_WINDOW(item) &&
+                    item->status() != MCompositeWindow::HUNG)
+                    MDecoratorFrame::instance()->setOnlyStatusbar(true);
+                else
+                    MDecoratorFrame::instance()->setOnlyStatusbar(false);
                 MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
                 MDecoratorFrame::instance()->raise();
                 MDecoratorFrame::instance()->decoratorItem()->setZValue(item->zValue() + 1);
@@ -1583,7 +1588,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
 {
     Window win = e->window;
-    Window transient_for = 0;
 
     if (win == xoverlay) {
         enableRedirection();
@@ -1677,6 +1681,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     if ((parentWindow(win) == RootWindow(QX11Info::display(), 0))
             && (e->event == QX11Info::appRootWindow())) {
         item = bindWindow(win);
+        Window transient_for = item->transientFor();
         if (transient_for)
             item->setWindowType(MCompositeWindow::Transient);
         else
@@ -1984,6 +1989,7 @@ void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
         if (w && (cw = COMPOSITE_WINDOW(w)) && FULLSCREEN_WINDOW(cw)) {
             cw->setDecorated(true);
             MDecoratorFrame::instance()->setManagedWindow(cw, 0, true);
+            MDecoratorFrame::instance()->setOnlyStatusbar(true);
         }
         checkStacking(false);
     } else {
@@ -1994,6 +2000,7 @@ void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
             if (FULLSCREEN_WINDOW(i) && i->needDecoration())
                 i->setDecorated(false);
         }
+        MDecoratorFrame::instance()->setOnlyStatusbar(false);
         checkStacking(false);
         possiblyUnredirectTopmostWindow();
     }
@@ -2176,14 +2183,17 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
 
     if (needDecoration(window, item)) {
         item->setDecorated(true);
-        /* FIXME when statusbar implementation changes */
-        if (fs_i != -1)
+        if (fs_i != -1) {
             // fullscreen window has decorator above it during ongoing call
             MDecoratorFrame::instance()->setManagedWindow(item, 0, true);
-        else if (atom->statusBarOverlayed(window))
+            MDecoratorFrame::instance()->setOnlyStatusbar(true);
+        } else if (atom->statusBarOverlayed(window)) {
             MDecoratorFrame::instance()->setManagedWindow(item, 28);
-        else
+            MDecoratorFrame::instance()->setOnlyStatusbar(false);
+        } else {
             MDecoratorFrame::instance()->setManagedWindow(item);
+            MDecoratorFrame::instance()->setOnlyStatusbar(false);
+        }
     }
     item->setIsDecorator(is_decorator);
 
@@ -2452,6 +2462,7 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w)
 
     // own the window so we could kill it if we want to.
     MDecoratorFrame::instance()->setManagedWindow(w, 0, true);
+    MDecoratorFrame::instance()->setOnlyStatusbar(false);
     MDecoratorFrame::instance()->setAutoRotation(true);
     checkStacking(false);
     MDecoratorFrame::instance()->raise();

@@ -58,6 +58,7 @@ public slots:
     void RemoteSetManagedWinId(qulonglong window);
     void RemoteActivateWindow();
     void RemoteSetAutoRotation(bool mode);
+    void RemoteSetOnlyStatusbar(bool mode);
 
 protected:
 
@@ -77,6 +78,11 @@ protected:
       * Pure virtual function to set automatic rotation mode.
       */
     virtual void setAutoRotation(bool mode) = 0;
+
+     /*!
+      * Pure virtual function to set "only statusbar" mode.
+      */
+    virtual void setOnlyStatusbar(bool mode) = 0;
 
 private:
     Qt::HANDLE client;

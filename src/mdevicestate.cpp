@@ -35,7 +35,7 @@ MDeviceState::MDeviceState()
     systembus_conn->connect(MCE_SERVICE, MCE_SIGNAL_PATH, MCE_SIGNAL_IF,
                             MCE_DISPLAY_SIG, this,
                             SLOT(mceDisplayStatusIndSignal(QString)));
-    systembus_conn->connect("com.nokia.csd", "/com/nokia/csd/csnet",
+    systembus_conn->connect("", "/com/nokia/csd/csnet",
                             "com.nokia.csd.CSNet", "ActivityChanged", this,
                             SLOT(csdActivityChangedSignal(QString)));
     if (!systembus_conn->isConnected())

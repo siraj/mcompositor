@@ -101,3 +101,8 @@ void MAbstractDecorator::RemoteSetAutoRotation(bool mode)
 {
     setAutoRotation(mode);
 }
+
+void MAbstractDecorator::RemoteSetOnlyStatusbar(bool mode)
+{
+    setOnlyStatusbar(mode);
+}

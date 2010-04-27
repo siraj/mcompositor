@@ -47,13 +47,14 @@ public:
 private slots:
 
     void screenRotated(const M::Orientation &orientation);
+    void setOnlyStatusbar(bool mode);
 
 signals:
 
     void homeClicked();
     void escapeClicked();
     void windowTitleChanged(const QString& title);
-    
+
 private:
     void setSceneSize();
     void setMDecoratorWindowProperty();
@@ -70,6 +71,7 @@ private:
     MEscapeButtonPanel *escapeButtonPanel;
     MNavigationBar *navigationBar;
     MStatusBar *statusBar;
+    bool only_statusbar;
 
     Q_DISABLE_COPY(MDecoratorWindow);
 };

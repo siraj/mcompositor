@@ -22,7 +22,7 @@
 #include <QByteArray>
 
 MRmiClientPrivate:: MRmiClientPrivate(const QString& key)
-        : _key(key)
+        : q_ptr(0), _key(key)
 {
 }
 
@@ -47,6 +47,7 @@ QString MRmiClientPrivate::key() const
 
 MRmiClientPrivateSocket::MRmiClientPrivateSocket(const QString& key, MRmiClient *q)
         : MRmiClientPrivate(key),
+        _stream(0),
         return_sz(0)
 {
     q_ptr = q;
