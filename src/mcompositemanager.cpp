@@ -856,11 +856,13 @@ bool MCompositeManagerPrivate::isAppWindow(MCompositeWindow *cw)
     return false;
 }
 
-Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list)
+Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
+                                               Window ignore_window)
 {
     Window topmost_app = 0;
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);
+        if (w == ignore_window) continue;
         if (w == stack[DESKTOP_LAYER])
             /* desktop is above all applications */
             break;
@@ -1705,7 +1707,11 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         setWindowDebugProperties(win);
     }
     /* do this after bindWindow() so that the window is in stacking_list */
-    activateWindow(win, CurrentTime, false);
+    if (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win))
+        activateWindow(win, CurrentTime, false);
+    else
+        // desktop is stacked below the active application
+        positionWindow(win, STACK_BOTTOM);
 }
 
 static bool should_be_pinged(MCompositeWindow *cw)

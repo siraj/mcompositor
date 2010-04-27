@@ -96,7 +96,8 @@ public:
     void checkStacking(bool force_visibility_check,
                        Time timestamp = CurrentTime);
     void checkInputFocus(Time timestamp = CurrentTime);
-    Window getTopmostApp(int *index_in_stacking_list = 0);
+    Window getTopmostApp(int *index_in_stacking_list = 0,
+                         Window ignore_window = 0);
     bool possiblyUnredirectTopmostWindow();
     Window getLastVisibleParent(MCompositeWindow *cw);
     bool isAppWindow(MCompositeWindow *cw);
