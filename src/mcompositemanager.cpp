@@ -734,6 +734,7 @@ void MCompositeManagerPrivate::enableInput()
 
 void MCompositeManagerPrivate::prepare()
 {
+    MDecoratorFrame::instance();
     watch->prepareRoot();
     Window w;
     QString wm_name = "MCompositor";
@@ -1035,7 +1036,7 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
              * which will break when we have one decorated window
              * on top of this window */
             if (item->needDecoration() && MDecoratorFrame::instance()->decoratorItem()) {
-                MDecoratorFrame::instance()->setManagedWindow(item);
+                MDecoratorFrame::instance()->setManagedWindow(item,28);
                 MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
                 MDecoratorFrame::instance()->raise();
                 MDecoratorFrame::instance()->decoratorItem()->setZValue(item->zValue() + 1);
@@ -1673,7 +1674,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         if (!display_off && !item->hasAlpha() && !item->needDecoration()) {
             item->setVisible(true);
             item->updateWindowPixmap();
-	    disableCompositing();
+            disableCompositing();
         } else if (!display_off) {
             ((MTexturePixmapItem *)item)->enableRedirectedRendering();
             item->delayShow(100);
@@ -2175,10 +2176,10 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     if (needDecoration(window, item)) {
         item->setDecorated(true);
         /* FIXME when statusbar implementation changes */
-        if (atom->statusBarOverlayed(window))
-            MDecoratorFrame::instance()->setManagedWindow(item, 28);
-        else
-            MDecoratorFrame::instance()->setManagedWindow(item);
+        
+        // Decorator window has a status bar overlayed on it as well
+        // this affects all application (3rd party or native) it decorates
+        MDecoratorFrame::instance()->setManagedWindow(item, 28);
     }
     item->setIsDecorator(is_decorator);
 

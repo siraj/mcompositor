@@ -22,6 +22,10 @@
 
 #include <QObject>
 
+class MAbstractDecoratorPrivate;
+class MRmiClient;
+class QRect;
+
 /*!
  * MAbstractDecorator is the base class for window decorators
  */
@@ -39,6 +43,14 @@ public:
      * Returns the id of the window decorated by this decorator
      */
     Qt::HANDLE managedWinId();
+    
+    /*!
+     * Informs the compositor of the available client geometry when client
+     * is managed by the decorator. 
+     *
+     * \param rect is the geometry of the decorator area.
+     */ 
+    void setAvailableGeometry(const QRect& rect);
 
 public slots:
 
@@ -58,6 +70,7 @@ public slots:
     void RemoteSetManagedWinId(qulonglong window);
     void RemoteActivateWindow();
     void RemoteSetAutoRotation(bool mode);
+    void RemoteSetClientGeometry(const QRect& rect);
 
 protected:
 
@@ -79,8 +92,10 @@ protected:
     virtual void setAutoRotation(bool mode) = 0;
 
 private:
-    Qt::HANDLE client;
-
+    
+    Q_DECLARE_PRIVATE(MAbstractDecorator)
+        
+    MAbstractDecoratorPrivate * const d;
 };
 
 #endif //MABSTRACTDECORATOR_H

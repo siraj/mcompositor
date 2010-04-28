@@ -43,6 +43,8 @@ class MDecoratorWindow : public MWindow
 public:
     explicit MDecoratorWindow(QWidget *parent = 0);
     virtual ~MDecoratorWindow();
+    
+    const QRect availableClientRect() const;
 
 private slots:
 
@@ -70,6 +72,7 @@ private:
     MEscapeButtonPanel *escapeButtonPanel;
     MNavigationBar *navigationBar;
     MStatusBar *statusBar;
+    QRect decoratorRect;
 
     Q_DISABLE_COPY(MDecoratorWindow);
 };

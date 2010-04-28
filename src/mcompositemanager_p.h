@@ -96,11 +96,12 @@ public:
     void checkStacking(bool force_visibility_check,
                        Time timestamp = CurrentTime);
     void checkInputFocus(Time timestamp = CurrentTime);
-    Window getTopmostApp(int *index_in_stacking_list = 0);
-    bool possiblyUnredirectTopmostWindow();
-    Window getLastVisibleParent(MCompositeWindow *cw);
-    bool isAppWindow(MCompositeWindow *cw);
 
+    Window getTopmostApp(int *index_in_stacking_list = 0);
+    Window getLastVisibleParent(MCompositeWindow *cw);
+
+    bool isAppWindow(MCompositeWindow *cw);
+    bool possiblyUnredirectTopmostWindow();
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
     bool removeWindow(Window w);

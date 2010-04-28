@@ -114,6 +114,9 @@ public slots:
      */
     void showLaunchIndicator(int timeout);
     void hideLaunchIndicator();
+     
+signals:
+    void decoratorRectChanged(const QRect& rect);
 
 private:
     MCompositeManagerPrivate *d;

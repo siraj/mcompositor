@@ -22,7 +22,8 @@
 #include <MSceneManager>
 #include <MScene>
 
-#include <QCoreApplication>
+#include <QApplication>
+#include <QDesktopWidget>
 #include <QX11Info>
 #include <QGLFormat>
 #include <QGLWidget>
@@ -49,7 +50,7 @@ class MDecorator: public MAbstractDecorator
 public:
     MDecorator(MDecoratorWindow *p)
         : MAbstractDecorator(p),
-        window(p)
+        decorwindow(p)
     {
         connect(this, SIGNAL(windowTitleChanged(const QString&)),
                 p, SIGNAL(windowTitleChanged(const QString&)));
@@ -73,14 +74,15 @@ protected:
                 XFree(p.value);
             }
         }
-
+        setAvailableGeometry(decorwindow->availableClientRect());
+        
         emit windowTitleChanged(title);
     }
 
     virtual void setAutoRotation(bool mode) {
-        window->setOrientationAngleLocked(!mode);
+        decorwindow->setOrientationAngleLocked(!mode);
         if (!mode)
-            window->setOrientationAngle(M::Angle0);
+            decorwindow->setOrientationAngle(M::Angle0);
     }
 
 signals:
@@ -89,7 +91,7 @@ signals:
 
 private:
 
-    MDecoratorWindow *window;
+    MDecoratorWindow *decorwindow;
 };
 
 #if 0
@@ -200,9 +202,9 @@ void MDecoratorWindow::setInputRegion()
     region += navigationBar->boundingRect().toRect();
     region += homeButtonPanel->boundingRect().toRect();
     region += escapeButtonPanel->boundingRect().toRect();
-    QRect b = region.boundingRect();
+    decoratorRect = region.boundingRect();
 
-    XRectangle rect = itemRectToScreenRect(b);
+    XRectangle rect = itemRectToScreenRect(decoratorRect);
 
     Display *dpy = QX11Info::display();
     XserverRegion shapeRegion = XFixesCreateRegion(dpy, &rect, 1);
@@ -242,6 +244,12 @@ void MDecoratorWindow::setMDecoratorWindowProperty()
                     XA_CARDINAL,
                     32, PropModeReplace,
                     (unsigned char *) &on, 1);
+}
+
+
+const QRect MDecoratorWindow::availableClientRect() const
+{
+    return decoratorRect;
 }
 
 #include "mdecoratorwindow.moc"

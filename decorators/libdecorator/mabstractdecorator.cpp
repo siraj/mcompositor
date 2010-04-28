@@ -17,23 +17,41 @@
 **
 ****************************************************************************/
 
-#include "mabstractdecorator.h"
-
 #include <QtDebug>
 
+#include "mabstractdecorator.h"
 #include <mrmiserver.h>
+#include <mrmiclient.h>
 #include <QX11Info>
+#include <QRect>
+#include <QRegion>
+#include <QDesktopWidget>
+#include <QApplication>
 
 #include <X11/Xutil.h>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
 
+class MAbstractDecoratorPrivate
+{    
+public:
+    
+    Qt::HANDLE client;
+    MRmiClient* remote_compositor;
+    QRect clientGeometry;
+    MAbstractDecorator* q_ptr;
+};
+
 MAbstractDecorator::MAbstractDecorator(QObject *parent)
-    : QObject(parent)
+    : QObject(parent),
+      d(new MAbstractDecoratorPrivate())
 {
+    Q_D(MAbstractDecorator);
+    
     MRmiServer *s = new MRmiServer(".mabstractdecorator", this);
     s->exportObject(this);
+    d->remote_compositor = new MRmiClient(".mcompositor", this);
 }
 
 MAbstractDecorator::~MAbstractDecorator()
@@ -42,7 +60,9 @@ MAbstractDecorator::~MAbstractDecorator()
 
 Qt::HANDLE MAbstractDecorator::managedWinId()
 {
-    return client;
+    Q_D(MAbstractDecorator);
+    
+    return d->client;
 }
 
 void MAbstractDecorator::minimize()
@@ -88,7 +108,9 @@ void MAbstractDecorator::close()
 
 void MAbstractDecorator::RemoteSetManagedWinId(qulonglong window)
 {
-    client = window;
+    Q_D(MAbstractDecorator);
+    
+    d->client = window;
     manageEvent(window);
 }
 
@@ -100,4 +122,17 @@ void MAbstractDecorator::RemoteActivateWindow()
 void MAbstractDecorator::RemoteSetAutoRotation(bool mode)
 {
     setAutoRotation(mode);
+}
+
+void MAbstractDecorator::RemoteSetClientGeometry(const QRect& r)
+{
+    Q_D(MAbstractDecorator);
+    d->clientGeometry = r;
+}
+
+void MAbstractDecorator::setAvailableGeometry(const QRect& rect)
+{
+    Q_D(MAbstractDecorator);
+
+    d->remote_compositor->invoke("MCompositeManager", "decoratorRectChanged", rect);
 }
