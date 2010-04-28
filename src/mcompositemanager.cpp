@@ -172,6 +172,8 @@ static QRect availScreenRect = QRect();
 // temporary launch indicator. will get replaced later
 static QGraphicsTextItem *launchIndicator = 0;
 
+static Window transient_for(Window window);
+
 MCompAtoms *MCompAtoms::instance()
 {
     if (!d)
@@ -306,9 +308,10 @@ MCompAtoms::Type MCompAtoms::windowType(Window w)
     else if (a == atoms[_KDE_NET_WM_WINDOW_TYPE_OVERRIDE])
         return FRAMELESS;
 
-    // fix this later. this value always gets returned for transient_for
-    // windows such as menus and dialogs which shouldn't be the case
-    return UNKNOWN;
+    if (transient_for(w))
+        return UNKNOWN;
+    else // fdo spec suggests unknown non-transients must be normal
+        return NORMAL;
 }
 
 bool MCompAtoms::isDecorator(Window w)
@@ -1516,6 +1519,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         if ((cw && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)) ||
             atom->hasState(w, ATOM(_NET_WM_STATE_ABOVE))) {
             stacking_list.move(i, last_i);
+	    raise_transients(this, w, last_i);
             if (!first_moved) first_moved = w;
         } else ++i;
     }
@@ -1656,7 +1660,10 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         return;
     }
     if (item) {
-        item->setWindowTypeAtom(atom->getType(win));
+        if (atom->windowType(e->window) == MCompAtoms::NORMAL)
+            item->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
+        else
+            item->setWindowTypeAtom(atom->getType(win));
         item->saveBackingStore(true);
         if (!device_state->displayOff() && !item->hasAlpha()
             && !item->needDecoration()) {
@@ -2207,7 +2214,10 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         item->updateWindowPixmap();
     stacking_list.append(window);
     addItem(item);
-    item->setWindowTypeAtom(atom->getType(window));
+    if (wtype == MCompAtoms::NORMAL)
+        item->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
+    else
+        item->setWindowTypeAtom(atom->getType(window));
 
     if (wtype == MCompAtoms::INPUT) {
         if (!device_state->displayOff())
