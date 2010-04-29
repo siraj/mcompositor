@@ -25,12 +25,76 @@
 
 #include "mdevicestate.h"
 
-MDeviceState::MDeviceState()
-    : ongoing_call(false)
-{
-    // TODO: find out initial state for ongoing_call
-    display_off = false;
 #ifdef GLES2_VERSION
+bool operator==(const ChannelDetails& v1, const ChannelDetails& v2)
+{
+    return ((v1.channel == v2.channel)
+            && (v1.properties == v2.properties)
+            );
+}
+
+QDBusArgument& operator<<(QDBusArgument& arg, const ChannelDetails& val)
+{
+    arg.beginStructure();
+    arg << val.channel << val.properties;
+    arg.endStructure();
+    return arg;
+}
+
+const QDBusArgument& operator>>(const QDBusArgument& arg, ChannelDetails& val)
+{
+    arg.beginStructure();
+    arg >> val.channel >> val.properties;
+    arg.endStructure();
+    return arg;
+}
+
+void MDeviceState::channelsReply(QDBusPendingCallWatcher *watcher)
+{
+    QDBusPendingReply<QVariant> reply = *watcher;
+
+    if (!reply.isError()) {
+        ChannelDetailsList l = qdbus_cast<ChannelDetailsList>(reply.value());
+        if (l.size() > 0)
+            // FIXME: maybe check against l[0].channel.path() would be good
+            csdActivityChangedSignal(QString("Call"));
+    } else
+        qWarning("Failed to get a reply from Telepathy");
+
+    watcher->deleteLater();
+}
+#endif
+
+MDeviceState::MDeviceState()
+{
+    display_off = false;
+    ongoing_call = false;
+#ifdef GLES2_VERSION
+    qDBusRegisterMetaType<ChannelDetails>();
+    qDBusRegisterMetaType<ChannelDetailsList>();
+
+    // FIXME: Use ContextKit for these when they provide the infos
+    sessionbus_conn = new QDBusConnection(QDBusConnection::sessionBus());
+    if (!sessionbus_conn->isConnected())
+        qWarning("Failed to connect to the D-Bus session bus");
+    else {
+        QDBusMessage m = QDBusMessage::createMethodCall(
+                          "org.freedesktop.Telepathy.Connection.ring.tel.ring",
+                          "/org/freedesktop/Telepathy/Connection/ring/tel/ring",
+                          "org.freedesktop.DBus.Properties", "Get");
+        QList<QVariant> a;
+        a.append(QString(
+                 "org.freedesktop.Telepathy.Connection.Interface.Requests"));
+        a.append(QString("Channels"));
+        m.setArguments(a);
+
+        QDBusPendingCall r = sessionbus_conn->asyncCall(m);
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(r);
+        connect(watcher,
+                SIGNAL(finished(QDBusPendingCallWatcher*)),
+                SLOT(channelsReply(QDBusPendingCallWatcher*)));
+    }
+
     systembus_conn = new QDBusConnection(QDBusConnection::systemBus());
     systembus_conn->connect(MCE_SERVICE, MCE_SIGNAL_PATH, MCE_SIGNAL_IF,
                             MCE_DISPLAY_SIG, this,

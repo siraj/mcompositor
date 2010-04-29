@@ -597,11 +597,22 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
         }
 
         MCompositeWindow *win = MCompositeWindow::compositeWindow(window);
-        if (win && need_geometry_modify(window) && !availScreenRect.isEmpty()) {
+        if (win)
+            win->setNetWmState(states.toList());
+        if (win && !MDecoratorFrame::instance()->managedWindow()
+            && priv->needDecoration(window, win)) {
+            win->setDecorated(true);
+            if (MCompAtoms::instance()->statusBarOverlayed(window))
+                MDecoratorFrame::instance()->setManagedWindow(win, 28);
+            else
+                MDecoratorFrame::instance()->setManagedWindow(win);
+            MDecoratorFrame::instance()->setOnlyStatusbar(false);
+            MDecoratorFrame::instance()->raise();
+        } else if (win && need_geometry_modify(window) &&
+                   !availScreenRect.isEmpty()) {
             QRect r = availScreenRect;
             XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
         }
-
         priv->checkStacking(false);
     } break;
     case 1: /* add */ {
@@ -616,10 +627,16 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
         int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
         XMoveResizeWindow(dpy, window, 0, 0, xres, yres);
         MCompositeWindow *win = priv->windows.value(window, 0);
-        if (win)
+        if (win) {
             win->setRequestedGeometry(QRect(0, 0, xres, yres));
-        if (MDecoratorFrame::instance()->managedWindow() == window)
+            win->setNetWmState(states.toList());
+        }
+        if (!priv->device_state->ongoingCall()
+            && MDecoratorFrame::instance()->managedWindow() == window) {
+            if (win) win->setDecorated(false);
             MDecoratorFrame::instance()->lower();
+            MDecoratorFrame::instance()->setManagedWindow(0);
+        }
         priv->checkStacking(false);
     } break;
     case 2: /* toggle */ {
@@ -1814,14 +1831,14 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             }
         }
     } else if (event->message_type == ATOM(_NET_WM_STATE)) {
-        if (event->data.l[1] == (long)  ATOM(_NET_WM_STATE_SKIP_TASKBAR))
+        if (event->data.l[1] == (long)  ATOM(_NET_WM_STATE_SKIP_TASKBAR)) {
             skiptaskbar_wm_state(event->data.l[0], event->window);
-        else if (event->data.l[1] == (long) ATOM(_NET_WM_STATE_FULLSCREEN))
+            if (i) {
+                QVector<Atom> states = atom->netWmStates(event->window);
+                i->setNetWmState(states.toList());
+            }
+        } else if (event->data.l[1] == (long) ATOM(_NET_WM_STATE_FULLSCREEN))
             fullscreen_wm_state(this, event->data.l[0], event->window);
-        if (i) {
-            QVector<Atom> states = atom->netWmStates(event->window);
-            i->setNetWmState(states.toList());
-        }
     }
 }
 
@@ -1955,6 +1972,21 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         setExposeDesktop(false);
         // if this is a transient window, raise the "parent" instead
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+        // possibly set decorator
+        if (cw && needDecoration(w, cw)) {
+            cw->setDecorated(true);
+            if (FULLSCREEN_WINDOW(cw)) {
+                // fullscreen window has decorator above it during ongoing call
+                MDecoratorFrame::instance()->setManagedWindow(cw, 0, true);
+                MDecoratorFrame::instance()->setOnlyStatusbar(true);
+            } else if (atom->statusBarOverlayed(w)) {
+                MDecoratorFrame::instance()->setManagedWindow(cw, 28);
+                MDecoratorFrame::instance()->setOnlyStatusbar(false);
+            } else {
+                MDecoratorFrame::instance()->setManagedWindow(cw);
+                MDecoratorFrame::instance()->setOnlyStatusbar(false);
+            }
+        }
         Window last = getLastVisibleParent(cw);
         if (last)
             positionWindow(last, STACK_TOP);

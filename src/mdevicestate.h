@@ -20,10 +20,29 @@
 #ifndef MDEVICESTATE_H
 #define MDEVICESTATE_H
 
-#include <QObject>
 #ifdef GLES2_VERSION
 #include <QtDBus>
+
+struct ChannelDetails
+{
+    QDBusObjectPath channel;
+    QVariantMap properties;
+};
+
+bool operator==(const ChannelDetails& v1, const ChannelDetails& v2);
+inline bool operator!=(const ChannelDetails& v1, const ChannelDetails& v2)
+{
+    return !operator==(v1, v2);
+}
+QDBusArgument& operator<<(QDBusArgument& arg, const ChannelDetails& val);
+const QDBusArgument& operator>>(const QDBusArgument& arg, ChannelDetails& val);
+
+typedef QList<ChannelDetails> ChannelDetailsList;
+
+Q_DECLARE_METATYPE(ChannelDetails);
+Q_DECLARE_METATYPE(ChannelDetailsList);
 #endif
+#include <QObject>
 
 /*!
  * This is a class listening to device state that is of interest to
@@ -51,12 +70,14 @@ private slots:
 #ifdef GLES2_VERSION
     void mceDisplayStatusIndSignal(QString mode);
     void csdActivityChangedSignal(QString mode);
+    void channelsReply(QDBusPendingCallWatcher *watcher);
 #endif
 
 private:
 
 #ifdef GLES2_VERSION
     QDBusConnection *systembus_conn;
+    QDBusConnection *sessionbus_conn;
 #endif
     bool display_off;
     bool ongoing_call;
