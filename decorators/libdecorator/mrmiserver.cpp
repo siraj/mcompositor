@@ -57,7 +57,7 @@ QString MRmiServerPrivate::key() const
 }
 
 MRmiServerPrivateSocket::MRmiServerPrivateSocket(const QString& key)
-        : MRmiServerPrivate(key), _sock(0), method_size(0)
+        : MRmiServerPrivate(key), method_size(0)
 {
 }
 

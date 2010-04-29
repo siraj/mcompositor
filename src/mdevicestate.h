@@ -35,7 +35,7 @@ class MDeviceState: public QObject
 
 public:
 
-    MDeviceState();
+    MDeviceState(QObject* parent = 0);
     ~MDeviceState();
 
     bool displayOff() const { return display_off; }

@@ -25,8 +25,9 @@
 
 #include "mdevicestate.h"
 
-MDeviceState::MDeviceState()
-    : ongoing_call(false)
+MDeviceState::MDeviceState(QObject* parent)
+    : QObject(parent),
+      ongoing_call(false)
 {
     // TODO: find out initial state for ongoing_call
     display_off = false;

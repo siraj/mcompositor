@@ -115,6 +115,7 @@ private:
     MCompositeWindow *decorator_item;
     MRmiClient *remote_decorator;
     int top_offset;
+    bool no_resize;
     QRect decorator_rect;
 };
 
