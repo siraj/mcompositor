@@ -1512,7 +1512,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         Window w = stacking_list.at(i);
         if (w == first_moved) break;
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (cw && cw->isDecorator()) {
+        if (cw && (cw->isDecorator() || getLastVisibleParent(cw))) {
+            // skip decorators and transients (raised after the parent)
             ++i;
             continue;
         }
