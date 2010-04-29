@@ -24,6 +24,7 @@
 #include "mcompositescene.h"
 #include "msimplewindowframe.h"
 #include "mdecoratorframe.h"
+#include "mdevicestate.h"
 #include <mrmiserver.h>
 
 #include <QX11Info>
@@ -36,11 +37,6 @@
 #include <X11/extensions/Xfixes.h>
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
-
-#ifdef GLES2_VERSION
-#include <mce/dbus-names.h>
-#include <mce/mode-names.h>
-#endif
 
 #define TRANSLUCENT 0xe0000000
 #define OPAQUE      0xffffffff
@@ -62,6 +58,8 @@
 #define _log(txt, args... ) { FILE *out; out = fopen("/tmp/mcompositor.log", "a"); if(out) { fprintf(out, "" txt, ##args ); fclose(out); } }
 
 #define COMPOSITE_WINDOW(X) windows.value(X, 0)
+#define FULLSCREEN_WINDOW(X) \
+        ((X)->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1)
 
 class MCompAtoms
 {
@@ -669,34 +667,16 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
       glwidget(0),
       damage_cache(0),
       arranged(false),
-      compositing(true),
-      display_off(false)
+      compositing(true)
 {
     watch = new MCompositeScene(this);
     atom = MCompAtoms::instance();
 
-#ifdef GLES2_VERSION
-    systembus_conn = new QDBusConnection(QDBusConnection::systemBus());
-    systembus_conn->connect(MCE_SERVICE, MCE_SIGNAL_PATH, MCE_SIGNAL_IF,
-                            MCE_DISPLAY_SIG, this,
-                            SLOT(mceDisplayStatusIndSignal(QString)));
-    if (!systembus_conn->isConnected())
-        qWarning("Failed to connect to the D-Bus system bus");
-
-    /* FIXME: Temporary workaround, current MCE does not seem to provide
-     * get_display_status interface */
-    QFile file("/sys/class/backlight/himalaya/brightness");
-    if (file.open(QIODevice::ReadOnly)) {
-        char buf[50];
-        qint64 len = file.readLine(buf, sizeof(buf));
-        buf[49] = '\0';
-        if (len != -1) {
-            int i = atoi(buf);
-            if (i == 0) display_off = true;
-        }
-        file.close();
-    }
-#endif
+    device_state = new MDeviceState(this);
+    connect(device_state, SIGNAL(displayStateChange(bool)),
+            this, SLOT(displayOff(bool)));
+    connect(device_state, SIGNAL(callStateChange(bool)),
+            this, SLOT(callOngoing(bool)));
 }
 
 MCompositeManagerPrivate::~MCompositeManagerPrivate()
@@ -772,11 +752,13 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
                                               MCompositeWindow *cw)
 {
     bool fs;
-    // fullscreen windows are not decorated
     if (!cw)
         fs = atom->hasState(window, ATOM(_NET_WM_STATE_FULLSCREEN));
     else
-        fs = cw->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1;
+        fs = FULLSCREEN_WINDOW(cw);
+    if (device_state->ongoingCall() && fs)
+        // fullscreen window is decorated during call
+        return true;
     if (fs)
         return false;
     MCompAtoms::Type t = atom->windowType(window);
@@ -790,7 +772,7 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
 
 void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 {
-    if (display_off)
+    if (device_state->displayOff())
         return;
     XserverRegion r = XFixesCreateRegion(QX11Info::display(), 0, 0);
     int num;
@@ -1037,6 +1019,12 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
              * on top of this window */
             if (item->needDecoration() && MDecoratorFrame::instance()->decoratorItem()) {
                 MDecoratorFrame::instance()->setManagedWindow(item,28);
+                MDecoratorFrame::instance()->setManagedWindow(item);
+                if (FULLSCREEN_WINDOW(item) &&
+                    item->status() != MCompositeWindow::HUNG)
+                    MDecoratorFrame::instance()->setOnlyStatusbar(true);
+                else
+                    MDecoratorFrame::instance()->setOnlyStatusbar(false);
                 MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
                 MDecoratorFrame::instance()->raise();
                 MDecoratorFrame::instance()->decoratorItem()->setZValue(item->zValue() + 1);
@@ -1412,7 +1400,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     static QList<Window> prev_list;
     Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved;
     int last_i = stacking_list.size() - 1;
-    bool desktop_up = false;
+    bool desktop_up = false, fs_app = false;
     int app_i = -1;
     MDecoratorFrame *deco = MDecoratorFrame::instance();
     MCompositeWindow *aw = 0;
@@ -1420,8 +1408,10 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     active_app = getTopmostApp(&app_i);
     if (!active_app || app_i < 0)
         desktop_up = true;
-    else
+    else {
         aw = COMPOSITE_WINDOW(active_app);
+        fs_app = FULLSCREEN_WINDOW(aw);
+    }
 
     /* raise active app with its transients, or duihome if
      * there is no active application */
@@ -1447,8 +1437,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 	stacking_list.move(app_i, last_i);
 	/* raise decorator above the application */
 	if (deco->decoratorItem() && deco->managedWindow() == active_app &&
-            (aw->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) == -1
-             || aw->status() == MCompositeWindow::HUNG)) {
+            (!fs_app || aw->status() == MCompositeWindow::HUNG
+             || device_state->ongoingCall())) {
             Window deco_w = deco->decoratorItem()->window();
 	    int deco_i = stacking_list.indexOf(deco_w);
 	    if (deco_i >= 0) {
@@ -1470,8 +1460,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 
     /* raise docks if either the desktop is up or the application is
      * non-fullscreen */
-    if (desktop_up || !active_app || app_i < 0 || !aw ||
-        aw->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) == -1) {
+    if (desktop_up || !active_app || app_i < 0 || !aw || !fs_app) {
         first_moved = 0;
         for (int i = 0; i < last_i;) {
             Window w = stacking_list.at(i);
@@ -1495,8 +1484,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         }
     } else if (active_app && aw && deco->decoratorItem() &&
                deco->managedWindow() == active_app &&
-               (aw->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1
-               || aw->status() == MCompositeWindow::HUNG)) {
+               (fs_app || aw->status() == MCompositeWindow::HUNG)) {
         // no dock => decorator starts from (0,0)
         XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
     }
@@ -1602,7 +1590,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
 {
     Window win = e->window;
-    Window transient_for = 0;
 
     if (win == xoverlay) {
         enableRedirection();
@@ -1671,11 +1658,12 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     if (item) {
         item->setWindowTypeAtom(atom->getType(win));
         item->saveBackingStore(true);
-        if (!display_off && !item->hasAlpha() && !item->needDecoration()) {
+        if (!device_state->displayOff() && !item->hasAlpha()
+            && !item->needDecoration()) {
             item->setVisible(true);
             item->updateWindowPixmap();
             disableCompositing();
-        } else if (!display_off) {
+        } else if (!device_state->displayOff()) {
             ((MTexturePixmapItem *)item)->enableRedirectedRendering();
             item->delayShow(100);
         }
@@ -1695,6 +1683,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     if ((parentWindow(win) == RootWindow(QX11Info::display(), 0))
             && (e->event == QX11Info::appRootWindow())) {
         item = bindWindow(win);
+        Window transient_for = item->transientFor();
         if (transient_for)
             item->setWindowType(MCompositeWindow::Transient);
         else
@@ -1757,7 +1746,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             QRectF iconGeometry = atom->iconGeometry(raise);
             i->setPos(iconGeometry.topLeft());
             i->restore(iconGeometry, needComp);
-            if (!display_off && should_be_pinged(i))
+            if (!device_state->displayOff() && should_be_pinged(i))
                 i->startPing();
         }
         if (fd.frame)
@@ -1970,21 +1959,17 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         possiblyUnredirectTopmostWindow();
 }
 
-#ifdef GLES2_VERSION
-void MCompositeManagerPrivate::mceDisplayStatusIndSignal(QString mode)
+void MCompositeManagerPrivate::displayOff(bool display_off)
 {
-    if (mode == MCE_DISPLAY_OFF_STRING) {
+    if (display_off) {
         disableCompositing(REALLY_FORCED);
-        display_off = true;
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
              MCompositeWindow *i  = it.value();
              i->stopPing();
         }
-    } else if (mode == MCE_DISPLAY_ON_STRING) {
-        display_off = false;
-
+    } else {
         if (!possiblyUnredirectTopmostWindow())
             enableCompositing(false);
         /* start pinging again */
@@ -1996,7 +1981,32 @@ void MCompositeManagerPrivate::mceDisplayStatusIndSignal(QString mode)
         }
     }
 }
-#endif
+
+void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
+{
+    if (ongoing_call) {
+        // if we have fullscreen app on top, set it decorated without resizing
+        Window w = getTopmostApp();
+        MCompositeWindow *cw;
+        if (w && (cw = COMPOSITE_WINDOW(w)) && FULLSCREEN_WINDOW(cw)) {
+            cw->setDecorated(true);
+            MDecoratorFrame::instance()->setManagedWindow(cw, 0, true);
+            MDecoratorFrame::instance()->setOnlyStatusbar(true);
+        }
+        checkStacking(false);
+    } else {
+        // remove decoration from fullscreen windows
+        for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
+             it != windows.end(); ++it) {
+            MCompositeWindow *i = it.value();
+            if (FULLSCREEN_WINDOW(i) && i->needDecoration())
+                i->setDecorated(false);
+        }
+        MDecoratorFrame::instance()->setOnlyStatusbar(false);
+        checkStacking(false);
+        possiblyUnredirectTopmostWindow();
+    }
+}
 
 void MCompositeManagerPrivate::setWindowState(Window w, int state)
 {
@@ -2180,17 +2190,28 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         // Decorator window has a status bar overlayed on it as well
         // this affects all application (3rd party or native) it decorates
         MDecoratorFrame::instance()->setManagedWindow(item, 28);
+        if (fs_i != -1) {
+            // fullscreen window has decorator above it during ongoing call
+            MDecoratorFrame::instance()->setManagedWindow(item, 0, true);
+            MDecoratorFrame::instance()->setOnlyStatusbar(true);
+        } else if (atom->statusBarOverlayed(window)) {
+            MDecoratorFrame::instance()->setManagedWindow(item, 28);
+            MDecoratorFrame::instance()->setOnlyStatusbar(false);
+        } else {
+            MDecoratorFrame::instance()->setManagedWindow(item);
+            MDecoratorFrame::instance()->setOnlyStatusbar(false);
+        }
     }
     item->setIsDecorator(is_decorator);
 
-    if (!display_off)
+    if (!device_state->displayOff())
         item->updateWindowPixmap();
     stacking_list.append(window);
     addItem(item);
     item->setWindowTypeAtom(atom->getType(window));
 
     if (wtype == MCompAtoms::INPUT) {
-        if (!display_off)
+        if (!device_state->displayOff())
             item->updateWindowPixmap();
         return item;
     } else if (wtype == MCompAtoms::DESKTOP) {
@@ -2208,7 +2229,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     if (is_decorator && !MDecoratorFrame::instance()->decoratorItem()) {
         // initially update the texture for this window because this
         // will be hidden on first show
-        if (!display_off)
+        if (!device_state->displayOff())
             item->updateWindowPixmap();
         item->setVisible(false);
         MDecoratorFrame::instance()->setDecoratorItem(item);
@@ -2225,7 +2246,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
 
     checkStacking(false);
 
-    if (!display_off && should_be_pinged(item))
+    if (!device_state->displayOff() && should_be_pinged(item))
         item->startPing();
 
     return item;
@@ -2317,7 +2338,8 @@ MCompositeManagerPrivate::positionWindow(Window w,
 void MCompositeManagerPrivate::enableCompositing(bool forced,
                                                    bool ignore_display_off)
 {
-    if ((!ignore_display_off && display_off) || (compositing && !forced))
+    if ((!ignore_display_off && device_state->displayOff())
+        || (compositing && !forced))
         return;
 
     XWindowAttributes a;
@@ -2446,7 +2468,8 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w)
     enableCompositing(true);
 
     // own the window so we could kill it if we want to.
-    MDecoratorFrame::instance()->setManagedWindow(w);
+    MDecoratorFrame::instance()->setManagedWindow(w, 0, true);
+    MDecoratorFrame::instance()->setOnlyStatusbar(false);
     MDecoratorFrame::instance()->setAutoRotation(true);
     checkStacking(false);
     MDecoratorFrame::instance()->raise();

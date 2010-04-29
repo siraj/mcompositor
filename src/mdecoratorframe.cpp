@@ -44,7 +44,8 @@ MDecoratorFrame::MDecoratorFrame(QObject *p)
       client(0),
       decorator_window(0),
       decorator_item(0),
-      top_offset(0)
+      top_offset(0),
+      no_resize(false)
 {    
     MCompositeManager *mgr = (MCompositeManager *) qApp;
     connect(mgr, SIGNAL(decoratorRectChanged(const QRect&)), this,
@@ -94,9 +95,11 @@ void MDecoratorFrame::updateManagedWindowGeometry(int top_offset)
 }
 
 void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
-                                       int top_offset)
+                                       int top_offset,  bool no_resize)
 {    
     this->top_offset = top_offset;
+    this->no_resize = no_resize;
+
     if (client == cw)
         return;
     client = cw;
@@ -160,7 +163,7 @@ void MDecoratorFrame::visualizeDecorator(bool visible)
 
 void MDecoratorFrame::setDecoratorAvailableRect(const QRect& decorect)
 {    
-    if (!client)
+    if (!client || no_resize)
         return;
     
     Display* dpy = QX11Info::display();
@@ -210,4 +213,10 @@ void MDecoratorFrame::setAutoRotation(bool mode)
 {
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetAutoRotation", mode);
+}
+
+void MDecoratorFrame::setOnlyStatusbar(bool mode)
+{
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemoteSetOnlyStatusbar", mode);
 }

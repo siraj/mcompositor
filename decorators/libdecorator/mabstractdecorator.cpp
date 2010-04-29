@@ -136,3 +136,8 @@ void MAbstractDecorator::setAvailableGeometry(const QRect& rect)
 
     d->remote_compositor->invoke("MCompositeManager", "decoratorRectChanged", rect);
 }
+
+void MAbstractDecorator::RemoteSetOnlyStatusbar(bool mode)
+{
+    setOnlyStatusbar(mode);
+}
