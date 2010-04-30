@@ -49,19 +49,82 @@ const QDBusArgument& operator>>(const QDBusArgument& arg, ChannelDetails& val)
     return arg;
 }
 
+#define TP_RING_SERVICE "org.freedesktop.Telepathy.Connection.ring.tel.ring"
+#define TP_RING_PATH "/org/freedesktop/Telepathy/Connection/ring/tel/ring"
+#define TP_REQ_IFACE "org.freedesktop.Telepathy.Connection.Interface.Requests"
+#define TP_CHANNEL_IFACE "org.freedesktop.Telepathy.Channel"
+
+#define INCOMING_CALL TP_RING_PATH "/incoming"
+#define OUTGOING_CALL TP_RING_PATH "/outgoing"
+static const QString incoming = QString(INCOMING_CALL);
+static const QString outgoing = QString(OUTGOING_CALL);
+
 void MDeviceState::channelsReply(QDBusPendingCallWatcher *watcher)
 {
     QDBusPendingReply<QVariant> reply = *watcher;
 
     if (!reply.isError()) {
         ChannelDetailsList l = qdbus_cast<ChannelDetailsList>(reply.value());
-        if (l.size() > 0)
-            // FIXME: maybe check against l[0].channel.path() would be good
-            csdActivityChangedSignal(QString("Call"));
+        for (int i = 0; i < l.size(); ++i) {
+             QString p = l[i].channel.path();
+             if ((p.startsWith(incoming) || p.startsWith(outgoing))
+                 && !ongoing_calls.contains(p)) {
+                 ongoing_calls.insert(p);
+                 sessionbus_conn->connect("", p, TP_CHANNEL_IFACE, "Closed",
+                                          this, SLOT(channelClosed()));
+             }
+        }
     } else
         qWarning("Failed to get a reply from Telepathy");
 
+    if (!ongoing_call && !ongoing_calls.isEmpty()) {
+        ongoing_call = true;
+        emit callStateChange(true);
+    }
+
     watcher->deleteLater();
+}
+
+void MDeviceState::newChannelsSignal(const ChannelDetailsList &l)
+{
+    for (int i = 0; i < l.size(); ++i) {
+         QString p = l[i].channel.path();
+         if ((p.startsWith(incoming) || p.startsWith(outgoing))
+             && !ongoing_calls.contains(p)) {
+             ongoing_calls.insert(p);
+             sessionbus_conn->connect("", p, TP_CHANNEL_IFACE, "Closed",
+                                      this, SLOT(channelClosed()));
+         }
+    }
+    if (!ongoing_call && !ongoing_calls.isEmpty()) {
+        ongoing_call = true;
+        emit callStateChange(true);
+    }
+}
+
+void MDeviceState::channelClosed()
+{
+    QString p = message().path();
+    if (ongoing_calls.contains(p)) {
+        ongoing_calls.remove(p);
+        sessionbus_conn->disconnect("", p, TP_CHANNEL_IFACE, "Closed",
+                                    this, SLOT(channelClosed()));
+    }
+    if (ongoing_call && ongoing_calls.isEmpty()) {
+        ongoing_call = false;
+        emit callStateChange(false);
+    }
+}
+
+void MDeviceState::mceDisplayStatusIndSignal(QString mode)
+{
+    if (mode == MCE_DISPLAY_OFF_STRING) {
+        display_off = true;
+        emit displayStateChange(true);
+    } else if (mode == MCE_DISPLAY_ON_STRING) {
+        display_off = false;
+        emit displayStateChange(false);
+    }
 }
 #endif
 
@@ -78,13 +141,11 @@ MDeviceState::MDeviceState()
     if (!sessionbus_conn->isConnected())
         qWarning("Failed to connect to the D-Bus session bus");
     else {
-        QDBusMessage m = QDBusMessage::createMethodCall(
-                          "org.freedesktop.Telepathy.Connection.ring.tel.ring",
-                          "/org/freedesktop/Telepathy/Connection/ring/tel/ring",
-                          "org.freedesktop.DBus.Properties", "Get");
+        QDBusMessage m = QDBusMessage::createMethodCall(TP_RING_SERVICE,
+                                TP_RING_PATH,
+                                "org.freedesktop.DBus.Properties", "Get");
         QList<QVariant> a;
-        a.append(QString(
-                 "org.freedesktop.Telepathy.Connection.Interface.Requests"));
+        a.append(QString(TP_REQ_IFACE));
         a.append(QString("Channels"));
         m.setArguments(a);
 
@@ -93,15 +154,17 @@ MDeviceState::MDeviceState()
         connect(watcher,
                 SIGNAL(finished(QDBusPendingCallWatcher*)),
                 SLOT(channelsReply(QDBusPendingCallWatcher*)));
+
+        sessionbus_conn->connect("", TP_RING_PATH, TP_REQ_IFACE,
+                                 "NewChannels", this,
+                                 SLOT(newChannelsSignal(ChannelDetailsList)));
     }
 
     systembus_conn = new QDBusConnection(QDBusConnection::systemBus());
     systembus_conn->connect(MCE_SERVICE, MCE_SIGNAL_PATH, MCE_SIGNAL_IF,
                             MCE_DISPLAY_SIG, this,
                             SLOT(mceDisplayStatusIndSignal(QString)));
-    systembus_conn->connect("", "/com/nokia/csd/csnet",
-                            "com.nokia.csd.CSNet", "ActivityChanged", this,
-                            SLOT(csdActivityChangedSignal(QString)));
+
     if (!systembus_conn->isConnected())
         qWarning("Failed to connect to the D-Bus system bus");
 
@@ -124,27 +187,3 @@ MDeviceState::MDeviceState()
 MDeviceState::~MDeviceState()
 {
 }
-
-#ifdef GLES2_VERSION
-void MDeviceState::mceDisplayStatusIndSignal(QString mode)
-{
-    if (mode == MCE_DISPLAY_OFF_STRING) {
-        display_off = true;
-        emit displayStateChange(true);
-    } else if (mode == MCE_DISPLAY_ON_STRING) {
-        display_off = false;
-        emit displayStateChange(false);
-    }
-}
-
-void MDeviceState::csdActivityChangedSignal(QString mode)
-{
-    if (mode == "Call") {
-        ongoing_call = true;
-        emit callStateChange(true);
-    } else if (ongoing_call) {
-        ongoing_call = false;
-        emit callStateChange(false);
-    }
-}
-#endif

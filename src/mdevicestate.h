@@ -49,6 +49,9 @@ Q_DECLARE_METATYPE(ChannelDetailsList);
  * MCompositeManager.
  */
 class MDeviceState: public QObject
+#ifdef GLES2_VERSION
+                    , protected QDBusContext
+#endif
 {
     Q_OBJECT
 
@@ -69,8 +72,9 @@ private slots:
 
 #ifdef GLES2_VERSION
     void mceDisplayStatusIndSignal(QString mode);
-    void csdActivityChangedSignal(QString mode);
     void channelsReply(QDBusPendingCallWatcher *watcher);
+    void newChannelsSignal(const ChannelDetailsList &l);
+    void channelClosed();
 #endif
 
 private:
@@ -78,6 +82,7 @@ private:
 #ifdef GLES2_VERSION
     QDBusConnection *systembus_conn;
     QDBusConnection *sessionbus_conn;
+    QSet<QString> ongoing_calls;
 #endif
     bool display_off;
     bool ongoing_call;
