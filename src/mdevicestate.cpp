@@ -128,10 +128,11 @@ void MDeviceState::mceDisplayStatusIndSignal(QString mode)
 }
 #endif
 
-MDeviceState::MDeviceState()
+MDeviceState::MDeviceState(QObject* parent)
+    : QObject(parent),
+      ongoing_call(false)
 {
     display_off = false;
-    ongoing_call = false;
 #ifdef GLES2_VERSION
     qDBusRegisterMetaType<ChannelDetails>();
     qDBusRegisterMetaType<ChannelDetailsList>();

@@ -692,7 +692,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
     watch = new MCompositeScene(this);
     atom = MCompAtoms::instance();
 
-    device_state = new MDeviceState();
+    device_state = new MDeviceState(this);
     connect(device_state, SIGNAL(displayStateChange(bool)),
             this, SLOT(displayOff(bool)));
     connect(device_state, SIGNAL(callStateChange(bool)),
@@ -734,6 +734,7 @@ void MCompositeManagerPrivate::enableInput()
 
 void MCompositeManagerPrivate::prepare()
 {
+    MDecoratorFrame::instance();
     watch->prepareRoot();
     Window w;
     QString wm_name = "MCompositor";
@@ -1039,6 +1040,7 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
              * which will break when we have one decorated window
              * on top of this window */
             if (item->needDecoration() && MDecoratorFrame::instance()->decoratorItem()) {
+                MDecoratorFrame::instance()->setManagedWindow(item,28);
                 MDecoratorFrame::instance()->setManagedWindow(item);
                 if (FULLSCREEN_WINDOW(item) &&
                     item->status() != MCompositeWindow::HUNG)
@@ -1687,7 +1689,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             && !item->needDecoration()) {
             item->setVisible(true);
             item->updateWindowPixmap();
-	    disableCompositing();
+            disableCompositing();
         } else if (!device_state->displayOff()) {
             ((MTexturePixmapItem *)item)->enableRedirectedRendering();
             item->delayShow(100);
@@ -2229,6 +2231,11 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
 
     if (needDecoration(window, item)) {
         item->setDecorated(true);
+        /* FIXME when statusbar implementation changes */
+        
+        // Decorator window has a status bar overlayed on it as well
+        // this affects all application (3rd party or native) it decorates
+        MDecoratorFrame::instance()->setManagedWindow(item, 28);
         if (fs_i != -1) {
             // fullscreen window has decorator above it during ongoing call
             MDecoratorFrame::instance()->setManagedWindow(item, 0, true);

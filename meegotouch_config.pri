@@ -9,3 +9,11 @@ INCLUDEPATH += $$M_INSTALL_HEADERS
 isEqual(TESTABILITY,"on") {
     DEFINES += WINDOW_DEBUG
 }
+
+# This is not a DUI prefix
+exists(/usr/include/X11/extensions/shapeconst.h) {
+     DEFINES += HAVE_SHAPECONST
+}
+
+# Compositor components only
+VERSION = 0.4.1

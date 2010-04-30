@@ -57,7 +57,7 @@ QString MRmiServerPrivate::key() const
 }
 
 MRmiServerPrivateSocket::MRmiServerPrivateSocket(const QString& key)
-        : MRmiServerPrivate(key), _sock(0), method_size(0)
+        : MRmiServerPrivate(key), method_size(0)
 {
 }
 
@@ -82,15 +82,15 @@ void MRmiServerPrivateSocket::_q_incoming()
     q->connect(s, SIGNAL(disconnected()), s, SLOT(deleteLater()));
     if (!s)
         return;
-    _sock = s;
-    q->connect(_sock, SIGNAL(readyRead()), q, SLOT(_q_readData()));
+    q->connect(s, SIGNAL(readyRead()), this, SLOT(_q_readData()));
 }
 
 void MRmiServerPrivateSocket::_q_readData()
 {
-    uint sz = _sock->bytesAvailable();
+    QLocalSocket* socket = (QLocalSocket*) sender();
+    uint sz = socket->bytesAvailable();
 
-    QDataStream stream(_sock);
+    QDataStream stream(socket);
     stream.setVersion(QDataStream::Qt_4_0);
 
     if (method_size == 0) {

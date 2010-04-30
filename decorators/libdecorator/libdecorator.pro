@@ -5,7 +5,6 @@ INCLUDEPATH += .
 CONFIG += dll release
 QT += opengl network
 TARGET = decorator
-VERSION = 0.3.10
 
 HEADERS += mabstractdecorator.h \
            mrmiclient_p.h \

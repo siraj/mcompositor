@@ -23,8 +23,10 @@
 
 #include <QVariant>
 #include <QLocalServer>
+#include <QObject>
 
 class QDataStream;
+class MRmiServer;
 
 class MRmiServerPrivate
 {
@@ -46,8 +48,9 @@ private:
     QObject* _obj;
 };
 
-class MRmiServerPrivateSocket: public MRmiServerPrivate
+class MRmiServerPrivateSocket: public QObject, public MRmiServerPrivate
 {
+    Q_OBJECT
     Q_DECLARE_PUBLIC( MRmiServer )
 
 public:
@@ -55,6 +58,7 @@ public:
 
     virtual void exportObject(QObject* p);
 
+public slots:
     virtual void _q_incoming();
     virtual void _q_readData();
 
@@ -62,7 +66,6 @@ private:
     void invoke(QDataStream&);
 
     QLocalServer  _serv;
-    QLocalSocket* _sock;
     quint16 method_size;
 };
 

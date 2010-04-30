@@ -21,9 +21,11 @@
 #define DUIDECORATORFRAME_H
 
 #include <QObject>
+#include <QRect>
 
 class MCompositeWindow;
 class MRmiClient;
+class QRect;
 
 /*!
  * MDecoratorFrame is a singleton class that represents the decorator process
@@ -96,6 +98,9 @@ public:
 
     MCompositeWindow *decoratorItem() const;
 
+public slots:
+    void setDecoratorAvailableRect(const QRect& r);
+
 private slots:
     void destroyDecorator();
     void destroyClient();
@@ -109,6 +114,9 @@ private:
     Qt::HANDLE decorator_window;
     MCompositeWindow *decorator_item;
     MRmiClient *remote_decorator;
+    int top_offset;
+    bool no_resize;
+    QRect decorator_rect;
 };
 
 #endif // DUIDECORATORFRAME_H
