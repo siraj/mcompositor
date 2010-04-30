@@ -108,8 +108,9 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
         return;
     
     qulonglong winid = client ? client->window() : 0;
-    remote_decorator->invoke("MAbstractDecorator",
-                             "RemoteSetClientGeometry", cw->requestedGeometry());
+    if(cw)
+        remote_decorator->invoke("MAbstractDecorator",
+                                 "RemoteSetClientGeometry", cw->requestedGeometry());
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetAutoRotation", false);
     remote_decorator->invoke("MAbstractDecorator",
