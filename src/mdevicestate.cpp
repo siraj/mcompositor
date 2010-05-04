@@ -26,96 +26,6 @@
 #include "mdevicestate.h"
 
 #ifdef GLES2_VERSION
-bool operator==(const ChannelDetails& v1, const ChannelDetails& v2)
-{
-    return ((v1.channel == v2.channel)
-            && (v1.properties == v2.properties)
-            );
-}
-
-QDBusArgument& operator<<(QDBusArgument& arg, const ChannelDetails& val)
-{
-    arg.beginStructure();
-    arg << val.channel << val.properties;
-    arg.endStructure();
-    return arg;
-}
-
-const QDBusArgument& operator>>(const QDBusArgument& arg, ChannelDetails& val)
-{
-    arg.beginStructure();
-    arg >> val.channel >> val.properties;
-    arg.endStructure();
-    return arg;
-}
-
-#define TP_RING_SERVICE "org.freedesktop.Telepathy.Connection.ring.tel.ring"
-#define TP_RING_PATH "/org/freedesktop/Telepathy/Connection/ring/tel/ring"
-#define TP_REQ_IFACE "org.freedesktop.Telepathy.Connection.Interface.Requests"
-#define TP_CHANNEL_IFACE "org.freedesktop.Telepathy.Channel"
-
-#define INCOMING_CALL TP_RING_PATH "/incoming"
-#define OUTGOING_CALL TP_RING_PATH "/outgoing"
-static const QString incoming = QString(INCOMING_CALL);
-static const QString outgoing = QString(OUTGOING_CALL);
-
-void MDeviceState::channelsReply(QDBusPendingCallWatcher *watcher)
-{
-    QDBusPendingReply<QVariant> reply = *watcher;
-
-    if (!reply.isError()) {
-        ChannelDetailsList l = qdbus_cast<ChannelDetailsList>(reply.value());
-        for (int i = 0; i < l.size(); ++i) {
-             QString p = l[i].channel.path();
-             if ((p.startsWith(incoming) || p.startsWith(outgoing))
-                 && !ongoing_calls.contains(p)) {
-                 ongoing_calls.insert(p);
-                 sessionbus_conn->connect("", p, TP_CHANNEL_IFACE, "Closed",
-                                          this, SLOT(channelClosed()));
-             }
-        }
-    } else
-        qWarning("Failed to get a reply from Telepathy");
-
-    if (!ongoing_call && !ongoing_calls.isEmpty()) {
-        ongoing_call = true;
-        emit callStateChange(true);
-    }
-
-    watcher->deleteLater();
-}
-
-void MDeviceState::newChannelsSignal(const ChannelDetailsList &l)
-{
-    for (int i = 0; i < l.size(); ++i) {
-         QString p = l[i].channel.path();
-         if ((p.startsWith(incoming) || p.startsWith(outgoing))
-             && !ongoing_calls.contains(p)) {
-             ongoing_calls.insert(p);
-             sessionbus_conn->connect("", p, TP_CHANNEL_IFACE, "Closed",
-                                      this, SLOT(channelClosed()));
-         }
-    }
-    if (!ongoing_call && !ongoing_calls.isEmpty()) {
-        ongoing_call = true;
-        emit callStateChange(true);
-    }
-}
-
-void MDeviceState::channelClosed()
-{
-    QString p = message().path();
-    if (ongoing_calls.contains(p)) {
-        ongoing_calls.remove(p);
-        sessionbus_conn->disconnect("", p, TP_CHANNEL_IFACE, "Closed",
-                                    this, SLOT(channelClosed()));
-    }
-    if (ongoing_call && ongoing_calls.isEmpty()) {
-        ongoing_call = false;
-        emit callStateChange(false);
-    }
-}
-
 void MDeviceState::mceDisplayStatusIndSignal(QString mode)
 {
     if (mode == MCE_DISPLAY_OFF_STRING) {
@@ -128,39 +38,28 @@ void MDeviceState::mceDisplayStatusIndSignal(QString mode)
 }
 #endif
 
+void MDeviceState::callPropChanged()
+{
+    QString val = call_prop->value().toString();
+    if (val == "active") {
+        ongoing_call = true;
+        emit callStateChange(true);
+    } else {
+        ongoing_call = false;
+        emit callStateChange(false);
+    }
+}
+
 MDeviceState::MDeviceState(QObject* parent)
     : QObject(parent),
       ongoing_call(false)
 {
     display_off = false;
+
+    call_prop = new ContextProperty("com.nokia.policy.call");
+    connect(call_prop, SIGNAL(valueChanged()), this, SLOT(callPropChanged()));
+
 #ifdef GLES2_VERSION
-    qDBusRegisterMetaType<ChannelDetails>();
-    qDBusRegisterMetaType<ChannelDetailsList>();
-
-    // FIXME: Use ContextKit for these when they provide the infos
-    sessionbus_conn = new QDBusConnection(QDBusConnection::sessionBus());
-    if (!sessionbus_conn->isConnected())
-        qWarning("Failed to connect to the D-Bus session bus");
-    else {
-        QDBusMessage m = QDBusMessage::createMethodCall(TP_RING_SERVICE,
-                                TP_RING_PATH,
-                                "org.freedesktop.DBus.Properties", "Get");
-        QList<QVariant> a;
-        a.append(QString(TP_REQ_IFACE));
-        a.append(QString("Channels"));
-        m.setArguments(a);
-
-        QDBusPendingCall r = sessionbus_conn->asyncCall(m);
-        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(r);
-        connect(watcher,
-                SIGNAL(finished(QDBusPendingCallWatcher*)),
-                SLOT(channelsReply(QDBusPendingCallWatcher*)));
-
-        sessionbus_conn->connect("", TP_RING_PATH, TP_REQ_IFACE,
-                                 "NewChannels", this,
-                                 SLOT(newChannelsSignal(ChannelDetailsList)));
-    }
-
     systembus_conn = new QDBusConnection(QDBusConnection::systemBus());
     systembus_conn->connect(MCE_SERVICE, MCE_SIGNAL_PATH, MCE_SIGNAL_IF,
                             MCE_DISPLAY_SIG, this,

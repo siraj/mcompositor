@@ -52,7 +52,8 @@ SOURCES += \
 
 RESOURCES = tools.qrc
 
-CONFIG +=  release
+CONFIG += release link_pkgconfig
+PKGCONFIG += contextsubscriber-1.0
 QT += core gui opengl
 
 target.path += $$M_INSTALL_BIN

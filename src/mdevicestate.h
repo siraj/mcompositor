@@ -20,27 +20,9 @@
 #ifndef MDEVICESTATE_H
 #define MDEVICESTATE_H
 
+#include <contextproperty.h>
 #ifdef GLES2_VERSION
 #include <QtDBus>
-
-struct ChannelDetails
-{
-    QDBusObjectPath channel;
-    QVariantMap properties;
-};
-
-bool operator==(const ChannelDetails& v1, const ChannelDetails& v2);
-inline bool operator!=(const ChannelDetails& v1, const ChannelDetails& v2)
-{
-    return !operator==(v1, v2);
-}
-QDBusArgument& operator<<(QDBusArgument& arg, const ChannelDetails& val);
-const QDBusArgument& operator>>(const QDBusArgument& arg, ChannelDetails& val);
-
-typedef QList<ChannelDetails> ChannelDetailsList;
-
-Q_DECLARE_METATYPE(ChannelDetails);
-Q_DECLARE_METATYPE(ChannelDetailsList);
 #endif
 #include <QObject>
 
@@ -49,9 +31,6 @@ Q_DECLARE_METATYPE(ChannelDetailsList);
  * MCompositeManager.
  */
 class MDeviceState: public QObject
-#ifdef GLES2_VERSION
-                    , protected QDBusContext
-#endif
 {
     Q_OBJECT
 
@@ -72,18 +51,15 @@ private slots:
 
 #ifdef GLES2_VERSION
     void mceDisplayStatusIndSignal(QString mode);
-    void channelsReply(QDBusPendingCallWatcher *watcher);
-    void newChannelsSignal(const ChannelDetailsList &l);
-    void channelClosed();
 #endif
+    void callPropChanged();
 
 private:
 
 #ifdef GLES2_VERSION
     QDBusConnection *systembus_conn;
-    QDBusConnection *sessionbus_conn;
-    QSet<QString> ongoing_calls;
 #endif
+    ContextProperty *call_prop;
     bool display_off;
     bool ongoing_call;
 };
