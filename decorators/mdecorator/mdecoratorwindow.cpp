@@ -52,8 +52,6 @@ public:
         : MAbstractDecorator(p),
         decorwindow(p)
     {
-        connect(this, SIGNAL(windowTitleChanged(const QString&)),
-                p, SIGNAL(windowTitleChanged(const QString&)));
     }
 
     ~MDecorator() {
@@ -75,8 +73,7 @@ protected:
             }
         }
         setAvailableGeometry(decorwindow->availableClientRect());
-        
-        emit windowTitleChanged(title);
+        decorwindow->setWindowTitle(title);
     }
 
     virtual void setAutoRotation(bool mode) {
@@ -85,14 +82,10 @@ protected:
             decorwindow->setOrientationAngle(M::Angle0);
     }
 
-    virtual void setOnlyStatusbar(bool mode) {
-        emit onlyStatusbar(mode);
+    virtual void setOnlyStatusbar(bool mode) 
+    {
+        decorwindow->setOnlyStatusbar(mode);
     }
-
-signals:
-
-    void windowTitleChanged(const QString&);
-    void onlyStatusbar(bool mode);
 
 private:
 
@@ -130,9 +123,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     connect(escapeButtonPanel, SIGNAL(buttonClicked()), this,
             SIGNAL(escapeClicked()));
 
-    connect(this, SIGNAL(windowTitleChanged(const QString&)),
-            navigationBar, SLOT(setViewMenuDescription(const QString&)));
-
     sceneManager()->appearSceneWindowNow(statusBar);
     setOnlyStatusbar(false);
 
@@ -143,14 +133,17 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
             SIGNAL(orientationChanged(M::Orientation)),
             this,
             SLOT(screenRotated(M::Orientation)));
-    connect(d, SIGNAL(onlyStatusbar(bool)),
-            this, SLOT(setOnlyStatusbar(bool)));
 
     setFocusPolicy(Qt::NoFocus);
     setSceneSize();
     setMDecoratorWindowProperty();
 
     setInputRegion();
+}
+
+void MDecoratorWindow::setWindowTitle(const QString& title)
+{
+    navigationBar->setViewMenuDescription(title);
 }
 
 MDecoratorWindow::~MDecoratorWindow()

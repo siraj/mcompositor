@@ -45,17 +45,17 @@ public:
     virtual ~MDecoratorWindow();
     
     const QRect availableClientRect() const;
+    void setWindowTitle(const QString& title);
+    void setOnlyStatusbar(bool mode);
 
 private slots:
 
     void screenRotated(const M::Orientation &orientation);
-    void setOnlyStatusbar(bool mode);
 
 signals:
 
     void homeClicked();
     void escapeClicked();
-    void windowTitleChanged(const QString& title);
 
 private:
     void setSceneSize();
