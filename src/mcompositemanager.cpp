@@ -1000,22 +1000,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         set_global_alpha(0, 255);
 #endif
 
-        // activate next mapped window
-        // FIXME: this is flawed because the unmapped window is already
-        // moved below home in stacking_list at this point. Needs to be fixed
-        // so that the chained window case does not break.
-        for (int i = stacking_list.indexOf(e->window) - 1; i >= 0; --i) {
-             MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
-             if (cw && cw->isMapped()) {
-                 /* either lower window of the application (in chained window
-                  * case), or duihome is activated */
-                 activateWindow(stacking_list.at(i), CurrentTime, true);
-                 return;
-             }
-        }
-        // workaround for the flawedness...
-        if (stack[DESKTOP_LAYER])
-            activateWindow(stack[DESKTOP_LAYER], CurrentTime, true);
+        if (!possiblyUnredirectTopmostWindow())
+            enableCompositing();
     }
 }
 
@@ -1437,11 +1423,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     /* raise active app with its transients, or duihome if
      * there is no active application */
     if (!desktop_up && active_app && app_i >= 0 && aw) {
-        if (duihome) {
-            /* stack duihome right below the application */
-	    stacking_list.move(stacking_list.indexOf(duihome), last_i);
-	    app_i = stacking_list.indexOf(active_app);
-	}
 	/* raise application windows belonging to the same group */
 	XID group;
 	if ((group = aw->windowGroup())) {
@@ -1873,6 +1854,27 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                     enableCompositing(FORCED);
                     needComp = true;
                 }
+
+                // mark other applications on top of the desktop Iconified and
+                // raise the desktop above them to make the animation end onto
+                // the desktop
+                int wi, lower_i = -1;
+                for (wi = stacking_list.size() - 1; wi >= 0; --wi) {
+                     Window w = stacking_list.at(wi);
+                     if (w == lower) {
+                         lower_i = wi;
+                         continue;
+                     }
+                     if (w == stack[DESKTOP_LAYER])
+                         break;
+                     MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+                     if (cw && cw->isMapped() && isAppWindow(cw))
+                         setWindowState(cw->window(), IconicState);
+                }
+                Q_ASSERT(lower_i > 0);
+                stacking_list.move(stacking_list.indexOf(stack[DESKTOP_LAYER]),
+                                   lower_i - 1);
+
                 // Delayed transition is only available on platforms
                 // that have selective compositing. This is triggered
                 // when windows are rendered off-screen
@@ -1905,6 +1907,7 @@ void MCompositeManagerPrivate::iconifyOnLower(MCompositeWindow *window)
     }
 
     if (stack[DESKTOP_LAYER]) {
+        // redirect windows for the switcher
         enableCompositing();
         positionWindow(stack[DESKTOP_LAYER], STACK_TOP);
         if (compositing)
@@ -2293,6 +2296,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     if (h) {
         if ((h->flags & StateHint) && (h->initial_state == IconicState)) {
             setWindowState(window, IconicState);
+            // FIXME: stack the window under desktop once NB#167488 is solved
         }
         XFree(h);
     }
