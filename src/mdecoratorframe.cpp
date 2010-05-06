@@ -80,7 +80,16 @@ void MDecoratorFrame::raise()
 
 void MDecoratorFrame::updateManagedWindowGeometry()
 {
+    this->top_offset = top_offset;
     if (client && client->needDecoration()) {
+#if 0
+        Display *dpy = QX11Info::display();
+        XWindowAttributes a;
+        if (!XGetWindowAttributes(dpy, decorator_window, &a)) {
+            qWarning("%s: invalid window 0x%lx", __func__, decorator_window);
+            return;
+        }
+#endif
         setDecoratorAvailableRect(decorator_rect);
     }
 }

@@ -314,6 +314,11 @@ public:
     virtual void resize(int w, int h) = 0;
 
     static bool isTransitioning();
+    
+    /*!
+     * Returns whether this object represents a valid (i.e. viewable) window
+     */
+    bool isValid() const { return is_valid; }
 
 public slots:
 
@@ -393,6 +398,7 @@ private:
     QList<Atom> net_wm_state;
     bool window_obscured;
     bool window_mapped;
+    bool is_valid;
     QRect req_geom;
 
     static bool window_transitioning;
@@ -406,6 +412,8 @@ private:
     // Main ping timer
     QTimer *t_ping;
     Qt::HANDLE win_id;
+
+    friend class MTexturePixmapPrivate;
 };
 
 #endif

@@ -203,15 +203,16 @@ void MTexturePixmapPrivate::drawTexture(const QTransform &transform, const QRect
 
 void MTexturePixmapPrivate::init()
 {
-    if (!glresource) {
-        glresource = new MGLResourceManager(glwidget);
-        glresource->initVertices(glwidget);
-    }
-
     XWindowAttributes a;
     if (!XGetWindowAttributes(QX11Info::display(), item->window(), &a)) {
         qWarning("%s: invalid window 0x%lx", __func__, item->window());
+        item->is_valid = false;
         return;
+    }
+    item->is_valid = true;
+    if (!glresource) {
+        glresource = new MGLResourceManager(glwidget);
+        glresource->initVertices(glwidget);
     }
 
     XRenderPictFormat *format = XRenderFindVisualFormat(QX11Info::display(), a.visual);

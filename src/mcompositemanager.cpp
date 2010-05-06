@@ -121,15 +121,15 @@ public:
         // DUI-specific
         _MEEGOTOUCH_DECORATOR_WINDOW,
         _DUI_STATUSBAR_OVERLAY,
-        _DUI_GLOBAL_ALPHA,
+        _MEEGOTOUCH_GLOBAL_ALPHA,
 
 #ifdef WINDOW_DEBUG
-        _DUI_WM_INFO,
-        _DUI_WM_WINDOW_ZVALUE,
-        _DUI_WM_WINDOW_COMPOSITED_VISIBLE,
-        _DUI_WM_WINDOW_COMPOSITED_INVISIBLE,
-        _DUI_WM_WINDOW_DIRECT_VISIBLE,
-        _DUI_WM_WINDOW_DIRECT_INVISIBLE,
+        _M_WM_INFO,
+        _M_WM_WINDOW_ZVALUE,
+        _M_WM_WINDOW_COMPOSITED_VISIBLE,
+        _M_WM_WINDOW_COMPOSITED_INVISIBLE,
+        _M_WM_WINDOW_DIRECT_VISIBLE,
+        _M_WM_WINDOW_DIRECT_INVISIBLE,
 #endif
 
         ATOMS_TOTAL
@@ -225,16 +225,16 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_DECORATOR_WINDOW",
         // TODO: remove this when statusbar in-scene approach is done
         "_DUI_STATUSBAR_OVERLAY",
-        "_DUI_GLOBAL_ALPHA",
+        "_MEEGOTOUCH_GLOBAL_ALPHA",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
-        "_DUI_WM_INFO",
-        "_DUI_WM_WINDOW_ZVALUE",
-        "_DUI_WM_WINDOW_COMPOSITED_VISIBLE",
-        "_DUI_WM_WINDOW_COMPOSITED_INVISIBLE",
-        "_DUI_WM_WINDOW_DIRECT_VISIBLE",
-        "_DUI_WM_WINDOW_DIRECT_INVISIBLE",
+        "_M_WM_INFO",
+        "_M_WM_WINDOW_ZVALUE",
+        "_M_WM_WINDOW_COMPOSITED_VISIBLE",
+        "_M_WM_WINDOW_COMPOSITED_INVISIBLE",
+        "_M_WM_WINDOW_DIRECT_VISIBLE",
+        "_M_WM_WINDOW_DIRECT_INVISIBLE",
 #endif
     };
 
@@ -439,7 +439,7 @@ int MCompAtoms::globalAlphaFromWindow(Window w)
     unsigned long n, left;
 
     unsigned char *data;
-    int result = XGetWindowProperty(QX11Info::display(), w, atoms[_DUI_GLOBAL_ALPHA], 0L, 1L, False,
+    int result = XGetWindowProperty(QX11Info::display(), w, atoms[_MEEGOTOUCH_GLOBAL_ALPHA], 0L, 1L, False,
                                     XA_CARDINAL, &actual, &format,
                                     &n, &left, &data);
     if (result == Success && data != NULL) {
@@ -1711,6 +1711,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     if ((parentWindow(win) == RootWindow(QX11Info::display(), 0))
             && (e->event == QX11Info::appRootWindow())) {
         item = bindWindow(win);
+        if (!item)
+            return;
         Window transient_for = item->transientFor();
         if (transient_for)
             item->setWindowType(MCompositeWindow::Transient);
@@ -2077,15 +2079,15 @@ void MCompositeManagerPrivate::setWindowDebugProperties(Window w)
     CARD32 d[1];
     if (i->windowVisible())
         d[0] = i->isDirectRendered() ?
-               ATOM(_DUI_WM_WINDOW_DIRECT_VISIBLE) : ATOM(_DUI_WM_WINDOW_COMPOSITED_VISIBLE);
+               ATOM(_M_WM_WINDOW_DIRECT_VISIBLE) : ATOM(_M_WM_WINDOW_COMPOSITED_VISIBLE);
     else
         d[0] = i->isDirectRendered() ?
-               ATOM(_DUI_WM_WINDOW_DIRECT_INVISIBLE) : ATOM(_DUI_WM_WINDOW_COMPOSITED_INVISIBLE);
+               ATOM(_M_WM_WINDOW_DIRECT_INVISIBLE) : ATOM(_M_WM_WINDOW_COMPOSITED_INVISIBLE);
 
-    XChangeProperty(QX11Info::display(), w, ATOM(_DUI_WM_INFO), XA_ATOM,
+    XChangeProperty(QX11Info::display(), w, ATOM(_M_WM_INFO), XA_ATOM,
                     32, PropModeReplace, (unsigned char *)d, 1);
     long z = i->zValue();
-    XChangeProperty(QX11Info::display(), w, ATOM(_DUI_WM_WINDOW_ZVALUE), XA_CARDINAL, 32, PropModeReplace,
+    XChangeProperty(QX11Info::display(), w, ATOM(_M_WM_WINDOW_ZVALUE), XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *) &z, 1);
 
 #else
@@ -2158,13 +2160,14 @@ void MCompositeManagerPrivate::redirectWindows()
         if (attr.map_state == IsViewable &&
                 localwin != kids[i] &&
                 (attr.width > 1 && attr.height > 1)) {
-            bindWindow(kids[i], &attr);
-            if (kids[i] == localwin || kids[i] == parentWindow(localwin))
-                continue;
-            XGrabButton(QX11Info::display(), AnyButton, AnyModifier, kids[i],
-                        True,
-                        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-                        GrabModeSync, GrabModeSync, None, None);
+            if (bindWindow(kids[i], &attr)) {
+                if (kids[i] == localwin || kids[i] == parentWindow(localwin))
+                    continue;
+                XGrabButton(QX11Info::display(), AnyButton, AnyModifier, kids[i],
+                            True,
+                            ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+                            GrabModeSync, GrabModeSync, None, None);
+            }
         }
     }
     if (kids)
@@ -2195,7 +2198,7 @@ bool MCompositeManagerPrivate::removeWindow(Window w)
 }
 
 MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
-                XWindowAttributes *wa)
+                                                       XWindowAttributes *wa)
 {
     Display *display = QX11Info::display();
     bool is_decorator = atom->isDecorator(window);
@@ -2205,6 +2208,11 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
 
     MCompAtoms::Type wtype = atom->windowType(window);
     MTexturePixmapItem *item = new MTexturePixmapItem(window, glwidget);
+    if (!item->isValid()) {
+        item->deleteLater();
+        return 0;
+    }
+    
     item->setZValue(wtype);
     item->saveState();
     item->setIsMapped(true);
