@@ -28,12 +28,11 @@
 #ifdef GLES2_VERSION
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
-#define GLSurface EGLSurface
+#include <EGL/eglext.h>
 class EglResourceManager;
 #elif DESKTOP_VERSION
 #include <GL/glx.h>
 #include <GL/gl.h>
-#define GLSurface GLXPixmap
 #endif
 
 class QGLWidget;
@@ -66,7 +65,11 @@ public:
     QGLWidget *glwidget;
     Window window;
     Pixmap windowp;
-    GLSurface glpixmap;
+#ifdef GLES2_VERSION
+    EGLImageKHR egl_image;
+#else
+    GLXPixmap glpixmap;
+#endif
     GLuint textureId;
     GLuint ctextureId;
     static bool inverted_texture;

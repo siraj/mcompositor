@@ -231,7 +231,9 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MT
       glwidget(w),
       window(window),
       windowp(0),
+#ifdef DESKTOP_VERSION
       glpixmap(0),
+#endif
       textureId(0),
       ctextureId(0),
       custom_tfp(false),
