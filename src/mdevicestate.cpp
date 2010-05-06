@@ -86,4 +86,6 @@ MDeviceState::MDeviceState(QObject* parent)
 
 MDeviceState::~MDeviceState()
 {
+    delete call_prop;
+    call_prop = 0;
 }
