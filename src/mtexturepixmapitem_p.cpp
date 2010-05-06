@@ -253,16 +253,14 @@ MTexturePixmapPrivate::~MTexturePixmapPrivate()
 
 void MTexturePixmapPrivate::damageTracking(bool enabled)
 {
-    if (enabled) {
-        if (!damage_object)
-            damage_object = XDamageCreate(QX11Info::display(), window,
-                                          XDamageReportNonEmpty); 
-    } else {
-        if (damage_object) {
-            XDamageDestroy(QX11Info::display(), damage_object);
-            damage_object = NULL;
-        }
+    if (damage_object) {
+        XDamageDestroy(QX11Info::display(), damage_object);
+        damage_object = NULL;
     }
+
+    if (enabled && !damage_object)
+        damage_object = XDamageCreate(QX11Info::display(), window,
+                                      XDamageReportNonEmpty); 
 }
 
 void MTexturePixmapPrivate::saveBackingStore(bool renew)
