@@ -35,6 +35,7 @@
 #include <QObject>
 
 class MSceneManager;
+class MDecorator;
 
 class MDecoratorWindow : public MWindow
 {
@@ -45,6 +46,7 @@ public:
     virtual ~MDecoratorWindow();
     
     const QRect availableClientRect() const;
+    bool x11Event(XEvent *e);
 
 private slots:
 
@@ -75,6 +77,8 @@ private:
     MStatusBar *statusBar;
     QRect decoratorRect;
     bool only_statusbar;
+    Atom onlyStatusbarAtom, managedWindowAtom;
+    MDecorator *d;
 
     Q_DISABLE_COPY(MDecoratorWindow);
 };

@@ -71,13 +71,12 @@ public:
      * Possibly resizes and moves the managed window to match the decorator
      * and to fit to the screen.
      */
-    void updateManagedWindowGeometry(int top_offset = 0);
+    void updateManagedWindowGeometry();
 
     /*!
      * Sets the managed window.
      */
-    void setManagedWindow(MCompositeWindow *cw, int top_offset = 0,
-                          bool no_resize = false);
+    void setManagedWindow(MCompositeWindow *cw, bool no_resize = false);
 
     /*!
      * Sets the automatic rotation mode.

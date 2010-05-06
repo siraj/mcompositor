@@ -44,7 +44,6 @@ MDecoratorFrame::MDecoratorFrame(QObject *p)
       client(0),
       decorator_window(0),
       decorator_item(0),
-      top_offset(0),
       no_resize(false)
 {    
     MCompositeManager *mgr = (MCompositeManager *) qApp;
@@ -79,25 +78,16 @@ void MDecoratorFrame::raise()
         decorator_item->setVisible(true);
 }
 
-void MDecoratorFrame::updateManagedWindowGeometry(int top_offset)
+void MDecoratorFrame::updateManagedWindowGeometry()
 {
     if (client && client->needDecoration()) {
-        Display *dpy = QX11Info::display();
-#if 0
-        XWindowAttributes a;
-        if (!XGetWindowAttributes(dpy, decorator_window, &a)) {
-            qWarning("%s: invalid window 0x%lx", __func__, decorator_window);
-            return;
-        }
-#endif
         setDecoratorAvailableRect(decorator_rect);
     }
 }
 
 void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
-                                       int top_offset,  bool no_resize)
+                                       bool no_resize)
 {    
-    this->top_offset = top_offset;
     this->no_resize = no_resize;
 
     if (client == cw)
@@ -113,8 +103,17 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
                                  "RemoteSetClientGeometry", cw->requestedGeometry());
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetAutoRotation", false);
+    /* FIXME: replaced with a window property due to reliability problems
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetManagedWinId", winid);
+                             */
+    if (decorator_window) {
+        long val = winid;
+        Atom a = XInternAtom(QX11Info::display(),
+                             "_MDECORATOR_MANAGED_WINDOW", False);
+        XChangeProperty(QX11Info::display(), decorator_window, a, XA_WINDOW,
+                        32, PropModeReplace, (unsigned char *)&val, 1);
+    }
     
     if (cw)
         connect(cw, SIGNAL(destroyed()), SLOT(destroyClient()));
@@ -189,10 +188,9 @@ void MDecoratorFrame::setDecoratorAvailableRect(const QRect& decorect)
     
     // region of decorator + statusbar window. remove this once we removed the statubar
     QRect actual_decorect = decorect;
-    actual_decorect.setHeight(decorect.height() + top_offset + actual_decor_ypos);
+    actual_decorect.setHeight(decorect.height() + actual_decor_ypos);
     QRect r = (QRegion(appgeometry) - actual_decorect).boundingRect();
     
-    // Trim windows. TODO: do we need really this?
     int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
     int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
     int excess = r.y() + r.height() - yres;
@@ -218,6 +216,15 @@ void MDecoratorFrame::setAutoRotation(bool mode)
 
 void MDecoratorFrame::setOnlyStatusbar(bool mode)
 {
+    if (decorator_window) {
+        long val = mode;
+        Atom a = XInternAtom(QX11Info::display(),
+                             "_MDECORATOR_ONLY_STATUSBAR", False);
+        XChangeProperty(QX11Info::display(), decorator_window, a, XA_CARDINAL,
+                        32, PropModeReplace, (unsigned char *)&val, 1);
+    }
+    /* FIXME: replaced with a window property due to reliability problems
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetOnlyStatusbar", mode);
+                             */
 }

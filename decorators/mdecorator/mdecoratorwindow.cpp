@@ -59,10 +59,6 @@ public:
     ~MDecorator() {
     }
 
-protected:
-    virtual void activateEvent() {
-    }
-
     virtual void manageEvent(Qt::HANDLE window)
     {
         XTextProperty p;
@@ -77,6 +73,10 @@ protected:
         setAvailableGeometry(decorwindow->availableClientRect());
         
         emit windowTitleChanged(title);
+    }
+
+protected:
+    virtual void activateEvent() {
     }
 
     virtual void setAutoRotation(bool mode) {
@@ -114,6 +114,11 @@ static QRect windowRectFromGraphicsItem(const QGraphicsView &view,
 MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     : MWindow(parent)
 {
+    XSelectInput(QX11Info::display(), winId(), PropertyChangeMask);
+    onlyStatusbarAtom = XInternAtom(QX11Info::display(),
+                                    "_MDECORATOR_ONLY_STATUSBAR", False);
+    managedWindowAtom = XInternAtom(QX11Info::display(),
+                                    "_MDECORATOR_MANAGED_WINDOW", False);
     setTranslucentBackground(true);
 
     // default setting is not to rotate automatically
@@ -136,7 +141,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     sceneManager()->appearSceneWindowNow(statusBar);
     setOnlyStatusbar(false);
 
-    MDecorator *d = new MDecorator(this);
+    d = new MDecorator(this);
     connect(this, SIGNAL(homeClicked()), d, SLOT(minimize()));
     connect(this, SIGNAL(escapeClicked()), d, SLOT(close()));
     connect(sceneManager(),
@@ -155,6 +160,38 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
 
 MDecoratorWindow::~MDecoratorWindow()
 {
+}
+
+bool MDecoratorWindow::x11Event(XEvent *e)
+{
+    Atom actual;
+    int format, result;
+    unsigned long n, left;
+    unsigned char *data = 0;
+    if (e->type == PropertyNotify
+        && ((XPropertyEvent*)e)->atom == onlyStatusbarAtom) {
+        result = XGetWindowProperty(QX11Info::display(), winId(),
+                                    onlyStatusbarAtom, 0, 1, False,
+                                    XA_CARDINAL, &actual, &format,
+                                    &n, &left, &data);
+        if (result == Success && data)
+            setOnlyStatusbar(*((long*)data));
+        if (data)
+            XFree(data);
+        return true;
+    } else if (e->type == PropertyNotify
+               && ((XPropertyEvent*)e)->atom == managedWindowAtom) {
+        result = XGetWindowProperty(QX11Info::display(), winId(),
+                                    managedWindowAtom, 0, 1, False,
+                                    XA_WINDOW, &actual, &format,
+                                    &n, &left, &data);
+        if (result == Success && data)
+            d->manageEvent(*((long*)data));
+        if (data)
+            XFree(data);
+        return true;
+    }
+    return false;
 }
 
 void MDecoratorWindow::setOnlyStatusbar(bool mode)
@@ -218,17 +255,12 @@ void MDecoratorWindow::setInputRegion()
 {
     QRegion region;
     region += statusBar->boundingRect().toRect();
-    region += navigationBar->boundingRect().toRect();
-    region += homeButtonPanel->boundingRect().toRect();
-    region += escapeButtonPanel->boundingRect().toRect();
-    decoratorRect = region.boundingRect();
-
     if (!only_statusbar) {
         region += navigationBar->boundingRect().toRect();
         region += homeButtonPanel->boundingRect().toRect();
         region += escapeButtonPanel->boundingRect().toRect();
     }
-    QRect b = region.boundingRect();
+    decoratorRect = region.boundingRect();
 
     XRectangle rect = itemRectToScreenRect(decoratorRect);
 

@@ -16,14 +16,26 @@
 ** of this file.
 **
 ****************************************************************************/
-#include <MApplication>
 
+#include <MApplication>
 #include "mdecoratorwindow.h"
+
+class MDecoratorApp : public MApplication
+{
+public:
+    MDecoratorApp(int argc, char **argv) : MApplication(argc, argv)
+    {
+        window.show();
+    }
+
+    virtual bool x11EventFilter(XEvent *e) { return window.x11Event(e); }
+
+private:
+    MDecoratorWindow window;
+};
 
 int main(int argc, char **argv)
 {
-    MApplication app(argc, argv);
-    MDecoratorWindow window;
-    window.show();
+    MDecoratorApp app(argc, argv);
     return app.exec();
 }
