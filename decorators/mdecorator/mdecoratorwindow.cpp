@@ -179,7 +179,7 @@ bool MDecoratorWindow::x11Event(XEvent *e)
                                     XA_WINDOW, &actual, &format,
                                     &n, &left, &data);
         if (result == Success && data)
-            d->manageEvent(*((long*)data));
+            d->RemoteSetManagedWinId(*((long*)data));
         if (data)
             XFree(data);
         return true;
