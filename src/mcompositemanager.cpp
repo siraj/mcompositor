@@ -1490,7 +1490,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         Window w = stacking_list.at(i);
         if (w == first_moved) break;
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (cw && !cw->transientFor()
+        if (cw && !getLastVisibleParent(cw)
             && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)) {
             stacking_list.move(i, last_i);
             if (!first_moved) first_moved = w;
