@@ -256,6 +256,8 @@ Window MCompositeWindow::transientFor()
 {
     /* TODO: make this update the property based on PropertyNotifys */
     XGetTransientForHint(QX11Info::display(), win_id, &transient_for);
+    if (transient_for == win_id)
+        transient_for = 0;
     return transient_for;
 }
 

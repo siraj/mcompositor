@@ -508,6 +508,8 @@ static Window transient_for(Window window)
 {
     Window transient_for = 0;
     XGetTransientForHint(QX11Info::display(), window, &transient_for);
+    if (transient_for == window)
+        transient_for = 0;
     return transient_for;
 }
 
@@ -1248,8 +1250,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             frame = f.frame;
             if (!frame) {
                 frame = new MSimpleWindowFrame(e->window);
-                Window trans;
-                XGetTransientForHint(QX11Info::display(), e->window, &trans);
+                Window trans = transient_for(e->window);
                 if (trans)
                     frame->setDialogDecoration(true);
 
