@@ -1,4 +1,4 @@
-mcompositor (0.4.1-1) unstable; urgency=low
+mcompositor (0.4.1-2) unstable; urgency=low
 
   * Fixes: NB#167210 - USB query pop-up is minimized and cannot be maximized
   * Fixes: NB#167601 - VKB gives no visual feedback after screen blank
