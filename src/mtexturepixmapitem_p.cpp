@@ -231,7 +231,9 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MT
       glwidget(w),
       window(window),
       windowp(0),
+#ifdef DESKTOP_VERSION
       glpixmap(0),
+#endif
       textureId(0),
       ctextureId(0),
       custom_tfp(false),
@@ -253,16 +255,14 @@ MTexturePixmapPrivate::~MTexturePixmapPrivate()
 
 void MTexturePixmapPrivate::damageTracking(bool enabled)
 {
-    if (enabled) {
-        if (!damage_object)
-            damage_object = XDamageCreate(QX11Info::display(), window,
-                                          XDamageReportNonEmpty); 
-    } else {
-        if (damage_object) {
-            XDamageDestroy(QX11Info::display(), damage_object);
-            damage_object = NULL;
-        }
+    if (damage_object) {
+        XDamageDestroy(QX11Info::display(), damage_object);
+        damage_object = NULL;
     }
+
+    if (enabled && !damage_object)
+        damage_object = XDamageCreate(QX11Info::display(), window,
+                                      XDamageReportNonEmpty); 
 }
 
 void MTexturePixmapPrivate::saveBackingStore(bool renew)

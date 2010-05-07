@@ -31,12 +31,15 @@
 #include <X11/extensions/Xrender.h>
 #include <X11/extensions/Xfixes.h>
 
-#include <GLES2/gl2.h>
+//#define GL_GLEXT_PROTOTYPES
 
-/* Emulator doesn't support these configurations:
-   - off screen pixmap
-   - bind to texture
- */
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+
+static PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR = 0; 
+static PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR = 0; 
+PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = 0;
+static EGLint attribs[] = { EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE }; 
 
 class EglTextureManager
 {
@@ -86,9 +89,17 @@ public:
             dpy = eglGetDisplay(EGLNativeDisplayType(QX11Info::display()));
 
         QString exts = QLatin1String(eglQueryString(dpy, EGL_EXTENSIONS));
-        if (exts.contains("EGL_NOKIA_texture_from_pixmap") ||
-                exts.contains("EGL_EXT_texture_from_pixmap"))
+        if ((exts.contains("EGL_KHR_image") &&
+             exts.contains("EGL_KHR_image_pixmap") &&
+             exts.contains("EGL_KHR_gl_texture_2D_image")) || 1) {
             has_tfp = true;
+            eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC) eglGetProcAddress("eglCreateImageKHR");
+            eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC) eglGetProcAddress("eglDestroyImageKHR"); 
+            glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC) eglGetProcAddress("glEGLImageTargetTexture2DOES"); 
+        } else {
+            qCritical() << "EGL extensions:" << exts;
+            qFatal("no EGL tfp support, aborting\n");
+        }
         texman = new EglTextureManager();
     }
 
@@ -119,71 +130,31 @@ void MTexturePixmapItem::init()
     if (!d->eglresource)
         d->eglresource = new EglResourceManager();
 
-    d->glpixmap = EGL_NO_SURFACE;
     d->custom_tfp = !d->eglresource->texturePixmapSupport();
     if (d->custom_tfp) {
         initCustomTfp();
         return;
     }
     saveBackingStore();
-    EGLint pixmapAttribs[] = {
-        EGL_TEXTURE_TARGET, EGL_TEXTURE_2D,
-        EGL_TEXTURE_FORMAT, d->has_alpha ? EGL_TEXTURE_RGBA : EGL_TEXTURE_RGB,
-        EGL_NONE
-    };
-
-    // We cache the config so we dont have to loop thru it again when
-    // rebinding pixmaps
-    if (!d->eglresource->config || !d->eglresource->configAlpha) {
-        EGLint pixmap_config[] = {
-            EGL_SURFACE_TYPE,       EGL_PIXMAP_BIT,
-            EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-            EGL_DEPTH_SIZE,         0,
-            d->has_alpha ? EGL_BIND_TO_TEXTURE_RGBA : EGL_BIND_TO_TEXTURE_RGB, EGL_TRUE,
-            EGL_NONE
-        };
-        EGLint ecfgs = 0;
-        EGLConfig configs[20];
-        if (!eglChooseConfig(d->eglresource->dpy, pixmap_config, configs,
-                             20, &ecfgs) || !ecfgs) {
-            qWarning("No appropriate EGL configuration for texture from "
-                     "pixmap! Falling back to custom texture to pixmap ");
-            d->custom_tfp = true;
-            initCustomTfp();
-            return;
-        }
-
-        // find best matching configuration for offscreen pixmap
-        for (EGLint i = 0; i < ecfgs; i++) {
-            d->glpixmap = eglCreatePixmapSurface(d->eglresource->dpy, configs[i],
-                                                 (EGLNativePixmapType) d->windowp,
-                                                 pixmapAttribs);
-            if (d->glpixmap == EGL_NO_SURFACE)
-                continue;
-            else {
-                if (d->has_alpha)
-                    d->eglresource->configAlpha = configs[i];
-                else
-                    d->eglresource->config = configs[i];
-                break;
-            }
-        }
-    } else
-        d->glpixmap = eglCreatePixmapSurface(d->eglresource->dpy,
-                                             d->has_alpha ? d->eglresource->configAlpha : d->eglresource->config,
-                                             (EGLNativePixmapType) d->windowp,
-                                             pixmapAttribs);
-    if (d->glpixmap == EGL_NO_SURFACE)
-        qWarning("MTexturePixmapItem: Cannot create EGL surface: 0x%x",
+    d->ctx->makeCurrent();
+    d->egl_image = eglCreateImageKHR(d->eglresource->dpy, 0,
+                                     EGL_NATIVE_PIXMAP_KHR,
+                                     (EGLClientBuffer)d->windowp,
+                                     attribs);
+    if (d->egl_image == EGL_NO_IMAGE_KHR)
+        qWarning("MTexturePixmapItem: Cannot create EGL image: 0x%x",
                  eglGetError());
-
+    
     d->textureId = d->eglresource->texman->getTexture();
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, d->textureId);
-
+    
+    if (d->egl_image)
+        glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, d->egl_image);
+    
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
+    
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }
@@ -192,6 +163,8 @@ MTexturePixmapItem::MTexturePixmapItem(Window window, QGLWidget *glwidget, QGrap
     : MCompositeWindow(window, parent),
       d(new MTexturePixmapPrivate(window, glwidget, this))
 {
+    if (!d->ctx)
+        d->ctx = const_cast<QGLContext *>(glwidget->context());
     init();
 }
 
@@ -202,46 +175,37 @@ void MTexturePixmapItem::saveBackingStore(bool renew)
 
 void MTexturePixmapItem::rebindPixmap()
 {
-    EGLint pixmapAttribs[] = {
-        EGL_TEXTURE_TARGET, EGL_TEXTURE_2D,
-        EGL_TEXTURE_FORMAT, d->has_alpha ? EGL_TEXTURE_RGBA : EGL_TEXTURE_RGB,
-        EGL_NONE
-    };
-
-    if (d->glpixmap != EGL_NO_SURFACE) {
-        if (eglReleaseTexImage(d->eglresource->dpy, d->glpixmap, EGL_BACK_BUFFER) == EGL_FALSE)
-            qWarning("Destroy surface: Cant release bound texture");
+    if (d->egl_image != EGL_NO_IMAGE_KHR) {
+        eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
         glBindTexture(0, 0);
-        eglSwapBuffers(d->eglresource->dpy, d->glpixmap);
-        eglDestroySurface(d->eglresource->dpy, d->glpixmap);
     }
-    d->glpixmap = eglCreatePixmapSurface(d->eglresource->dpy, d->has_alpha ? d->eglresource->configAlpha :
-                                         d->eglresource->config,
-                                         (EGLNativePixmapType) d->windowp,
-                                         pixmapAttribs);
-    if (d->glpixmap == EGL_NO_SURFACE)
-        qWarning("MTexturePixmapItem: Cannot renew EGL surface: 0x%x",
+    
+    d->ctx->makeCurrent();
+    d->egl_image = eglCreateImageKHR(d->eglresource->dpy, 0,
+                                     EGL_NATIVE_PIXMAP_KHR,
+                                     (EGLClientBuffer)d->windowp,
+                                     attribs);
+    if (d->egl_image == EGL_NO_IMAGE_KHR)
+        qWarning("MTexturePixmapItem: Cannot create EGL image: 0x%x",
                  eglGetError());
+    
+    glBindTexture(GL_TEXTURE_2D, d->textureId);
+    if (d->egl_image)
+        glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, d->egl_image);
 }
 
 void MTexturePixmapItem::enableDirectFbRendering()
 {
     d->damageTracking(false);
 
-    if (d->direct_fb_render || d->glpixmap == EGL_NO_SURFACE)
+    if (d->direct_fb_render || d->egl_image == EGL_NO_IMAGE_KHR)
         return;
 
     d->direct_fb_render = true;
-    // Just free the off-screen surface but re-use the
-    // existing texture id, so don't delete it yet.
-    if (eglReleaseTexImage(d->eglresource->dpy, d->glpixmap, EGL_BACK_BUFFER) == EGL_FALSE)
-        qWarning("MTexturePixmapItem::enableDirectFbRender: "
-                 "Cant release bound texture: 0x%x", eglGetError());
 
     glBindTexture(0, 0);
-    eglSwapBuffers(d->eglresource->dpy, d->glpixmap);
-    eglDestroySurface(d->eglresource->dpy, d->glpixmap);
-    d->glpixmap = EGL_NO_SURFACE;
+    eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
+    d->egl_image = EGL_NO_IMAGE_KHR;
     if (d->windowp) {
         XFreePixmap(QX11Info::display(), d->windowp);
         d->windowp = 0;
@@ -255,7 +219,7 @@ void MTexturePixmapItem::enableRedirectedRendering()
 {
     d->damageTracking(true);
 
-    if (!d->direct_fb_render || d->glpixmap != EGL_NO_SURFACE)
+    if (!d->direct_fb_render || d->egl_image != EGL_NO_IMAGE_KHR)
         return;
 
     d->direct_fb_render = false;
@@ -287,9 +251,9 @@ void MTexturePixmapItem::initCustomTfp()
 }
 
 void MTexturePixmapItem::cleanup()
-{
-    eglDestroySurface(d->eglresource->dpy, d->glpixmap);
-    d->glpixmap = EGL_NO_SURFACE;
+{    
+    eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
+    d->egl_image = EGL_NO_IMAGE_KHR;
     XSync(QX11Info::display(), FALSE);
 
     if (!d->custom_tfp)
@@ -324,28 +288,9 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
                      GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
         update();
     } else {
-        if (d->glpixmap == EGL_NO_SURFACE)
+        if (d->egl_image == EGL_NO_IMAGE_KHR)
             saveBackingStore(true);
-
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, d->textureId);
-        bool valid = true;
-
-        if (eglReleaseTexImage(d->eglresource->dpy, d->glpixmap, EGL_BACK_BUFFER) == EGL_FALSE) {
-            qWarning("Update: Cant release bound texture 0x%x",
-                     eglGetError());
-            valid = false;
-        }
-        if (eglBindTexImage(d->eglresource->dpy, d->glpixmap, EGL_BACK_BUFFER) == EGL_FALSE) {
-            qWarning("Update: Can't bind EGL texture to pixmap: 0x%x",
-                     eglGetError());
-            valid = false;
-        }
-        if (!valid)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 0, GL_RGBA,
-                         GL_UNSIGNED_BYTE, 0);
-        else
-            d->glwidget->update();
+        d->glwidget->update();
     }
 }
 
