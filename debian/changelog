@@ -1,9 +1,9 @@
 mcompositor (0.4.1-1) unstable; urgency=low
 
-  * Fixes: NB#167210 USB query pop-up is minimized and cannot be maximized
-  * Fixes: NB#167601 VKB gives no visual feedback after screen blank
-  * Fixes: NB#162326 WM_STATE is not always Iconic even if a window is in switcher
-  * Fixes: 166130 - Unmapped window stacking order is broken
+  * Fixes: NB#167210 - USB query pop-up is minimized and cannot be maximized
+  * Fixes: NB#167601 - VKB gives no visual feedback after screen blank
+  * Fixes: NB#162326 - WM_STATE is not always Iconic even if a window is in switcher
+  * Fixes: NB#166130 - Unmapped window stacking order is broken
   * Improvements: Call handling support 
   * Improvements: EGLImage texture from pixmap functionality	
 
