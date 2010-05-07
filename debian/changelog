@@ -1,6 +1,11 @@
-mcompositor (0.4.1~1) unstable; urgency=low
+mcompositor (0.4.1-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#167210 USB query pop-up is minimized and cannot be maximized
+  * Fixes: NB#167601 VKB gives no visual feedback after screen blank
+  * Fixes: NB#162326 WM_STATE is not always Iconic even if a window is in switcher
+  * Fixes: 166130 - Unmapped window stacking order is broken
+  * Improvements: Call handling support 
+  * Improvements: EGLImage texture from pixmap functionality	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Thu, 22 Apr 2010 22:52:05 +0300
 
