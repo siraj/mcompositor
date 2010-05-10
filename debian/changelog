@@ -1,6 +1,6 @@
-mcompositor (0.4.2~1) unstable; urgency=low
+mcompositor (0.4.2-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#167601 - VKB gives no visual feedback after screen blank
 
  -- Abdiel Janulgue <abj@codefuassassin.research.nokia.com>  Fri, 07 May 2010 16:43:39 +0300
 
