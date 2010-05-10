@@ -149,7 +149,7 @@ void MTexturePixmapItem::init()
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, d->textureId);
     
-    if (d->egl_image)
+    if (d->egl_image != EGL_NO_IMAGE_KHR)
         glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, d->egl_image);
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -190,7 +190,7 @@ void MTexturePixmapItem::rebindPixmap()
                  eglGetError());
     
     glBindTexture(GL_TEXTURE_2D, d->textureId);
-    if (d->egl_image)
+    if (d->egl_image != EGL_NO_IMAGE_KHR)
         glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, d->egl_image);
 }
 
@@ -198,7 +198,7 @@ void MTexturePixmapItem::enableDirectFbRendering()
 {
     d->damageTracking(false);
 
-    if (d->direct_fb_render || d->egl_image == EGL_NO_IMAGE_KHR)
+    if (d->direct_fb_render && d->egl_image == EGL_NO_IMAGE_KHR)
         return;
 
     d->direct_fb_render = true;
@@ -219,7 +219,7 @@ void MTexturePixmapItem::enableRedirectedRendering()
 {
     d->damageTracking(true);
 
-    if (!d->direct_fb_render || d->egl_image != EGL_NO_IMAGE_KHR)
+    if (!d->direct_fb_render && d->egl_image != EGL_NO_IMAGE_KHR)
         return;
 
     d->direct_fb_render = false;
