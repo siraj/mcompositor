@@ -67,14 +67,14 @@ sample1,\
 sample2,\
 sample3;\
 mediump float step = blurstep / 100.0;\
-sample0 = texture2D(texture0, vec2(fragTexCoord.x - step,\
-                                   fragTexCoord.y - step));\
-sample1 = texture2D(texture0, vec2(fragTexCoord.x + step,\
-                                   fragTexCoord.y + step));\
-sample2 = texture2D(texture0, vec2(fragTexCoord.x + step,\
-                                   fragTexCoord.y - step));\
-sample3 = texture2D(texture0, vec2(fragTexCoord.x - step,\
-                                   fragTexCoord.y + step));\
+mediump vec2 upperleft = fragTexCoord.xy - vec2(step);\
+mediump vec2 lowerright = fragTexCoord.xy + vec2(step);\
+mediump vec2 upperright = fragTexCoord.xy + vec2(step, -step);\
+mediump vec2 lowerleft = fragTexCoord.xy + vec2(-step, step);\
+sample0 = texture2D(texture0, upperleft); \
+sample1 = texture2D(texture0, lowerright); \
+sample2 = texture2D(texture0, upperright); \
+sample3 = texture2D(texture0, lowerleft); \
 gl_FragColor = ((sample0 + sample1 + sample2 + sample3) / 4.0) * 0.5;\
 }";
 
