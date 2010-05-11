@@ -739,13 +739,18 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
         return true;
     if (fs)
         return false;
+    bool transient;
+    if (!cw)
+        transient = transient_for(window);
+    else
+        transient = cw->transientFor();
     MCompAtoms::Type t = atom->windowType(window);
     return (t != MCompAtoms::FRAMELESS
             && t != MCompAtoms::DESKTOP
             && t != MCompAtoms::NOTIFICATION
             && t != MCompAtoms::INPUT
             && t != MCompAtoms::DOCK
-            && !transient_for(window));
+            && !transient);
 }
 
 void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
@@ -1149,21 +1154,21 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     XWindowAttributes a;
     Display *dpy  = QX11Info::display();
     bool hasAlpha = false;
+    MCompAtoms::Type wtype;
 
     if (!XGetWindowAttributes(QX11Info::display(), e->window, &a))
         return;
+    wtype = atom->windowType(e->window);
     if (!hasDock) {
-        hasDock = (atom->windowType(e->window) == MCompAtoms::DOCK);
+        hasDock = (wtype == MCompAtoms::DOCK);
         if (hasDock)
             dock_region = QRegion(a.x, a.y, a.width, a.height);
     }
     int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
     int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
 
-    if ((atom->windowType(e->window) == MCompAtoms::FRAMELESS
-            || atom->windowType(e->window) == MCompAtoms::DESKTOP
-            || atom->windowType(e->window) == MCompAtoms::INPUT)
-            && (atom->windowType(e->window) != MCompAtoms::DOCK)) {
+    if ((wtype == MCompAtoms::FRAMELESS || wtype == MCompAtoms::DESKTOP
+         || wtype == MCompAtoms::INPUT) && (wtype != MCompAtoms::DOCK)) {
         if (hasDock) {
             QRect r = (QRegion(QApplication::desktop()->screenGeometry()) - dock_region).boundingRect();
             if (availScreenRect != r)
@@ -1555,6 +1560,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
 {
     Window win = e->window;
+    MCompAtoms::Type wtype;
 
     if (win == xoverlay) {
         enableRedirection();
@@ -1581,16 +1587,16 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         XSendEvent(QX11Info::display(), c.event, true, StructureNotifyMask, (XEvent *)&c);
     }
 
-    // simple stacking model fulfills the current DUI concept,
-    if (atom->windowType(e->window) == MCompAtoms::DESKTOP) {
+    wtype = atom->windowType(e->window);
+    // simple stacking model legacy code...
+    if (wtype == MCompAtoms::DESKTOP) {
         stack[DESKTOP_LAYER] = e->window; // below topmost
-    } else if (atom->windowType(e->window) == MCompAtoms::INPUT) {
+    } else if (wtype == MCompAtoms::INPUT) {
         stack[INPUT_LAYER] = e->window; // topmost
-    } else if (atom->windowType(e->window) == MCompAtoms::DOCK) {
+    } else if (wtype == MCompAtoms::DOCK) {
         stack[DOCK_LAYER] = e->window; // topmost
     } else {
-        if ((atom->windowType(e->window)    == MCompAtoms::FRAMELESS ||
-                (atom->windowType(e->window)    == MCompAtoms::NORMAL))
+        if ((wtype == MCompAtoms::FRAMELESS || wtype == MCompAtoms::NORMAL)
                 && !atom->isDecorator(e->window)
                 && (parentWindow(win) == RootWindow(QX11Info::display(), 0))
                 && (e->event == QX11Info::appRootWindow())) {
@@ -1621,7 +1627,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         return;
     }
     if (item) {
-        if (atom->windowType(e->window) == MCompAtoms::NORMAL)
+        if (wtype == MCompAtoms::NORMAL)
             item->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
         else
             item->setWindowTypeAtom(atom->getType(win));
@@ -1923,19 +1929,20 @@ void MCompositeManagerPrivate::exposeDesktop()
 }
 
 void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
-        bool disableCompositing)
+                                              bool disableCompositing)
 {
+    MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+    if (!cw) return;
+
     if (MDecoratorFrame::instance()->managedWindow() == w)
         MDecoratorFrame::instance()->activate();
 
-    if ((atom->windowType(w) != MCompAtoms::DESKTOP) &&
-            (atom->windowType(w) != MCompAtoms::DOCK)) {
+    if (cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DESKTOP) &&
+        cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)) {
         stack[APPLICATION_LAYER] = w;
         setExposeDesktop(false);
-        // if this is a transient window, raise the "parent" instead
-        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         // possibly set decorator
-        if (cw && needDecoration(w, cw)) {
+        if (needDecoration(w, cw)) {
             cw->setDecorated(true);
             if (FULLSCREEN_WINDOW(cw)) {
                 // fullscreen window has decorator above it during ongoing call
@@ -1946,6 +1953,7 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
                 MDecoratorFrame::instance()->setOnlyStatusbar(false);
             }
         }
+        // if this is a transient window, raise the "parent" instead
         Window last = getLastVisibleParent(cw);
         if (last)
             positionWindow(last, STACK_TOP);
