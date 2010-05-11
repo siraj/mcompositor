@@ -1,6 +1,10 @@
 mcompositor (0.4.3~1) unstable; urgency=low
 
   * New version [UNRELEASED]
+  * Fixes: NB#168176 - VKB gives no haptic feedback after screen blank
+  * Fixes: NB#168298 -  Can not focus to text field after volume slider is invoked  
+  * Fixes: NB#168399 - duicompositor uses glBindTexture against spec
+
 
  -- Abdiel Janulgue <abj@codefuassassin.research.nokia.com>  Mon, 10 May 2010 15:57:16 +0300
 
