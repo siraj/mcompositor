@@ -1368,7 +1368,6 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
 void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                                                Time timestamp)
 {
-    static QList<Window> prev_list;
     Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved;
     int last_i = stacking_list.size() - 1;
     bool desktop_up = false, fs_app = false;
@@ -1493,18 +1492,25 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         } else ++i;
     }
 
-    bool order_changed = prev_list != stacking_list;
+    // properties and focus are updated only if there was a change in the
+    // order of mapped windows or mappedness FIXME: would make sense to
+    // stack unmapped windows to the bottom of the stack to avoid them
+    // "flashing" before we had the chance to stack them
+    QList<Window> only_mapped;
+    for (int i = 0; i <= last_i; ++i) {
+         MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
+         if (witem && witem->isMapped() && !witem->isDecorator()
+             && !witem->isOverrideRedirect())
+             only_mapped.append(stacking_list.at(i));
+    }
+    static QList<Window> prev_only_mapped;
+    bool order_changed = prev_only_mapped != only_mapped;
     if (order_changed) {
         /* fix Z-values */
-        QList<Window> only_mapped;
         for (int i = 0; i <= last_i; ++i) {
             MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
-            if (witem) {
+            if (witem)
                 witem->requestZValue(i);
-                if (witem->isMapped() && !witem->isDecorator()
-                    && !witem->isOverrideRedirect())
-                    only_mapped.append(stacking_list.at(i));
-            }
         }
 
         QList<Window> reverse;
@@ -1515,17 +1521,13 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         XRestackWindows(QX11Info::display(), reverse.toVector().data(),
                         reverse.size());
 
-        static QList<Window> prev_only_mapped;
-        if (prev_only_mapped != only_mapped) {
-            XChangeProperty(QX11Info::display(),
-                            RootWindow(QX11Info::display(), 0),
-                            ATOM(_NET_CLIENT_LIST_STACKING),
-                            XA_WINDOW, 32, PropModeReplace,
-                            (unsigned char *)only_mapped.toVector().data(),
-                            only_mapped.size());
-            prev_only_mapped = QList<Window>(only_mapped);
-        }
-        prev_list = QList<Window>(stacking_list);
+        XChangeProperty(QX11Info::display(),
+                        RootWindow(QX11Info::display(), 0),
+                        ATOM(_NET_CLIENT_LIST_STACKING),
+                        XA_WINDOW, 32, PropModeReplace,
+                        (unsigned char *)only_mapped.toVector().data(),
+                        only_mapped.size());
+        prev_only_mapped = QList<Window>(only_mapped);
 
         checkInputFocus(timestamp);
         XSync(QX11Info::display(), False);
