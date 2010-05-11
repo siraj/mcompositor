@@ -106,7 +106,6 @@ public:
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
     bool removeWindow(Window w);
-    bool isSelfManagedFocus(Window w);
     bool needDecoration(Window w, MCompositeWindow *cw = 0);
 
     MCompositeScene *watch;
