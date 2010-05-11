@@ -250,52 +250,11 @@ MCompAtoms::MCompAtoms()
                     ATOMS_TOTAL);
 }
 
-/* FIXME Workaround for bug NB#161282 */
-static bool is_desktop_window(Window w, Atom type = 0)
-{
-    Atom a;
-    if (!type)
-        a = MCompAtoms::instance()->getType(w);
-    else
-        a = type;
-    if (a == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
-        return true;
-    XTextProperty textp;
-    if (!XGetWMName(QX11Info::display(), w, &textp))
-        return false;
-    if (strcmp((const char *)textp.value, "duihome") == 0
-            && a == ATOM(_NET_WM_WINDOW_TYPE_NORMAL)) {
-        return true;
-    }
-    return false;
-}
-
-/* FIXME: workaround for bug NB#161629 */
-static bool is_desktop_dock(Window w, Atom type = 0)
-{
-    Atom a;
-    if (!type)
-        a = MCompAtoms::instance()->getType(w);
-    else
-        a = type;
-    if (a != ATOM(_NET_WM_WINDOW_TYPE_DOCK))
-        return false;
-    /*  // WMName of the dock is unstable, match all docks...
-    XTextProperty textp;
-    if (!XGetWMName(QX11Info::display(), w, &textp))
-        return false;
-    if (strcmp((const char *)textp.value, "duihome") == 0) {
-        return true;
-    }
-    */
-    return true;
-}
-
 MCompAtoms::Type MCompAtoms::windowType(Window w)
 {
     // freedesktop.org window type
     Atom a = getType(w);
-    if (is_desktop_window(w, a))
+    if (a == atoms[_NET_WM_WINDOW_TYPE_DESKTOP])
         return DESKTOP;
     else if (a == atoms[_NET_WM_WINDOW_TYPE_NORMAL])
         return NORMAL;
@@ -1354,10 +1313,8 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window iw = stacking_list.at(i);
         MCompositeWindow *cw = COMPOSITE_WINDOW(iw);
-        if (!cw || !cw->isMapped() || !cw->wantsFocus() || cw->isDecorator())
-            continue;
-        /* workaround for NB#161629 */
-        if (is_desktop_dock(iw))
+        if (!cw || !cw->isMapped() || !cw->wantsFocus() || cw->isDecorator()
+            || cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
             continue;
         if (isSelfManagedFocus(iw)) {
             w = iw;
@@ -1732,7 +1689,7 @@ static bool should_be_pinged(MCompositeWindow *cw)
         && cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)
         && cw->iconifyState() == MCompositeWindow::NoIconifyState
         && !cw->isDecorator()
-        && !is_desktop_window(cw->window()))
+        && cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         return true;
     return false;
 }
