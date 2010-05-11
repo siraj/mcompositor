@@ -177,7 +177,7 @@ void MTexturePixmapItem::rebindPixmap()
 {
     if (d->egl_image != EGL_NO_IMAGE_KHR) {
         eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
-        glBindTexture(0, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
     
     d->ctx->makeCurrent();
@@ -203,7 +203,7 @@ void MTexturePixmapItem::enableDirectFbRendering()
 
     d->direct_fb_render = true;
 
-    glBindTexture(0, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
     d->egl_image = EGL_NO_IMAGE_KHR;
     if (d->windowp) {
@@ -302,7 +302,7 @@ void MTexturePixmapItem::paint(QPainter *painter,
     Q_UNUSED(widget)
 
     if (d->direct_fb_render) {
-        glBindTexture(0, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
         return;
     }
 
