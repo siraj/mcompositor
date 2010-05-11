@@ -1316,7 +1316,8 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
         if (!cw || !cw->isMapped() || !cw->wantsFocus() || cw->isDecorator()
             || cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
             continue;
-        if (isSelfManagedFocus(iw)) {
+        if (!cw->isOverrideRedirect() &&
+            cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_INPUT)) {
             w = iw;
             break;
         }
@@ -1919,17 +1920,6 @@ void MCompositeManagerPrivate::setExposeDesktop(bool exposed)
 void MCompositeManagerPrivate::exposeDesktop()
 {
     setExposeDesktop(true);
-}
-
-bool MCompositeManagerPrivate::isSelfManagedFocus(Window w)
-{
-    /* FIXME: store these to the object */
-    XWindowAttributes attr;
-    if (!XGetWindowAttributes(QX11Info::display(), w, &attr))
-        return false;
-    if (attr.override_redirect || atom->windowType(w) == MCompAtoms::INPUT)
-        return false;
-    return true;
 }
 
 void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
