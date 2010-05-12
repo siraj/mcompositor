@@ -9,7 +9,7 @@ Package: mcompositor
 Replaces: duicompositor
 Conflicts: duicompositor
 Architecture: any
-Depends: libmeegotouchcore0, meegotouch-qt-style, ${shlibs:Depends}
+Depends: libmeegotouchcore0, ${shlibs:Depends}
 Description: MeeGo Touch UI Compositing Window Manager
  MeeGo Touch UI Compositing Window Manager
  
