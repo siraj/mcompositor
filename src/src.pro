@@ -37,6 +37,7 @@ HEADERS += \
     msimplewindowframe.h \
     mcompositemanager_p.h \
     mdevicestate.h \
+    mcompatoms_p.h \
     mdecoratorframe.h
 
 SOURCES += \

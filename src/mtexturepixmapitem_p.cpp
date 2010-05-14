@@ -203,27 +203,19 @@ void MTexturePixmapPrivate::drawTexture(const QTransform &transform, const QRect
 
 void MTexturePixmapPrivate::init()
 {
-    XWindowAttributes a;
-    if (!XGetWindowAttributes(QX11Info::display(), item->window(), &a)) {
-        qWarning("%s: invalid window 0x%lx", __func__, item->window());
-        item->is_valid = false;
+    if (!item->is_valid)
         return;
-    }
-    item->is_valid = true;
+
     if (!glresource) {
         glresource = new MGLResourceManager(glwidget);
         glresource->initVertices(glwidget);
     }
 
-    XRenderPictFormat *format = XRenderFindVisualFormat(QX11Info::display(), a.visual);
+    XRenderPictFormat *format = XRenderFindVisualFormat(QX11Info::display(), item->attrs->visual);
     has_alpha = (format && format->type == PictTypeDirect && format->direct.alphaMask);
 
-    if (a.map_state != IsViewable)
-        viewable = false;
-
-    override_redirect = a.override_redirect ? true : false;
-    resize(a.width, a.height);
-    item->setPos(a.x, a.y);
+    resize(item->attrs->width, item->attrs->height);
+    item->setPos(item->attrs->x, item->attrs->y);
 }
 
 MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MTexturePixmapItem *p)
@@ -239,8 +231,6 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MT
       custom_tfp(false),
       has_alpha(false),
       direct_fb_render(false),
-      override_redirect(false),
-      viewable(true),
       angle(0),
       item(p)
 {
@@ -304,9 +294,3 @@ bool MTexturePixmapPrivate::hasAlpha() const
 {
     return has_alpha;
 }
-
-bool MTexturePixmapPrivate::isOverrideRedirect() const
-{
-    return override_redirect;
-}
-
