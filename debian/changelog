@@ -1,3 +1,9 @@
+mcompositor (0.4.4~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassassin.research.nokia.com>  Mon, 17 May 2010 12:57:09 +0300
+
 mcompositor (0.4.3-1) unstable; urgency=low
 
   * Fixes: NB#168176 - VKB gives no haptic feedback after screen blank
