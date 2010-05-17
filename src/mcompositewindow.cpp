@@ -22,6 +22,7 @@
 #include "mcompositemanager.h"
 #include "mcompositemanager_p.h"
 #include "mtexturepixmapitem.h"
+#include "mcompatoms_p.h"
 
 #include <QX11Info>
 #include <QGraphicsScene>
@@ -46,9 +47,10 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       need_decor(false),
       is_decorator(false),
       window_visible(true),
-      transient_for(0),
-      wants_focus(false),
+      transient_for((Window)-1),
+      wm_protocols_valid(false),
       window_obscured(false),
+      wmhints(0),
       win_id(window)
 {
     memset(&req_geom, 0, sizeof(req_geom));
@@ -61,12 +63,29 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
 
     t_ping = new QTimer(this);
     connect(t_ping, SIGNAL(timeout()), SLOT(pingWindow()));
+
+    attrs = (XWindowAttributes*)calloc(1, sizeof(XWindowAttributes));
+    if (!XGetWindowAttributes(QX11Info::display(), win_id, attrs)) {
+        qWarning("%s: invalid window 0x%lx", __func__, win_id);
+        free(attrs);
+        attrs = 0;
+        is_valid = false;
+    } else
+        is_valid = true;
 }
 
 MCompositeWindow::~MCompositeWindow()
 {
     delete anim;
     anim = 0;
+    if (wmhints) {
+        XFree(wmhints);
+        wmhints = 0;
+    }
+    if (attrs) {
+        free(attrs);
+        attrs = 0;
+    }
 }
 
 void MCompositeWindow::setBlurred(bool b)
@@ -254,61 +273,82 @@ void MCompositeWindow::setScaled(bool s)
 
 Window MCompositeWindow::transientFor()
 {
-    /* TODO: make this update the property based on PropertyNotifys */
-    XGetTransientForHint(QX11Info::display(), win_id, &transient_for);
-    if (transient_for == win_id)
-        transient_for = 0;
+    if (transient_for == (Window)-1) {
+        XGetTransientForHint(QX11Info::display(), win_id, &transient_for);
+        if (transient_for == win_id)
+            transient_for = 0;
+    }
     return transient_for;
 }
 
 bool MCompositeWindow::wantsFocus()
 {
-    /* FIXME: check if it is enough to cache this... */
     bool val = true;
-    XWMHints *h = XGetWMHints(QX11Info::display(), win_id);
-    if (h) {
-        if ((h->flags & InputHint) && (h->input == False))
-            val = false;
-        XFree(h);
-    }
-    wants_focus = val;
-    return wants_focus;
+    const XWMHints &h = getWMHints();
+    if ((h.flags & InputHint) && (h.input == False))
+        val = false;
+    return val;
 }
 
 XID MCompositeWindow::windowGroup()
 {
-    /* FIXME: check if it is enough to cache this... */
     XID val = 0;
-    XWMHints *h = XGetWMHints(QX11Info::display(), win_id);
-    if (h) {
-        if (h->flags & WindowGroupHint)
-            val = h->window_group;
-        XFree(h);
-    }
+    const XWMHints &h = getWMHints();
+    if (h.flags & WindowGroupHint)
+        val = h.window_group;
     return val;
+}
+
+const XWMHints &MCompositeWindow::getWMHints()
+{
+    if (!wmhints) {
+        wmhints = XGetWMHints(QX11Info::display(), win_id);
+        if (!wmhints) {
+            wmhints = XAllocWMHints();
+            memset(wmhints, 0, sizeof(XWMHints));
+        }
+    }
+    return *wmhints;
+}
+
+bool MCompositeWindow::propertyEvent(XPropertyEvent *e)
+{
+    if (e->atom == ATOM(WM_TRANSIENT_FOR)) {
+        transient_for = (Window)-1;
+        return true;
+    } else if (e->atom == ATOM(WM_HINTS)) {
+        if (wmhints) {
+            XFree(wmhints);
+            wmhints = 0;
+        }
+        return true;
+    } else if (e->atom == ATOM(WM_PROTOCOLS))
+        wm_protocols_valid = false;
+    return false;
 }
 
 const QList<Atom>& MCompositeWindow::supportedProtocols()
 {
-    static Atom atom = 0;
-    Atom actual_type;
-    int actual_format;
-    unsigned long actual_n, left;
-    unsigned char *data = NULL;
-    if (!atom)
-        atom = XInternAtom(QX11Info::display(), "WM_PROTOCOLS", False);
-    int result = XGetWindowProperty(QX11Info::display(), win_id,
-                                    atom, 0, 100,
-                                    False, XA_ATOM, &actual_type,
-                                    &actual_format,
-                                    &actual_n, &left, &data);
-    if (result == Success && data && actual_type == XA_ATOM) {
-        wm_protocols.clear();
-        for (unsigned int i = 0; i < actual_n; ++i)
-            wm_protocols.append(((Atom *)data)[i]);
+    if (!wm_protocols_valid) {
+        Atom actual_type;
+        int actual_format;
+        unsigned long actual_n, left;
+        unsigned char *data = NULL;
+        int result = XGetWindowProperty(QX11Info::display(), win_id,
+                                        ATOM(WM_PROTOCOLS), 0, 100,
+                                        False, XA_ATOM, &actual_type,
+                                        &actual_format,
+                                        &actual_n, &left, &data);
+        if (result == Success && data && actual_type == XA_ATOM) {
+            wm_protocols.clear();
+            for (unsigned int i = 0; i < actual_n; ++i)
+                 wm_protocols.append(((Atom *)data)[i]);
+        }
+        if (result == Success &&
+            (actual_type == XA_ATOM || (actual_type == None && !actual_format)))
+            wm_protocols_valid = true;
+        if (data) XFree(data);
     }
-    if (data) XFree(data);
-
     return wm_protocols;
 }
 
@@ -449,12 +489,8 @@ void MCompositeWindow::windowTransitioning()
 
 void MCompositeWindow::windowSettled()
 {
-    static Atom desktop_atom = 0;
     window_transitioning = false;
-    if (!desktop_atom)
-        desktop_atom = XInternAtom(QX11Info::display(),
-                                   "_NET_WM_WINDOW_TYPE_DESKTOP", False);
-    if (window_type_atom && window_type_atom == desktop_atom)
+    if (window_type_atom == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         emit desktopActivated(this);
 }
 

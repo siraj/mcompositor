@@ -122,7 +122,7 @@ EGLDisplay EglResourceManager::dpy = 0;
 
 void MTexturePixmapItem::init()
 {
-    if (!d->viewable) {
+    if (attrs->map_state != IsViewable) {
         qWarning("MTexturePixmapItem::init(): Failed getting offscreen pixmap");
         return;
     }
@@ -376,11 +376,6 @@ QPainterPath MTexturePixmapItem::shape() const
 bool MTexturePixmapItem::hasAlpha() const
 {
     return d->has_alpha;
-}
-
-bool MTexturePixmapItem::isOverrideRedirect() const
-{
-    return d->override_redirect;
 }
 
 void MTexturePixmapItem::clearTexture()

@@ -37,6 +37,7 @@
 #include <X11/extensions/Xfixes.h>
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
+#include "mcompatoms_p.h"
 
 #define TRANSLUCENT 0xe0000000
 #define OPAQUE      0xffffffff
@@ -61,108 +62,6 @@
 #define FULLSCREEN_WINDOW(X) \
         ((X)->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1)
 
-class MCompAtoms
-{
-public:
-
-    // note that this enum is ordered and presents
-    // the depth ordering of different window types
-    enum Type {
-        DESKTOP = 0,
-        NORMAL,
-        FRAMELESS,
-        DOCK,
-        INPUT,
-        ABOVE,
-        NOTIFICATION,
-        DECORATOR,
-        UNKNOWN
-    };
-
-    enum Atoms {
-        // window manager
-        WM_PROTOCOLS,
-        WM_DELETE_WINDOW,
-        WM_TAKE_FOCUS,
-
-        // window types
-        _NET_SUPPORTED,
-        _NET_SUPPORTING_WM_CHECK,
-        _NET_WM_NAME,
-        _NET_WM_WINDOW_TYPE,
-        _NET_WM_WINDOW_TYPE_DESKTOP,
-        _NET_WM_WINDOW_TYPE_NORMAL,
-        _NET_WM_WINDOW_TYPE_DOCK,
-        _NET_WM_WINDOW_TYPE_INPUT,
-        _NET_WM_WINDOW_TYPE_NOTIFICATION,
-        _NET_WM_WINDOW_TYPE_DIALOG,
-        _NET_WM_STATE_ABOVE,
-        _NET_WM_STATE_SKIP_TASKBAR,
-        _NET_WM_STATE_FULLSCREEN,
-        _KDE_NET_WM_WINDOW_TYPE_OVERRIDE,
-
-        // window properties
-        _NET_WM_WINDOW_OPACITY,
-        _NET_WM_STATE,
-        _NET_WM_ICON_GEOMETRY,
-        WM_STATE,
-
-        // misc
-        _NET_WM_PID,
-        _NET_WM_PING,
-
-        // root messages
-        _NET_ACTIVE_WINDOW,
-        _NET_CLOSE_WINDOW,
-        _NET_CLIENT_LIST,
-        _NET_CLIENT_LIST_STACKING,
-        WM_CHANGE_STATE,
-
-        // DUI-specific
-        _MEEGOTOUCH_DECORATOR_WINDOW,
-        _DUI_STATUSBAR_OVERLAY,
-        _MEEGOTOUCH_GLOBAL_ALPHA,
-
-#ifdef WINDOW_DEBUG
-        _M_WM_INFO,
-        _M_WM_WINDOW_ZVALUE,
-        _M_WM_WINDOW_COMPOSITED_VISIBLE,
-        _M_WM_WINDOW_COMPOSITED_INVISIBLE,
-        _M_WM_WINDOW_DIRECT_VISIBLE,
-        _M_WM_WINDOW_DIRECT_INVISIBLE,
-#endif
-
-        ATOMS_TOTAL
-    };
-    static MCompAtoms *instance();
-    Type windowType(Window w);
-    bool isDecorator(Window w);
-    bool statusBarOverlayed(Window w);
-    int getPid(Window w);
-    long getWmState(Window w);
-    bool hasState(Window w, Atom a);
-    QRectF iconGeometry(Window w);
-    QVector<Atom> netWmStates(Window w);
-    unsigned int get_opacity_prop(Display *dpy, Window w, unsigned int def);
-    double get_opacity_percent(Display *dpy, Window w, double def);
-    int globalAlphaFromWindow(Window w);
-
-    Atom getAtom(const unsigned int name);
-    Atom getType(Window w);
-
-    static Atom atoms[ATOMS_TOTAL];
-
-private:
-    explicit MCompAtoms();
-    static MCompAtoms *d;
-
-    int intValueProperty(Window w, Atom property);
-    Atom getAtom(Window w, Atoms atomtype);
-
-    Display *dpy;
-};
-
-#define ATOM(t) MCompAtoms::instance()->getAtom(MCompAtoms::t)
 Atom MCompAtoms::atoms[MCompAtoms::ATOMS_TOTAL];
 Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
 MCompAtoms *MCompAtoms::d = 0;
@@ -187,6 +86,8 @@ MCompAtoms::MCompAtoms()
         "WM_PROTOCOLS",
         "WM_DELETE_WINDOW",
         "WM_TAKE_FOCUS",
+        "WM_TRANSIENT_FOR",
+        "WM_HINTS",
 
         "_NET_SUPPORTED",
         "_NET_SUPPORTING_WM_CHECK",
@@ -258,6 +159,8 @@ MCompAtoms::Type MCompAtoms::windowType(Window w)
         return DESKTOP;
     else if (a == atoms[_NET_WM_WINDOW_TYPE_NORMAL])
         return NORMAL;
+    else if (a == atoms[_NET_WM_WINDOW_TYPE_DIALOG])
+        return DIALOG;
     else if (a == atoms[_NET_WM_WINDOW_TYPE_DOCK])
         return DOCK;
     else if (a == atoms[_NET_WM_WINDOW_TYPE_INPUT])
@@ -803,18 +706,11 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
     }
 }
 
-/*
-  This doesn't really do anything for now. It will be used to get
-  the NETWM hints in the future like window opacity and stuff
-*/
 void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
 {
-    Q_UNUSED(e);
-    /*
-      Atom opacityAtom = ATOM(_NET_WM_WINDOW_OPACITY);
-      if(e->atom == opacityAtom)
-        ;
-    */
+    MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
+    if (cw && cw->propertyEvent(e))
+        checkStacking(false);
 }
 
 Window MCompositeManagerPrivate::getLastVisibleParent(MCompositeWindow *cw)
@@ -2168,7 +2064,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     XCompositeRedirectWindow(display, window, CompositeRedirectManual);
 
     MCompAtoms::Type wtype = atom->windowType(window);
-    MTexturePixmapItem *item = new MTexturePixmapItem(window, glwidget);
+    MCompositeWindow *item = new MTexturePixmapItem(window, glwidget);
     if (!item->isValid()) {
         item->deleteLater();
         return 0;
@@ -2250,13 +2146,10 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     } else
         item->setVisible(true);
 
-    XWMHints *h = XGetWMHints(display, window);
-    if (h) {
-        if ((h->flags & StateHint) && (h->initial_state == IconicState)) {
-            setWindowState(window, IconicState);
-            // FIXME: stack the window under desktop once NB#167488 is solved
-        }
-        XFree(h);
+    const XWMHints &h = item->getWMHints();
+    if ((h.flags & StateHint) && (h.initial_state == IconicState)) {
+        setWindowState(window, IconicState);
+        // FIXME: stack the window under desktop once NB#167488 is solved
     }
 
     checkStacking(false);

@@ -55,7 +55,6 @@ public:
     void clearTexture();
     bool isDirectRendered() const;
     bool hasAlpha() const;
-    bool isOverrideRedirect() const;
     void resize(int w, int h);
     void windowRaised();
     void drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
@@ -76,8 +75,6 @@ public:
     bool custom_tfp;
     bool has_alpha;
     bool direct_fb_render;
-    bool override_redirect;
-    bool viewable;
 
     QRect brect;
     QRegion damageRegion;

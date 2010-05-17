@@ -303,12 +303,6 @@ public:
     virtual bool hasAlpha() const = 0;
 
     /*!
-     Returns true if the window corresponding to the offscreen pixmap has an
-     is an override-redirect window, otherwise returns false.
-    */
-    virtual bool isOverrideRedirect() const = 0;
-
-    /*!
      * Sets the width and height if the item
      */
     virtual void resize(int w, int h) = 0;
@@ -319,6 +313,20 @@ public:
      * Returns whether this object represents a valid (i.e. viewable) window
      */
     bool isValid() const { return is_valid; }
+
+    /*!
+     * Returns whether override_redirect flag was in XWindowAttributes at
+     * object creation time.
+     */
+    bool isOverrideRedirect() const { return attrs->override_redirect; }
+
+    const XWMHints &getWMHints();
+
+    /*!
+     * Called on PropertyNotify for this window.
+     * Returns true if we should re-check stacking order.
+     */
+    bool propertyEvent(XPropertyEvent *e);
 
 public slots:
 
@@ -371,6 +379,8 @@ protected:
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
     virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 
+    XWindowAttributes *attrs;
+
 private:
     bool thumb_mode;
     MCompWindowAnimator *anim;
@@ -393,13 +403,14 @@ private:
     WindowType window_type;
     Atom window_type_atom;
     Window transient_for;
-    bool wants_focus;
     QList<Atom> wm_protocols;
+    bool wm_protocols_valid;
     QList<Atom> net_wm_state;
     bool window_obscured;
     bool window_mapped;
     bool is_valid;
     QRect req_geom;
+    XWMHints *wmhints;
 
     static bool window_transitioning;
 
