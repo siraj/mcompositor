@@ -261,6 +261,11 @@ public:
     void setOriginalGeometry(const QRect geometry) {
         origGeometry = geometry;
     }
+
+    /*!
+     * Returns the WM_STATE of this window
+     */
+    int windowState() const { return window_state; }
     
     QRect originalGeometry() const { return origGeometry; }
 
@@ -423,6 +428,7 @@ private:
     // Main ping timer
     QTimer *t_ping;
     Qt::HANDLE win_id;
+    int  window_state;
 
     friend class MTexturePixmapPrivate;
 };

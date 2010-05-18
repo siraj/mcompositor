@@ -1919,6 +1919,10 @@ void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
 
 void MCompositeManagerPrivate::setWindowState(Window w, int state)
 {
+    MCompositeWindow* i = COMPOSITE_WINDOW(w);
+    if(i && i->windowState() == state)
+        return;
+
     CARD32 d[2];
     d[0] = state;
     d[1] = None;
