@@ -51,7 +51,8 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       wm_protocols_valid(false),
       window_obscured(false),
       wmhints(0),
-      win_id(window)
+      win_id(window),
+      window_state(NormalState)
 {
     memset(&req_geom, 0, sizeof(req_geom));
     anim = new MCompWindowAnimator(this);
@@ -322,8 +323,25 @@ bool MCompositeWindow::propertyEvent(XPropertyEvent *e)
             wmhints = 0;
         }
         return true;
-    } else if (e->atom == ATOM(WM_PROTOCOLS))
+    } else if (e->atom == ATOM(WM_PROTOCOLS)) {
         wm_protocols_valid = false;
+    } else if (e->atom == ATOM(WM_STATE)) {
+        Atom type;
+        int format;
+        unsigned long length, after;
+        uchar *data = 0;
+        int r = XGetWindowProperty(QX11Info::display(),window(), 
+                                   ATOM(WM_STATE), 0, 2,
+                                   False, AnyPropertyType, &type, &format,
+                                   &length, &after, &data);
+        int w_state = 0;
+        if (r == Success && data && format == 32) {
+            unsigned long *wstate = (unsigned long *) data;
+            window_state = *wstate;
+            XFree((char *)data);
+            return true;
+        }
+    }
     return false;
 }
 
