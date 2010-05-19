@@ -2029,6 +2029,15 @@ QGraphicsScene *MCompositeManagerPrivate::scene()
     return watch;
 }
 
+static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
+{
+    Q_UNUSED(display);
+    Window window = (Window)arg;
+    if (xevent->type == MapNotify && xevent->xmap.window == window)
+        return True;
+    return False;
+}
+
 void MCompositeManagerPrivate::redirectWindows()
 {
     uint children = 0, i = 0;
@@ -2064,6 +2073,14 @@ void MCompositeManagerPrivate::redirectWindows()
         XFree(kids);
     scene()->views()[0]->setUpdatesEnabled(true);
     checkStacking(false);
+
+    // Wait for the MapNotify for the overlay (show() of the graphicsview
+    // in main() causes it even if we don't map it explicitly)
+    XEvent xevent;
+    XIfEvent(QX11Info::display(), &xevent, map_predicate, (XPointer)xoverlay);
+    XUnmapWindow(QX11Info::display(), xoverlay);
+    if (!possiblyUnredirectTopmostWindow())
+        enableCompositing(true);
 }
 
 bool MCompositeManagerPrivate::isRedirected(Window w)
