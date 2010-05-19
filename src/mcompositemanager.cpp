@@ -1570,11 +1570,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         item = bindWindow(win);
         if (!item)
             return;
-        Window transient_for = item->transientFor();
-        if (transient_for)
-            item->setWindowType(MCompositeWindow::Transient);
-        else
-            item->setWindowType(MCompositeWindow::Normal);
         if (!item->hasAlpha())
 	    disableCompositing(FORCED);
         else

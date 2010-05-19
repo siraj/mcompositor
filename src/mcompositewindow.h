@@ -50,11 +50,6 @@ public:
         ManualIconifyState,
         TransitionIconifyState
     };
-    enum WindowType {
-        Unknown = 0,
-        Normal,
-        Transient
-    };
 
     /*! Construct a MCompositeWindow
      *
@@ -159,12 +154,6 @@ public:
      * Returns how this window was iconified.
      */
     IconifyState iconifyState() const;
-
-    WindowType windowType() const { return window_type; }
-    
-    void setWindowType(WindowType type) {
-        window_type = type;
-    }
 
     Atom windowTypeAtom() const { return window_type_atom; }
 
@@ -405,7 +394,6 @@ private:
     bool need_decor;
     bool is_decorator;
     bool window_visible;
-    WindowType window_type;
     Atom window_type_atom;
     Window transient_for;
     QList<Atom> wm_protocols;
