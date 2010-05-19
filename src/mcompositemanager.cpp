@@ -552,6 +552,15 @@ static void set_global_alpha(unsigned int plane, unsigned int level)
 }
 #endif
 
+static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
+{
+    Q_UNUSED(display);
+    Window window = (Window)arg;
+    if (xevent->type == MapNotify && xevent->xmap.window == window)
+        return True;
+    return False;
+}
+
 MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
     : QObject(p),
       glwidget(0),
@@ -2027,15 +2036,6 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
 QGraphicsScene *MCompositeManagerPrivate::scene()
 {
     return watch;
-}
-
-static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
-{
-    Q_UNUSED(display);
-    Window window = (Window)arg;
-    if (xevent->type == MapNotify && xevent->xmap.window == window)
-        return True;
-    return False;
 }
 
 void MCompositeManagerPrivate::redirectWindows()
