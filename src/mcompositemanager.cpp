@@ -61,6 +61,8 @@
 #define COMPOSITE_WINDOW(X) windows.value(X, 0)
 #define FULLSCREEN_WINDOW(X) \
         ((X)->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1)
+#define MODAL_WINDOW(X) \
+        ((X)->netWmState().indexOf(ATOM(_NET_WM_STATE_MODAL)) != -1)
 
 Atom MCompAtoms::atoms[MCompAtoms::ATOMS_TOTAL];
 Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
@@ -104,6 +106,7 @@ MCompAtoms::MCompAtoms()
         "_NET_WM_STATE_ABOVE",
         "_NET_WM_STATE_SKIP_TASKBAR",
         "_NET_WM_STATE_FULLSCREEN",
+        "_NET_WM_STATE_MODAL",
         // uses the KDE standard for frameless windows
         "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE",
 
@@ -154,20 +157,26 @@ MCompAtoms::MCompAtoms()
 MCompAtoms::Type MCompAtoms::windowType(Window w)
 {
     // freedesktop.org window type
-    Atom a = getType(w);
-    if (a == atoms[_NET_WM_WINDOW_TYPE_DESKTOP])
-        return DESKTOP;
-    else if (a == atoms[_NET_WM_WINDOW_TYPE_NORMAL])
+    QVector<Atom> a = getAtomArray(w, atoms[_NET_WM_WINDOW_TYPE]);
+    if (!a.size())
         return NORMAL;
-    else if (a == atoms[_NET_WM_WINDOW_TYPE_DIALOG])
-        return DIALOG;
-    else if (a == atoms[_NET_WM_WINDOW_TYPE_DOCK])
+    if (a[0] == atoms[_NET_WM_WINDOW_TYPE_DESKTOP])
+        return DESKTOP;
+    else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_NORMAL])
+        return NORMAL;
+    else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_DIALOG]) {
+        if (a.indexOf(atoms[_KDE_NET_WM_WINDOW_TYPE_OVERRIDE]) != -1)
+            return NO_DECOR_DIALOG;
+        else
+            return DIALOG;
+    }
+    else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_DOCK])
         return DOCK;
-    else if (a == atoms[_NET_WM_WINDOW_TYPE_INPUT])
+    else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_INPUT])
         return INPUT;
-    else if (a == atoms[_NET_WM_WINDOW_TYPE_NOTIFICATION])
+    else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_NOTIFICATION])
         return NOTIFICATION;
-    else if (a == atoms[_KDE_NET_WM_WINDOW_TYPE_OVERRIDE])
+    else if (a[0] == atoms[_KDE_NET_WM_WINDOW_TYPE_OVERRIDE])
         return FRAMELESS;
 
     if (transient_for(w))
@@ -194,7 +203,7 @@ int MCompAtoms::getPid(Window w)
 
 bool MCompAtoms::hasState(Window w, Atom a)
 {
-    QVector<Atom> states = netWmStates(w);
+    QVector<Atom> states = getAtomArray(w, atoms[_NET_WM_STATE]);
     return states.indexOf(a) != -1;
 }
 
@@ -217,7 +226,7 @@ QRectF MCompAtoms::iconGeometry(Window w)
     return QRectF(); // empty
 }
 
-QVector<Atom> MCompAtoms::netWmStates(Window w)
+QVector<Atom> MCompAtoms::getAtomArray(Window w, Atom array_atom)
 {
     QVector<Atom> ret;
 
@@ -225,14 +234,14 @@ QVector<Atom> MCompAtoms::netWmStates(Window w)
     int format;
     unsigned long n, left;
     unsigned char *data;
-    int result = XGetWindowProperty(QX11Info::display(), w, atoms[_NET_WM_STATE], 0, 0,
+    int result = XGetWindowProperty(QX11Info::display(), w, array_atom, 0, 0,
                                     False, XA_ATOM, &actual, &format,
                                     &n, &left, &data);
     if (result == Success && actual == XA_ATOM && format == 32) {
         ret.resize(left / 4);
         XFree((void *) data);
 
-        if (XGetWindowProperty(QX11Info::display(), w, atoms[_NET_WM_STATE], 0,
+        if (XGetWindowProperty(QX11Info::display(), w, array_atom, 0,
                                ret.size(), False, XA_ATOM, &actual, &format,
                                &n, &left, &data) != Success) {
             ret.clear();
@@ -379,7 +388,7 @@ static void skiptaskbar_wm_state(int toggle, Window window)
 {
     Atom skip = ATOM(_NET_WM_STATE_SKIP_TASKBAR);
     MCompAtoms *atom = MCompAtoms::instance();
-    QVector<Atom> states = atom->netWmStates(window);
+    QVector<Atom> states = atom->getAtomArray(window, ATOM(_NET_WM_STATE));
     bool update_root = false;
     int i = states.indexOf(skip);
 
@@ -445,7 +454,7 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
     Atom fullscreen = ATOM(_NET_WM_STATE_FULLSCREEN);
     Display *dpy = QX11Info::display();
     MCompAtoms *atom = MCompAtoms::instance();
-    QVector<Atom> states = atom->netWmStates(window);
+    QVector<Atom> states = atom->getAtomArray(window, ATOM(_NET_WM_STATE));
     int i = states.indexOf(fullscreen);
 
     switch (toggle) {
@@ -653,6 +662,7 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
             && t != MCompAtoms::NOTIFICATION
             && t != MCompAtoms::INPUT
             && t != MCompAtoms::DOCK
+            && t != MCompAtoms::NO_DECOR_DIALOG
             && !transient);
 }
 
@@ -730,7 +740,10 @@ bool MCompositeManagerPrivate::isAppWindow(MCompositeWindow *cw)
 {
     if (cw && !getLastVisibleParent(cw) &&
             (cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
-             cw->windowTypeAtom() == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE))
+             cw->windowTypeAtom() == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
+             /* non-modal, non-transient dialogs behave like applications */
+             (cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
+              !MODAL_WINDOW(cw)))
             && !cw->isDecorator())
         return true;
     return false;
@@ -1348,7 +1361,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         Window w = stacking_list.at(i);
         if (w == first_moved) break;
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (cw && !getLastVisibleParent(cw)
+        if (cw && !getLastVisibleParent(cw) && MODAL_WINDOW(cw)
             && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)) {
             stacking_list.move(i, last_i);
             if (!first_moved) first_moved = w;
@@ -1640,6 +1653,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         Window close_window = event->window;
 
         // send WM_DELETE_WINDOW message to actual window that needs to close
+        // FIXME/TODO: if the window does not support delete, we need to kill
         XEvent ev;
         memset(&ev, 0, sizeof(ev));
 
@@ -1689,7 +1703,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         if (event->data.l[1] == (long)  ATOM(_NET_WM_STATE_SKIP_TASKBAR)) {
             skiptaskbar_wm_state(event->data.l[0], event->window);
             if (i) {
-                QVector<Atom> states = atom->netWmStates(event->window);
+                QVector<Atom> states = atom->getAtomArray(event->window,
+                                                          ATOM(_NET_WM_STATE));
                 i->setNetWmState(states.toList());
             }
         } else if (event->data.l[1] == (long) ATOM(_NET_WM_STATE_FULLSCREEN))
@@ -2073,13 +2088,14 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         item->deleteLater();
         return 0;
     }
-    
+
+    // FIXME: when NB#167488 is fixed, initial state could be iconified
     item->setZValue(wtype);
     item->saveState();
     item->setIsMapped(true);
     windows[window] = item;
 
-    QVector<Atom> states = atom->netWmStates(window);
+    QVector<Atom> states = atom->getAtomArray(window, ATOM(_NET_WM_STATE));
     item->setNetWmState(states.toList());
     int fs_i = states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
     if (wa && fs_i == -1) {

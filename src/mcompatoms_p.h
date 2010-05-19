@@ -30,6 +30,7 @@ public:
         DESKTOP = 0,
         NORMAL,
         DIALOG,
+        NO_DECOR_DIALOG,
         FRAMELESS,
         DOCK,
         INPUT,
@@ -61,6 +62,7 @@ public:
         _NET_WM_STATE_ABOVE,
         _NET_WM_STATE_SKIP_TASKBAR,
         _NET_WM_STATE_FULLSCREEN,
+        _NET_WM_STATE_MODAL,
         _KDE_NET_WM_WINDOW_TYPE_OVERRIDE,
 
         // window properties
@@ -104,7 +106,7 @@ public:
     long getWmState(Window w);
     bool hasState(Window w, Atom a);
     QRectF iconGeometry(Window w);
-    QVector<Atom> netWmStates(Window w);
+    QVector<Atom> getAtomArray(Window w, Atom array_atom);
     unsigned int get_opacity_prop(Display *dpy, Window w, unsigned int def);
     double get_opacity_percent(Display *dpy, Window w, double def);
     int globalAlphaFromWindow(Window w);
