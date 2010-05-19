@@ -103,10 +103,17 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
         return;
     client = cw;
 
+    qulonglong winid = client ? client->window() : 0;
+    if (decorator_window) {
+        long val = winid;
+        Atom a = XInternAtom(QX11Info::display(),
+                             "_MDECORATOR_MANAGED_WINDOW", False);
+        XChangeProperty(QX11Info::display(), decorator_window, a, XA_WINDOW,
+                        32, PropModeReplace, (unsigned char *)&val, 1);
+    }
     if (!decorator_item)
         return;
     
-    qulonglong winid = client ? client->window() : 0;
     if(cw)
         remote_decorator->invoke("MAbstractDecorator",
                                  "RemoteSetClientGeometry", cw->requestedGeometry());
@@ -116,13 +123,6 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetManagedWinId", winid);
                              */
-    if (decorator_window) {
-        long val = winid;
-        Atom a = XInternAtom(QX11Info::display(),
-                             "_MDECORATOR_MANAGED_WINDOW", False);
-        XChangeProperty(QX11Info::display(), decorator_window, a, XA_WINDOW,
-                        32, PropModeReplace, (unsigned char *)&val, 1);
-    }
     
     if (cw)
         connect(cw, SIGNAL(destroyed()), SLOT(destroyClient()));

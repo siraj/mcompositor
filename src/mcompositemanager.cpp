@@ -1092,6 +1092,15 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     if (atom->isDecorator(e->window)) {
         enableCompositing();
         MDecoratorFrame::instance()->setDecoratorWindow(e->window);
+        MDecoratorFrame::instance()->setManagedWindow(0);
+        Window w = getTopmostApp();
+        MCompositeWindow *cw;
+        if (w && (cw = COMPOSITE_WINDOW(w))) {
+            if (cw->needDecoration())
+                MDecoratorFrame::instance()->setManagedWindow(cw);
+            else if (cw->status() == MCompositeWindow::HUNG)
+                MDecoratorFrame::instance()->setManagedWindow(cw, true);
+        }
         return;
     }
 
@@ -1408,8 +1417,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     QList<Window> only_mapped;
     for (int i = 0; i <= last_i; ++i) {
          MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
-         if (witem && witem->isMapped() && !witem->isDecorator()
-             && !witem->isOverrideRedirect())
+         if (witem && witem->isMapped() && !witem->isOverrideRedirect())
              only_mapped.append(stacking_list.at(i));
     }
     static QList<Window> prev_only_mapped;
@@ -1430,12 +1438,19 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         XRestackWindows(QX11Info::display(), reverse.toVector().data(),
                         reverse.size());
 
+        // decorator is not included to the property
+        QList<Window> no_decors = only_mapped;
+        for (int i = 0; i <= last_i; ++i) {
+             MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
+             if (witem && witem->isMapped() && witem->isDecorator())
+                 no_decors.removeOne(stacking_list.at(i));
+        }
         XChangeProperty(QX11Info::display(),
                         RootWindow(QX11Info::display(), 0),
                         ATOM(_NET_CLIENT_LIST_STACKING),
                         XA_WINDOW, 32, PropModeReplace,
-                        (unsigned char *)only_mapped.toVector().data(),
-                        only_mapped.size());
+                        (unsigned char *)no_decors.toVector().data(),
+                        no_decors.size());
         prev_only_mapped = QList<Window>(only_mapped);
 
         checkInputFocus(timestamp);
@@ -1846,7 +1861,8 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         MDecoratorFrame::instance()->activate();
 
     if (cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DESKTOP) &&
-        cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)) {
+        cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK) &&
+        !cw->isDecorator()) {
         stack[APPLICATION_LAYER] = w;
         setExposeDesktop(false);
         // possibly set decorator
@@ -1867,6 +1883,9 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
             positionWindow(last, STACK_TOP);
         else
             positionWindow(w, STACK_TOP);
+    } else if (cw->isDecorator()) {
+        // if decorator crashes and reappears, stack it to bottom, raise later
+        positionWindow(w, STACK_BOTTOM);
     } else if (w == stack[DESKTOP_LAYER]) {
         setExposeDesktop(true);
         positionWindow(w, STACK_TOP);
