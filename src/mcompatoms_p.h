@@ -86,6 +86,7 @@ public:
         _MEEGOTOUCH_DECORATOR_WINDOW,
         _DUI_STATUSBAR_OVERLAY,
         _MEEGOTOUCH_GLOBAL_ALPHA,
+        _MEEGO_STACKING_LAYER,
 
 #ifdef WINDOW_DEBUG
         _M_WM_INFO,
@@ -115,12 +116,12 @@ public:
     Atom getType(Window w);
 
     static Atom atoms[ATOMS_TOTAL];
+    int cardValueProperty(Window w, Atom property);
 
 private:
     explicit MCompAtoms();
     static MCompAtoms *d;
 
-    int intValueProperty(Window w, Atom property);
     Atom getAtom(Window w, Atoms atomtype);
 
     Display *dpy;

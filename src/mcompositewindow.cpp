@@ -51,6 +51,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       wm_protocols_valid(false),
       window_obscured(false),
       wmhints(0),
+      meego_layer(-1),
       win_id(window),
       window_state(NormalState)
 {
@@ -282,6 +283,15 @@ Window MCompositeWindow::transientFor()
     return transient_for;
 }
 
+unsigned int MCompositeWindow::meegoStackingLayer()
+{
+    if (meego_layer < 0)
+        meego_layer = MCompAtoms::instance()->cardValueProperty(window(),
+                                                ATOM(_MEEGO_STACKING_LAYER));
+    if (meego_layer > 6) meego_layer = 6;
+    return (unsigned)meego_layer;
+}
+
 bool MCompositeWindow::wantsFocus()
 {
     bool val = true;
@@ -334,13 +344,16 @@ bool MCompositeWindow::propertyEvent(XPropertyEvent *e)
                                    ATOM(WM_STATE), 0, 2,
                                    False, AnyPropertyType, &type, &format,
                                    &length, &after, &data);
-        int w_state = 0;
         if (r == Success && data && format == 32) {
             unsigned long *wstate = (unsigned long *) data;
             window_state = *wstate;
             XFree((char *)data);
             return true;
         }
+    } else if (e->atom == ATOM(_MEEGO_STACKING_LAYER)) {
+        meego_layer = MCompAtoms::instance()->cardValueProperty(window(),
+                                                 ATOM(_MEEGO_STACKING_LAYER));
+        return true;
     }
     return false;
 }

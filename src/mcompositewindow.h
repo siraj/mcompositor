@@ -317,6 +317,11 @@ public:
     const XWMHints &getWMHints();
 
     /*!
+     * Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 6].
+     */
+    unsigned int meegoStackingLayer();
+
+    /*!
      * Called on PropertyNotify for this window.
      * Returns true if we should re-check stacking order.
      */
@@ -404,6 +409,7 @@ private:
     bool is_valid;
     QRect req_geom;
     XWMHints *wmhints;
+    int meego_layer;
 
     static bool window_transitioning;
 

@@ -117,7 +117,6 @@ public:
 
     MCompAtoms *atom;
     QGLWidget *glwidget;
-    MCompositeWindow *damage_cache;
 
     QList<Window> stacking_list;
     QList<Window> windows_as_mapped;
@@ -135,7 +134,6 @@ public:
     int damage_event;
     int damage_error;
 
-    bool arranged;
     bool compositing;
     MDeviceState *device_state;
 

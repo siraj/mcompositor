@@ -130,6 +130,7 @@ MCompAtoms::MCompAtoms()
         // TODO: remove this when statusbar in-scene approach is done
         "_DUI_STATUSBAR_OVERLAY",
         "_MEEGOTOUCH_GLOBAL_ALPHA",
+        "_MEEGO_STACKING_LAYER",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
@@ -187,18 +188,18 @@ MCompAtoms::Type MCompAtoms::windowType(Window w)
 
 bool MCompAtoms::isDecorator(Window w)
 {
-    return (intValueProperty(w, atoms[_MEEGOTOUCH_DECORATOR_WINDOW]) == 1);
+    return (cardValueProperty(w, atoms[_MEEGOTOUCH_DECORATOR_WINDOW]) == 1);
 }
 
 // Remove this when statusbar in-scene approach is done
 bool MCompAtoms::statusBarOverlayed(Window w)
 {
-    return (intValueProperty(w, atoms[_DUI_STATUSBAR_OVERLAY]) == 1);
+    return (cardValueProperty(w, atoms[_DUI_STATUSBAR_OVERLAY]) == 1);
 }
 
 int MCompAtoms::getPid(Window w)
 {
-    return intValueProperty(w, atoms[_NET_WM_PID]);
+    return cardValueProperty(w, atoms[_NET_WM_PID]);
 }
 
 bool MCompAtoms::hasState(Window w, Atom a)
@@ -309,7 +310,7 @@ int MCompAtoms::globalAlphaFromWindow(Window w)
     int format;
     unsigned long n, left;
 
-    unsigned char *data;
+    unsigned char *data = 0;
     int result = XGetWindowProperty(QX11Info::display(), w, atoms[_MEEGOTOUCH_GLOBAL_ALPHA], 0L, 1L, False,
                                     XA_CARDINAL, &actual, &format,
                                     &n, &left, &data);
@@ -329,17 +330,17 @@ Atom MCompAtoms::getAtom(const unsigned int name)
     return atoms[name];
 }
 
-int MCompAtoms::intValueProperty(Window w, Atom property)
+int MCompAtoms::cardValueProperty(Window w, Atom property)
 {
     Atom actual;
     int format;
     unsigned long n, left;
-    unsigned char *data;
+    unsigned char *data = 0;
 
     int result = XGetWindowProperty(QX11Info::display(), w, property, 0L, 1L, False,
                                     XA_CARDINAL, &actual, &format,
                                     &n, &left, &data);
-    if (result == Success && data != None) {
+    if (result == Success && data) {
         int p = *((unsigned long *)data);
         XFree((void *)data);
         return p;
@@ -564,8 +565,6 @@ static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
 MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
     : QObject(p),
       glwidget(0),
-      damage_cache(0),
-      arranged(false),
       compositing(true)
 {
     watch = new MCompositeScene(this);
@@ -683,20 +682,11 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
     int num;
     XDamageSubtract(QX11Info::display(), e->damage, None, r);
 
-    XRectangle *rects = 0;
-    rects = XFixesFetchRegion(QX11Info::display(), r, &num);
+    XRectangle *rects = XFixesFetchRegion(QX11Info::display(), r, &num);
     XFixesDestroyRegion(QX11Info::display(), r);
 
-    if (damage_cache && damage_cache->window() == e->drawable) {
-        if (rects) {
-            damage_cache->updateWindowPixmap(rects, num);
-            XFree(rects);
-        }
-        return;
-    }
     MCompositeWindow *item = COMPOSITE_WINDOW(e->drawable);
-    damage_cache = item;
-    if (item)
+    if (item && rects)
         item->updateWindowPixmap(rects, num);
 
     if (rects)
@@ -712,8 +702,6 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
         if (!removeWindow(e->window))
             qWarning("destroyEvent(): Error removing window");
         glwidget->update();
-        if (damage_cache && damage_cache->window() == e->window)
-            damage_cache = 0;
     } else {
         // We got a destroy event from a framed window (or a window that was
         // never mapped)
@@ -1288,6 +1276,19 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
         XSetInputFocus(QX11Info::display(), w, RevertToPointerRoot, timestamp);
 }
 
+#define RAISE_MATCHING(X) { \
+    first_moved = 0; \
+    for (int i = 0; i < last_i;) { \
+        Window w = stacking_list.at(i); \
+        if (w == first_moved) break; \
+        MCompositeWindow *cw = COMPOSITE_WINDOW(w); \
+        if (cw && (X)) { \
+            stacking_list.move(i, last_i); \
+	    raise_transients(this, w, last_i); \
+            if (!first_moved) first_moved = w; \
+        } else ++i; \
+    } }
+
 /* Go through stacking_list and verify that it is in order.
  * If it isn't, reorder it and call XRestackWindows.
  * NOTE: stacking_list needs to be reversed before giving it to
@@ -1352,72 +1353,36 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 
     /* raise docks if either the desktop is up or the application is
      * non-fullscreen */
-    if (desktop_up || !active_app || app_i < 0 || !aw || !fs_app) {
-        first_moved = 0;
-        for (int i = 0; i < last_i;) {
-            Window w = stacking_list.at(i);
-            if (w == first_moved) break;
-            MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-            if (cw && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK)
-                && !getLastVisibleParent(cw)) {
-                stacking_list.move(i, last_i);
-                if (!first_moved) first_moved = w;
-	        /* raise transients recursively */
-	        raise_transients(this, w, last_i);
-            } else ++i;
-        }
-    } else if (active_app && aw && deco->decoratorItem() &&
+    if (desktop_up || !active_app || app_i < 0 || !aw || !fs_app)
+        RAISE_MATCHING(!getLastVisibleParent(cw) &&
+                       cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
+    else if (active_app && aw && deco->decoratorItem() &&
                deco->managedWindow() == active_app &&
                (fs_app || aw->status() == MCompositeWindow::HUNG)) {
         // no dock => decorator starts from (0,0)
         XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
     }
+    /* Meego layers 1-3: lock screen, ongoing call etc. */
+    for (unsigned int level = 1; level < 4; ++level)
+         RAISE_MATCHING(!getLastVisibleParent(cw) &&
+                        cw->meegoStackingLayer() == level)
     /* raise all system-modal dialogs */
-    first_moved = 0;
-    for (int i = 0; i < last_i;) {
-        /* TODO: transients */
-        Window w = stacking_list.at(i);
-        if (w == first_moved) break;
-        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (cw && !getLastVisibleParent(cw) && MODAL_WINDOW(cw)
-            && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)) {
-            stacking_list.move(i, last_i);
-            if (!first_moved) first_moved = w;
-        } else ++i;
-    }
-    /* raise all keep-above flagged and input methods, at the same time
-     * preserving their mutual stacking order */
-    first_moved = 0;
-    for (int i = 0; i < last_i;) {
-        /* TODO: transients */
-        Window w = stacking_list.at(i);
-        if (w == first_moved) break;
-        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (cw && (cw->isDecorator() || getLastVisibleParent(cw))) {
-            // skip decorators and transients (raised after the parent)
-            ++i;
-            continue;
-        }
-        if ((cw && cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)) ||
-            atom->hasState(w, ATOM(_NET_WM_STATE_ABOVE))) {
-            stacking_list.move(i, last_i);
-	    raise_transients(this, w, last_i);
-            if (!first_moved) first_moved = w;
-        } else ++i;
-    }
+    RAISE_MATCHING(!getLastVisibleParent(cw) && MODAL_WINDOW(cw) &&
+                   cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
+    /* raise all keep-above flagged, input methods and Meego layer 4
+     * (incoming call), at the same time preserving their mapping order */
+    RAISE_MATCHING(!getLastVisibleParent(cw) && !cw->isDecorator() &&
+                   (cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT)
+                    || cw->meegoStackingLayer() == 4 ||
+                    cw->netWmState().indexOf(ATOM(_NET_WM_STATE_ABOVE)) != -1))
+    // Meego layer 5
+    RAISE_MATCHING(!getLastVisibleParent(cw) && cw->meegoStackingLayer() == 5)
     /* raise all non-transient notifications (transient ones were already
      * handled above) */
-    first_moved = 0;
-    for (int i = 0; i < last_i;) {
-        Window w = stacking_list.at(i);
-        if (w == first_moved) break;
-        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (cw && !cw->transientFor() &&
-                cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION)) {
-            stacking_list.move(i, last_i);
-            if (!first_moved) first_moved = w;
-        } else ++i;
-    }
+    RAISE_MATCHING(!getLastVisibleParent(cw) &&
+        cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION))
+    // Meego layer 6
+    RAISE_MATCHING(!getLastVisibleParent(cw) && cw->meegoStackingLayer() == 6)
 
     // properties and focus are updated only if there was a change in the
     // order of mapped windows or mappedness FIXME: would make sense to
@@ -2197,11 +2162,13 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     } else
         item->setVisible(true);
 
+#if 0 // FIXME: support initial_state==IconicState when NB#167488 is solved
     const XWMHints &h = item->getWMHints();
     if ((h.flags & StateHint) && (h.initial_state == IconicState)) {
         setWindowState(window, IconicState);
-        // FIXME: stack the window under desktop once NB#167488 is solved
     }
+#endif
+    setWindowState(window, NormalState);
 
     checkStacking(false);
 
