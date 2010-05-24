@@ -2204,29 +2204,27 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
             SLOT(sendPing(MCompositeWindow *)));
 }
 
-void MCompositeManagerPrivate::updateWinList(bool stackingOnly)
+void MCompositeManagerPrivate::updateWinList()
 {
-    if (!stackingOnly) {
-        static QList<Window> prev_list;
-        /* windows_as_mapped may contain invisible windows, so we need to
-         * make a new list without them */
-        QList<Window> new_list;
-        for (int i = 0; i < windows_as_mapped.size(); ++i) {
-            Window w = windows_as_mapped.at(i);
-            MCompositeWindow *d = COMPOSITE_WINDOW(w);
-            if (d->isMapped()) new_list.append(w);
-        }
+    static QList<Window> prev_list;
+    /* windows_as_mapped may contain invisible windows, so we need to
+     * make a new list without them */
+    QList<Window> new_list;
+    for (int i = 0; i < windows_as_mapped.size(); ++i) {
+        Window w = windows_as_mapped.at(i);
+        MCompositeWindow *d = COMPOSITE_WINDOW(w);
+        if (d->isMapped()) new_list.append(w);
+    }
 
-        if (new_list != prev_list) {
-            XChangeProperty(QX11Info::display(),
-                            RootWindow(QX11Info::display(), 0),
-                            ATOM(_NET_CLIENT_LIST),
-                            XA_WINDOW, 32, PropModeReplace,
-                            (unsigned char *)new_list.toVector().data(),
-                            new_list.size());
+    if (new_list != prev_list) {
+        XChangeProperty(QX11Info::display(),
+                        RootWindow(QX11Info::display(), 0),
+                        ATOM(_NET_CLIENT_LIST),
+                        XA_WINDOW, 32, PropModeReplace,
+                        (unsigned char *)new_list.toVector().data(),
+                        new_list.size());
 
-            prev_list = QList<Window>(new_list);
-        }
+        prev_list = QList<Window>(new_list);
     }
     checkStacking(false);
 }
@@ -2258,7 +2256,7 @@ MCompositeManagerPrivate::positionWindow(Window w,
         break;
 
     }
-    updateWinList(true);
+    updateWinList();
 }
 
 void MCompositeManagerPrivate::enableCompositing(bool forced,

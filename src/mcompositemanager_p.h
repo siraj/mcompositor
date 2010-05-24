@@ -74,7 +74,7 @@ public:
     void prepare();
     void activateWindow(Window w, Time timestamp,
 		        bool disableCompositing = true);
-    void updateWinList(bool stackingOnly = false);
+    void updateWinList();
     void setWindowState(Window , int);
     void setWindowDebugProperties(Window w);
     void positionWindow(Window w, StackPosition pos);

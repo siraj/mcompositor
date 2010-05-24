@@ -123,7 +123,8 @@ EGLDisplay EglResourceManager::dpy = 0;
 void MTexturePixmapItem::init()
 {
     if (attrs->map_state != IsViewable) {
-        qWarning("MTexturePixmapItem::init(): Failed getting offscreen pixmap");
+        qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
+                 __func__);
         return;
     }
 
@@ -142,8 +143,8 @@ void MTexturePixmapItem::init()
                                      (EGLClientBuffer)d->windowp,
                                      attribs);
     if (d->egl_image == EGL_NO_IMAGE_KHR)
-        qWarning("MTexturePixmapItem: Cannot create EGL image: 0x%x",
-                 eglGetError());
+        qWarning("MTexturePixmapItem::%s(): Cannot create EGL image: 0x%x",
+                 __func__, eglGetError());
     
     d->textureId = d->eglresource->texman->getTexture();
     glEnable(GL_TEXTURE_2D);
@@ -179,6 +180,11 @@ void MTexturePixmapItem::rebindPixmap()
         eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
+
+    if (!d->windowp) {
+        d->egl_image = EGL_NO_IMAGE_KHR;
+        return;
+    }
     
     d->ctx->makeCurrent();
     d->egl_image = eglCreateImageKHR(d->eglresource->dpy, 0,
@@ -186,8 +192,8 @@ void MTexturePixmapItem::rebindPixmap()
                                      (EGLClientBuffer)d->windowp,
                                      attribs);
     if (d->egl_image == EGL_NO_IMAGE_KHR)
-        qWarning("MTexturePixmapItem: Cannot create EGL image: 0x%x",
-                 eglGetError());
+        qWarning("MTexturePixmapItem::%s(): Cannot create EGL image: 0x%x",
+                 __func__, eglGetError());
     
     glBindTexture(GL_TEXTURE_2D, d->textureId);
     if (d->egl_image != EGL_NO_IMAGE_KHR)
