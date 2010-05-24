@@ -1093,9 +1093,13 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         Window w = getTopmostApp();
         MCompositeWindow *cw;
         if (w && (cw = COMPOSITE_WINDOW(w))) {
-            if (cw->needDecoration())
-                MDecoratorFrame::instance()->setManagedWindow(cw);
-            else if (cw->status() == MCompositeWindow::HUNG)
+            if (cw->needDecoration()) {
+                if (FULLSCREEN_WINDOW(cw) && device_state->ongoingCall()) {
+                    MDecoratorFrame::instance()->setManagedWindow(cw, true);
+                    MDecoratorFrame::instance()->setOnlyStatusbar(true);
+                } else
+                    MDecoratorFrame::instance()->setManagedWindow(cw);
+            } else if (cw->status() == MCompositeWindow::HUNG)
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
         }
         return;
@@ -1531,15 +1535,18 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             item->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
         else
             item->setWindowTypeAtom(atom->getType(win));
-        item->saveBackingStore(true);
         if (!device_state->displayOff() && !item->hasAlpha()
             && !item->needDecoration()) {
             item->setVisible(true);
             item->updateWindowPixmap();
-            disableCompositing();
+            // disableCompositing() does not work here because it ignores
+            // stacking order in its check for decorator
+            if (!possiblyUnredirectTopmostWindow())
+                enableCompositing(true);
         } else if (!device_state->displayOff()) {
             ((MTexturePixmapItem *)item)->enableRedirectedRendering();
             item->delayShow(100);
+            item->saveBackingStore(true);
         }
         /* do this after bindWindow() so that the window is in stacking_list */
         activateWindow(win, CurrentTime, false);
