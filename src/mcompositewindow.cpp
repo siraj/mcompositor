@@ -53,7 +53,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       wmhints(0),
       meego_layer(-1),
       win_id(window),
-      window_state(NormalState)
+      window_state(-1)
 {
     memset(&req_geom, 0, sizeof(req_geom));
     anim = new MCompWindowAnimator(this);

@@ -2286,15 +2286,6 @@ void MCompositeManagerPrivate::enableCompositing(bool forced,
 
 void MCompositeManagerPrivate::mapOverlayWindow()
 {
-    // Render the previous contents of the framebuffer
-    // here exactly before compositing was enabled
-    // Ensure the changes are visualized immediately
-
-    QPainter m(glwidget);
-    m.drawPixmap(0, 0, QPixmap::grabWindow(QX11Info::appRootWindow()));
-    glwidget->update();
-    QCoreApplication::flush();
-
     // Freeze painting of framebuffer as of this point
     scene()->views()[0]->setUpdatesEnabled(false);
     XMoveWindow(QX11Info::display(), localwin, -2, -2);
