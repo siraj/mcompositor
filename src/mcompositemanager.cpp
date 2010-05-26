@@ -1545,7 +1545,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 enableCompositing(true);
         } else if (!device_state->displayOff()) {
             ((MTexturePixmapItem *)item)->enableRedirectedRendering();
-            item->delayShow(100);
+            item->show();
             item->saveBackingStore(true);
         }
         /* do this after bindWindow() so that the window is in stacking_list */
@@ -1567,9 +1567,9 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         if (!item)
             return;
         if (!item->hasAlpha())
-	    disableCompositing(FORCED);
+            disableCompositing(FORCED);
         else
-            item->delayShow(500);
+            item->show();
 
         // the current decorated window got mapped
         if (e->window == MDecoratorFrame::instance()->managedWindow() &&

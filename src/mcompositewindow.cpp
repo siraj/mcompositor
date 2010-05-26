@@ -530,13 +530,6 @@ bool MCompositeWindow::isTransitioning()
     return window_transitioning;
 }
 
-void MCompositeWindow::delayShow(int delay)
-{
-    // TODO: only do this for qt/dui apps because it delays translucency
-    setVisible(false);
-    QTimer::singleShot(delay, this, SLOT(q_delayShow()));
-}
-
 void MCompositeWindow::q_delayShow()
 {
     MCompositeWindow::setVisible(true);

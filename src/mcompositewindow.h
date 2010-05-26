@@ -334,8 +334,6 @@ public slots:
     void setUnBlurred();
     void setBlurred(bool);
 
-    void delayShow(int delay = 300);
-
 private slots:
 
     /*! Called internally to update how this item looks when the transitions
