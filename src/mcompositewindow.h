@@ -316,6 +316,8 @@ public:
 
     const XWMHints &getWMHints();
 
+    const XWindowAttributes* windowAttributes() const { return attrs; };
+
     /*!
      * Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 6].
      */
@@ -375,9 +377,6 @@ protected:
     virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *);
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
     virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);
-
-    XWindowAttributes *attrs;
-
 private:
     bool thumb_mode;
     MCompWindowAnimator *anim;
@@ -407,6 +406,7 @@ private:
     bool is_valid;
     QRect req_geom;
     XWMHints *wmhints;
+    XWindowAttributes *attrs;
     int meego_layer;
 
     static bool window_transitioning;

@@ -51,6 +51,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       wm_protocols_valid(false),
       window_obscured(false),
       wmhints(0),
+      attrs(0),
       meego_layer(-1),
       win_id(window),
       window_state(-1)

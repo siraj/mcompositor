@@ -122,12 +122,14 @@ EGLDisplay EglResourceManager::dpy = 0;
 
 void MTexturePixmapItem::init()
 {
-    if (attrs->map_state != IsViewable) {
+    if (isValid() && (windowAttributes()->map_state != IsViewable)) {
         qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
                  __func__);
+        d->setValid(false);
         return;
-    }
-
+    } else if (!isValid()) 
+        return;
+    
     if (!d->eglresource)
         d->eglresource = new EglResourceManager();
 

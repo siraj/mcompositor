@@ -211,11 +211,12 @@ void MTexturePixmapPrivate::init()
         glresource->initVertices(glwidget);
     }
 
-    XRenderPictFormat *format = XRenderFindVisualFormat(QX11Info::display(), item->attrs->visual);
+    XRenderPictFormat *format = XRenderFindVisualFormat(QX11Info::display(),
+                                                        item->windowAttributes()->visual);
     has_alpha = (format && format->type == PictTypeDirect && format->direct.alphaMask);
 
-    resize(item->attrs->width, item->attrs->height);
-    item->setPos(item->attrs->x, item->attrs->y);
+    resize(item->windowAttributes()->width, item->windowAttributes()->height);
+    item->setPos(item->windowAttributes()->x, item->windowAttributes()->y);
 }
 
 MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MTexturePixmapItem *p)
@@ -293,4 +294,9 @@ void MTexturePixmapPrivate::resize(int w, int h)
 bool MTexturePixmapPrivate::hasAlpha() const
 {
     return has_alpha;
+}
+
+void MTexturePixmapPrivate::setValid(bool valid)
+{    
+    item->is_valid = valid;
 }
