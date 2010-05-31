@@ -84,10 +84,13 @@ static bool hasTextureFromPixmap()
 
 void MTexturePixmapItem::init()
 {
-    if (attrs->map_state != IsViewable) {
-        qWarning("MTexturePixmapItem::init(): Failed getting offscreen pixmap");
+    if (isValid() && (windowAttributes()->map_state != IsViewable)) {
+        qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
+                 __func__);
+        d->setValid(false);
         return;
-    }
+    } else if (!isValid()) 
+        return;
 
     d->glpixmap = 0;
     saveBackingStore();
