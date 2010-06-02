@@ -79,7 +79,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
 
 MCompositeWindow::~MCompositeWindow()
 {
-    delete anim;
     anim = 0;
     if (wmhints) {
         XFree(wmhints);
