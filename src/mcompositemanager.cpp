@@ -698,7 +698,7 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
         scene()->removeItem(item);
-        delete item;
+        item->deleteLater();
         if (!removeWindow(e->window))
             qWarning("destroyEvent(): Error removing window");
         glwidget->update();
@@ -2108,7 +2108,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         if (!XGetWindowAttributes(display, window, &a)) {
             qWarning("XGetWindowAttributes for 0x%lx failed", window);
             windows.remove(window);
-            delete item;
+            item->deleteLater();
             return 0;
         }
         item->setRequestedGeometry(QRect(a.x, a.y, a.width, a.height));

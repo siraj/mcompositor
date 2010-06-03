@@ -1,7 +1,8 @@
 mcompositor (0.4.6~1) unstable; urgency=low
 
   * New version [UNRELEASED]
-  * Fixes: NB#171045 - repeatedly locking/unlocking the device crashes mcompositor	
+  * Fixes: NB#171045 - repeatedly locking/unlocking the device crashes mcompositor
+  * Fixes: NB#172042 - QEasingCurve destructor causes crash in mcompositor
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Wed, 26 May 2010 18:52:18 +0300
 
