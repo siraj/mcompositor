@@ -68,6 +68,7 @@ public:
                 XFree(p.value);
             }
         }
+        decorwindow->setInputRegion();
         setAvailableGeometry(decorwindow->availableClientRect());
         decorwindow->setWindowTitle(title);
     }
@@ -85,6 +86,8 @@ protected:
     virtual void setOnlyStatusbar(bool mode) 
     {
         decorwindow->setOnlyStatusbar(mode);
+        decorwindow->setInputRegion();
+        setAvailableGeometry(decorwindow->availableClientRect());
     }
 
 private:
@@ -167,8 +170,11 @@ bool MDecoratorWindow::x11Event(XEvent *e)
                                     onlyStatusbarAtom, 0, 1, False,
                                     XA_CARDINAL, &actual, &format,
                                     &n, &left, &data);
-        if (result == Success && data)
-            setOnlyStatusbar(*((long*)data));
+        if (result == Success && data) {
+            bool val = *((long*)data);
+            if (val != only_statusbar)
+                d->RemoteSetOnlyStatusbar(val);
+        }
         if (data)
             XFree(data);
         return true;
@@ -205,6 +211,7 @@ void MDecoratorWindow::screenRotated(const M::Orientation &orientation)
 {
     Q_UNUSED(orientation);
     setInputRegion();
+    d->setAvailableGeometry(availableClientRect());
 }
 
 XRectangle MDecoratorWindow::itemRectToScreenRect(const QRect& r)
@@ -247,11 +254,18 @@ XRectangle MDecoratorWindow::itemRectToScreenRect(const QRect& r)
 void MDecoratorWindow::setInputRegion()
 {
     QRegion region;
-    region += statusBar->boundingRect().toRect();
+    QRect r = statusBar->boundingRect().toRect();
+    region += r;
     if (!only_statusbar) {
-        region += navigationBar->boundingRect().toRect();
-        region += homeButtonPanel->boundingRect().toRect();
-        region += escapeButtonPanel->boundingRect().toRect();
+        QRect r2 = navigationBar->boundingRect().toRect();
+        QRegion tmp(0, r.height(), r2.width(), r2.height());
+        region += tmp;
+        r2 = homeButtonPanel->boundingRect().toRect();
+        tmp = QRegion(0, r.height(), r2.width(), r2.height());
+        region += tmp;
+        r2 = escapeButtonPanel->boundingRect().toRect();
+        tmp = QRegion(0, r.height(), r2.width(), r2.height());
+        region += tmp;
     }
     decoratorRect = region.boundingRect();
 

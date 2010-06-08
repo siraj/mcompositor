@@ -101,6 +101,7 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
 
     if (client == cw)
         return;
+    disconnect(this, SLOT(destroyClient()));
     client = cw;
 
     qulonglong winid = client ? client->window() : 0;
@@ -158,7 +159,8 @@ void MDecoratorFrame::destroyDecorator()
 
 void MDecoratorFrame::destroyClient()
 {
-    client = 0;
+    if (client == sender())
+        client = 0;
 }
 
 void MDecoratorFrame::visualizeDecorator(bool visible)
@@ -210,11 +212,6 @@ void MDecoratorFrame::setDecoratorAvailableRect(const QRect& decorect)
         r.setWidth(r.width() - excess);
 
     XMoveResizeWindow(dpy, client->window(), r.x(), r.y(), r.width(), r.height());
-}
-
-void MDecoratorFrame::activate()
-{
-    remote_decorator->invoke("MAbstractDecorator", "RemoteActivateWindow");
 }
 
 void MDecoratorFrame::setAutoRotation(bool mode)

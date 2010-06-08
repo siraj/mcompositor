@@ -42,14 +42,13 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       iconified_final(false),
       iconify_state(NoIconifyState),
       destroyed(false),
-      requestzval(false),
       process_status(NORMAL),
       need_decor(false),
       is_decorator(false),
       window_visible(true),
       transient_for((Window)-1),
       wm_protocols_valid(false),
-      window_obscured(false),
+      window_obscured(true), // true to synthesize initial visibility event
       wmhints(0),
       attrs(0),
       meego_layer(-1),
@@ -188,6 +187,7 @@ void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
 void MCompositeWindow::startTransition()
 {
     if (anim->pendingAnimation()) {
+        MCompositeWindow::setVisible(true);
         anim->startAnimation();
         anim->deferAnimation(false);
     }
@@ -217,10 +217,6 @@ void MCompositeWindow::prettyDestroy()
 
 void MCompositeWindow::finalizeState()
 {
-    // request zvalue
-    if (requestzval)
-        setZValue(zval);
-
     // iconification status
     if (iconified) {
         iconified_final = true;
@@ -237,8 +233,6 @@ void MCompositeWindow::finalizeState()
     // item lifetime
     if (destroyed)
         deleteLater();
-
-    requestzval = false;
 }
 
 void MCompositeWindow::q_itemRestored()
@@ -248,13 +242,10 @@ void MCompositeWindow::q_itemRestored()
 
 void MCompositeWindow::requestZValue(int zvalue)
 {
-    if (anim->isActive()) {
-        zval = zvalue;
-        requestzval = true;
-    } else {
+    // when animating, Z-value is set again after finishing the animation
+    // (setting it later in finalizeState() caused flickering)
+    if (!anim->isActive() && !anim->pendingAnimation())
         setZValue(zvalue);
-        requestzval = false;
-    }
 }
 
 bool MCompositeWindow::isIconified() const

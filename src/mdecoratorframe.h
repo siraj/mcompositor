@@ -53,11 +53,6 @@ public:
     Qt::HANDLE winId() const;
 
     /*!
-     * Activates the window
-     */
-    void activate();
-
-    /*!
      * Lowers the decorator window.
      */
     void lower();

@@ -96,6 +96,7 @@ public:
     void checkStacking(bool force_visibility_check,
                        Time timestamp = CurrentTime);
     void checkInputFocus(Time timestamp = CurrentTime);
+    void configureWindow(MCompositeWindow *cw, XConfigureRequestEvent *e);
 
     Window getTopmostApp(int *index_in_stacking_list = 0,
                          Window ignore_window = 0);
@@ -107,6 +108,9 @@ public:
     bool x11EventFilter(XEvent *event);
     bool removeWindow(Window w);
     bool needDecoration(Window w, MCompositeWindow *cw = 0);
+    MCompositeWindow *getHighestDecorated();
+    void roughSort();
+    int transiencyRelation(MCompositeWindow *cw_a, MCompositeWindow *cw_b);
 
     MCompositeScene *watch;
     Window localwin;
@@ -129,6 +133,7 @@ public:
         bool mapped;
     };
     QHash<Window, FrameData> framed_windows;
+    QHash<Window, QList<XConfigureRequestEvent*> > configure_reqs;
     QRegion dock_region;
 
     int damage_event;

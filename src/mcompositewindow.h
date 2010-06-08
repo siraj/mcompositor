@@ -391,7 +391,6 @@ private:
     bool iconified_final;
     IconifyState iconify_state;
     bool destroyed;
-    bool requestzval;
     ProcessStatus process_status;
     bool need_decor;
     bool is_decorator;

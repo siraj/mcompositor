@@ -49,6 +49,13 @@ public:
     bool x11Event(XEvent *e);
     void setWindowTitle(const QString& title);
     void setOnlyStatusbar(bool mode);
+    /*!
+     * \brief Sets the region of the window that can receive input events.
+     *
+     * Input events landing on the area outside this region will fall directly
+     * to the windows below.
+     */
+    void setInputRegion();
 
 private slots:
 
@@ -62,13 +69,6 @@ signals:
 private:
     void setSceneSize();
     void setMDecoratorWindowProperty();
-    /*!
-     * \brief Sets the region of the window that can receive input events.
-     *
-     * Input events landing on the area outside this region will fall directly
-     * to the windows below.
-     */
-    void setInputRegion();
     XRectangle itemRectToScreenRect(const QRect& r);
 
     MHomeButtonPanel *homeButtonPanel;
