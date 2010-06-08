@@ -1,8 +1,9 @@
-mcompositor (0.4.7-1) unstable; urgency=low
+mcompositor (0.4.7-2) unstable; urgency=low
 
   * Fixes: NB#168086 - Pure Qt GUI Lists go invisible after mdecorator crashes with sig 11
   * Fixes: NB#171534 - 2 Statusbars shown when rotation angle is non 0 and there's in fullscreen mode with on going call
   * Fixes: NB#170819 - Framework menubar is covering top side application's drawing area
+  * Fixes: NB#170228 - In certain scenerio Incoming call view task dosen´t appear in switcher	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 08 Jun 2010 12:55:48 +0300
 
