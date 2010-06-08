@@ -101,7 +101,7 @@ private:
     
     Q_DECLARE_PRIVATE(MAbstractDecorator)
         
-    MAbstractDecoratorPrivate * const d;
+    MAbstractDecoratorPrivate * const d_ptr;
 };
 
 #endif //MABSTRACTDECORATOR_H

@@ -45,7 +45,7 @@ public:
 
 MAbstractDecorator::MAbstractDecorator(QObject *parent)
     : QObject(parent),
-      d(new MAbstractDecoratorPrivate())
+      d_ptr(new MAbstractDecoratorPrivate())
 {
     Q_D(MAbstractDecorator);
     
