@@ -1,3 +1,9 @@
+mcompositor (0.4.8~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Fri, 11 Jun 2010 14:22:00 +0300
+
 mcompositor (0.4.7-2) unstable; urgency=low
 
   * Fixes: NB#168086 - Pure Qt GUI Lists go invisible after mdecorator crashes with sig 11
