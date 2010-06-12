@@ -220,7 +220,6 @@ void MTexturePixmapItem::enableDirectFbRendering()
     }
     XCompositeUnredirectWindow(QX11Info::display(), window(),
                                CompositeRedirectManual);
-    XSync(QX11Info::display(), FALSE);
 }
 
 void MTexturePixmapItem::enableRedirectedRendering()
@@ -233,7 +232,6 @@ void MTexturePixmapItem::enableRedirectedRendering()
     d->direct_fb_render = false;
     XCompositeRedirectWindow(QX11Info::display(), window(),
                              CompositeRedirectManual);
-    XSync(QX11Info::display(), FALSE);
     saveBackingStore(true);
     updateWindowPixmap();
 }

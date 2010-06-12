@@ -75,6 +75,10 @@ static QGraphicsTextItem *launchIndicator = 0;
 
 static Window transient_for(Window window);
 
+#ifdef WINDOW_DEBUG
+static QTime overhead_measure;
+#endif
+
 MCompAtoms *MCompAtoms::instance()
 {
     if (!d)
@@ -1161,7 +1165,11 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     XRenderPictFormat *format = XRenderFindVisualFormat(QX11Info::display(),
                                 a.visual);
     if (format && (format->type == PictTypeDirect && format->direct.alphaMask)) {
+#ifdef WINDOW_DEBUG
+        overhead_measure.start();
+#endif
         enableCompositing();
+        
         hasAlpha = true;
     }
 
@@ -1619,15 +1627,23 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             item->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
         else
             item->setWindowTypeAtom(atom->getType(win));
-        if (!device_state->displayOff() && !item->hasAlpha()
-            && !item->needDecoration()) {
-            item->setVisible(true);
-            item->updateWindowPixmap();
-            check_compositing = true;
-        } else if (!device_state->displayOff()) {
-            ((MTexturePixmapItem *)item)->enableRedirectedRendering();
-            item->show();
-            item->saveBackingStore(true);
+        
+        if (!device_state->displayOff() ) {
+            
+            MCompositeWindow* tf = COMPOSITE_WINDOW(item->transientFor());
+            if (!item->hasAlpha() && !item->needDecoration() && (tf && !tf->needDecoration())) {
+                item->setVisible(true);
+                item->updateWindowPixmap();
+                check_compositing = true;
+            } else {
+#ifdef WINDOW_DEBUG
+                qDebug() << "Composition overhead (existing pixmap):" 
+                         << overhead_measure.elapsed();
+#endif
+                ((MTexturePixmapItem *)item)->enableRedirectedRendering();
+                item->saveBackingStore(true);
+                item->setVisible(true);
+            }
         }
         goto stack_and_return;
     }
@@ -1647,8 +1663,14 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             return;
         if (!item->hasAlpha())
             disableCompositing(FORCED);
-        else
-            item->show();
+        else {
+#ifdef WINDOW_DEBUG
+            if (item->hasAlpha())
+                qDebug() << "Composition overhead (new pixmap):"
+                         << overhead_measure.elapsed();
+#endif
+            item->setVisible(true);
+        }
 
         // the current decorated window got mapped
         if (e->window == MDecoratorFrame::instance()->managedWindow() &&
@@ -2477,7 +2499,6 @@ void MCompositeManagerPrivate::enableRedirection()
 
     scene()->views()[0]->setUpdatesEnabled(true);
 
-    usleep(50000);
     // At this point everything should be rendered off-screen
     emit compositingEnabled();
 }
@@ -2513,10 +2534,6 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
         setWindowDebugProperties(it.key());
     }
 
-    XSync(QX11Info::display(), False);
-    if (forced != REALLY_FORCED)
-        usleep(50000);
-
     XUnmapWindow(QX11Info::display(), xoverlay);
     XFlush(QX11Info::display());
 
@@ -2544,7 +2561,6 @@ void MCompositeManagerPrivate::sendPing(MCompositeWindow *w)
     ev.xclient.data.l[2] = window;
 
     XSendEvent(QX11Info::display(), window, False, NoEventMask, &ev);
-    XSync(QX11Info::display(), False);
 }
 
 void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w)
