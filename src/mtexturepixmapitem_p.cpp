@@ -266,14 +266,12 @@ void MTexturePixmapPrivate::saveBackingStore(bool renew)
     if (a.map_state != IsViewable)
         return;
 
-    if (renew && windowp)
+    if (windowp)
         XFreePixmap(QX11Info::display(), windowp);
     Pixmap px = XCompositeNameWindowPixmap(QX11Info::display(), item->window());
     windowp = px;
     if (renew)
         item->rebindPixmap();
-
-    XSync(QX11Info::display(), FALSE);
 }
 
 void MTexturePixmapPrivate::windowRaised()

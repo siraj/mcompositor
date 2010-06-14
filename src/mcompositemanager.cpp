@@ -1640,8 +1640,10 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 qDebug() << "Composition overhead (existing pixmap):" 
                          << overhead_measure.elapsed();
 #endif
-                ((MTexturePixmapItem *)item)->enableRedirectedRendering();
-                item->saveBackingStore(true);
+                if (((MTexturePixmapItem *)item)->isDirectRendered())
+                    ((MTexturePixmapItem *)item)->enableRedirectedRendering();
+                else
+                    item->saveBackingStore(true);
                 item->setVisible(true);
             }
         }
@@ -2492,6 +2494,8 @@ void MCompositeManagerPrivate::enableRedirection()
             ((MTexturePixmapItem *)tp)->enableRedirectedRendering();
         setWindowDebugProperties(it.key());
     }
+    XSync(QX11Info::display(), False);
+    
     glwidget->update();
     compositing = true;
     /* send VisibilityNotifies */
