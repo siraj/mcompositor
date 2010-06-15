@@ -1010,16 +1010,21 @@ void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
                                                XConfigureRequestEvent *e)
 {
     if (e->value_mask & (CWX | CWY | CWWidth | CWHeight)) {
-        QRect r = cw->requestedGeometry();
-        if (e->value_mask & CWX)
-            r.setX(e->x);
-        if (e->value_mask & CWY)
-            r.setY(e->y);
-        if (e->value_mask & CWWidth)
-            r.setWidth(e->width);
-        if (e->value_mask & CWHeight)
-            r.setHeight(e->height);
-        cw->setRequestedGeometry(r);
+        if (FULLSCREEN_WINDOW(cw))
+            // do not allow resizing of fullscreen window
+            e->value_mask &= ~(CWX | CWY | CWWidth | CWHeight);
+        else {
+            QRect r = cw->requestedGeometry();
+            if (e->value_mask & CWX)
+                r.setX(e->x);
+            if (e->value_mask & CWY)
+                r.setY(e->y);
+            if (e->value_mask & CWWidth)
+                r.setWidth(e->width);
+            if (e->value_mask & CWHeight)
+                r.setHeight(e->height);
+            cw->setRequestedGeometry(r);
+        }
     }
 
     /* modify stacking_list if stacking order should be changed */
@@ -1197,9 +1202,6 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         fullscreen_wm_state(this, 1, e->window);
 
     if (needDecoration(e->window)) {
-        XSelectInput(dpy, e->window,
-                     StructureNotifyMask | ColormapChangeMask |
-                     PropertyChangeMask);
         XAddToSaveSet(QX11Info::display(), e->window);
 
         if (MDecoratorFrame::instance()->decoratorItem()) {
@@ -1209,6 +1211,10 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             // checks won't disable compositing
             MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
         } else {
+            // it will be non-toplevel, so mask needs to be set here
+            XSelectInput(dpy, e->window,
+                         StructureNotifyMask | ColormapChangeMask |
+                         PropertyChangeMask);
             MSimpleWindowFrame *frame = 0;
             FrameData f = framed_windows.value(e->window);
             frame = f.frame;
