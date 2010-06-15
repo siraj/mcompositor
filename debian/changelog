@@ -1,3 +1,9 @@
+mcompositor (0.4.9~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 15 Jun 2010 19:30:02 +0300
+
 mcompositor (0.4.8-1) unstable; urgency=low
 
   * Fixes: NB#172937 - WM_TRANSIENT_FOR stacking does not work correctly
