@@ -58,7 +58,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
     memset(&req_geom, 0, sizeof(req_geom));
     anim = new MCompWindowAnimator(this);
     connect(anim, SIGNAL(transitionDone()),  SLOT(finalizeState()));
-    connect(anim, SIGNAL(transitionDone()),  SLOT(windowSettled()));
     connect(anim, SIGNAL(transitionStart()), SLOT(windowTransitioning()));
     thumb_mode = false;
     setAcceptHoverEvents(true);
@@ -139,7 +138,8 @@ void MCompositeWindow::setThumbMode(bool mode)
 void MCompositeWindow::iconify(const QRectF &iconGeometry, bool defer)
 {
     this->iconGeometry = iconGeometry;
-    origPosition = pos();
+    if (!iconified)
+        origPosition = pos();
 
     // horizontal and vert. scaling factors
     qreal sx = iconGeometry.width() / boundingRect().width();
@@ -149,6 +149,8 @@ void MCompositeWindow::iconify(const QRectF &iconGeometry, bool defer)
     anim->translateScale(qreal(1.0), qreal(1.0), sx, sy,
                          iconGeometry.topLeft());
     iconified = true;
+    // do this to avoid stacking code disturbing Z values
+    window_transitioning = true;
 }
 
 void MCompositeWindow::setIconified(bool iconified)
@@ -206,6 +208,8 @@ void MCompositeWindow::restore(const QRectF &iconGeometry, bool defer)
     anim->deferAnimation(defer);
     anim->translateScale(qreal(1.0), qreal(1.0), sx, sy, origPosition, true);
     iconified = false;
+    // do this to avoid stacking code disturbing Z values
+    window_transitioning = true;
 }
 
 void MCompositeWindow::prettyDestroy()
@@ -217,6 +221,10 @@ void MCompositeWindow::prettyDestroy()
 
 void MCompositeWindow::finalizeState()
 {
+    window_transitioning = false;
+    if (window_type_atom == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
+        emit desktopActivated(this);
+
     // iconification status
     if (iconified) {
         iconified_final = true;
@@ -507,13 +515,6 @@ void MCompositeWindow::setIsDecorator(bool decorator)
 void MCompositeWindow::windowTransitioning()
 {
     window_transitioning = true;
-}
-
-void MCompositeWindow::windowSettled()
-{
-    window_transitioning = false;
-    if (window_type_atom == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
-        emit desktopActivated(this);
 }
 
 bool MCompositeWindow::isTransitioning()

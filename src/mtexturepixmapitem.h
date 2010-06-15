@@ -88,12 +88,6 @@ public:
     bool hasAlpha() const;
 
     /*!
-     Returns true if the window corresponding to the offscreen pixmap has an
-     is an override-redirect window, otherwise returns false.
-    */
-    bool isOverrideRedirect() const;
-
-    /*!
      * Sets the width and height if the item
      */
     void resize(int w, int h);

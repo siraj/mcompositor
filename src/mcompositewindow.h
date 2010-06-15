@@ -255,6 +255,8 @@ public:
      * Returns the WM_STATE of this window
      */
     int windowState() const { return window_state; }
+
+    void setWindowState(int state) { window_state = state; }
     
     QRect originalGeometry() const { return origGeometry; }
 
@@ -346,7 +348,6 @@ private slots:
     void pingTimeout();
     void pingWindow();
     void windowTransitioning();
-    void windowSettled();
     void q_delayShow();
     void q_itemRestored();
 

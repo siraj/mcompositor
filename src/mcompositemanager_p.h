@@ -102,7 +102,7 @@ public:
                          Window ignore_window = 0);
     Window getLastVisibleParent(MCompositeWindow *cw);
 
-    bool isAppWindow(MCompositeWindow *cw);
+    bool isAppWindow(MCompositeWindow *cw, bool include_transients = false);
     bool possiblyUnredirectTopmostWindow();
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
