@@ -1787,7 +1787,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             // so display will be on soon if it's not already
             enableCompositing(true, true);
         }
-        if (i) {
+        if (i && i->windowState() == IconicState) {
             i->setZValue(windows.size() + 1);
             QRectF iconGeometry = atom->iconGeometry(raise);
             i->setPos(iconGeometry.topLeft());
