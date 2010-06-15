@@ -2548,17 +2548,17 @@ void MCompositeManagerPrivate::enableRedirection()
     }
     XSync(QX11Info::display(), False);
     
-    glwidget->update();
     compositing = true;
     /* send VisibilityNotifies */
     checkStacking(true);
 
-    QTimer::singleShot(50, this, SLOT(enablePaintedCompositing()));
+    QTimer::singleShot(100, this, SLOT(enablePaintedCompositing()));
 }
 
 void MCompositeManagerPrivate::enablePaintedCompositing()
 {
     scene()->views()[0]->setUpdatesEnabled(true);
+    glwidget->update();
     // At this point everything should be rendered off-screen
     emit compositingEnabled();
 }
