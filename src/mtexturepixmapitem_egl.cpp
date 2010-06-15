@@ -330,6 +330,9 @@ void MTexturePixmapItem::paint(QPainter *painter,
     }
     glBindTexture(GL_TEXTURE_2D, d->custom_tfp ? d->ctextureId : d->textureId);
 
+    // FIXME: not optimal. probably would be better to replace with 
+    // eglSwapBuffersRegionNOK()
+    /*
     if (d->damageRegion.numRects() > 1) {
         d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
         glEnable(GL_SCISSOR_TEST);
@@ -340,11 +343,11 @@ void MTexturePixmapItem::paint(QPainter *painter,
                        d->damageRegion.rects().at(i).height()),
                       d->damageRegion.rects().at(i).width(),
                       d->damageRegion.rects().at(i).height());
-            d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
-        }
+            d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());        }
         glDisable(GL_SCISSOR_TEST);
     } else
-        d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
+    */
+    d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
 
     // Explicitly disable blending. for some reason, the latest drivers
     // still has blending left-over even if we call glDisable(GL_BLEND)
