@@ -1725,8 +1725,11 @@ stack_and_return:
             free(p);
         }
         configure_reqs.remove(win);
-        if (stacked)
+        if (stacked) {
+            if (!possiblyUnredirectTopmostWindow())
+                enableCompositing(true);
             return;
+        }
     }
 
     /* do this after bindWindow() so that the window is in stacking_list */
