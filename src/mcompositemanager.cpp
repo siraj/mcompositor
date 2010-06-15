@@ -1698,7 +1698,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         if (!item)
             return;
         if (!item->hasAlpha())
-            disableCompositing(FORCED);
+            check_compositing = true;
         else {
 #ifdef WINDOW_DEBUG
             if (item->hasAlpha())
