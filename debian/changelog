@@ -1,6 +1,11 @@
-mcompositor (0.4.8~1) unstable; urgency=low
+mcompositor (0.4.8-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#172937 - WM_TRANSIENT_FOR stacking does not work correctly
+  * Fixes: NB#173375 - mcompositor doesn't respect CWOverrideRedirect
+  * Fixes: NB#173857 - Contents of windows of prestarted applications not shown until tapped
+  * Fixes: NB#174008 - A fullscreen window got decorated...
+  * Fixes: NB#173979 - showFullScreen is not working as it expected...
+  * Improvements: reduced window creation time added optimizations	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Fri, 11 Jun 2010 14:22:00 +0300
 
