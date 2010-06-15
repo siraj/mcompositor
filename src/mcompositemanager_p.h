@@ -161,6 +161,7 @@ public slots:
     void raiseOnRestore(MCompositeWindow *window);
     void onDesktopActivated(MCompositeWindow*);
     void exposeDesktop();
+    void enablePaintedCompositing();
 
     void displayOff(bool display_off);
     void callOngoing(bool call_ongoing);

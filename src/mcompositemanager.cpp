@@ -2553,8 +2553,12 @@ void MCompositeManagerPrivate::enableRedirection()
     /* send VisibilityNotifies */
     checkStacking(true);
 
-    scene()->views()[0]->setUpdatesEnabled(true);
+    QTimer::singleShot(50, this, SLOT(enablePaintedCompositing()));
+}
 
+void MCompositeManagerPrivate::enablePaintedCompositing()
+{
+    scene()->views()[0]->setUpdatesEnabled(true);
     // At this point everything should be rendered off-screen
     emit compositingEnabled();
 }
