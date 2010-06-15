@@ -911,6 +911,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 #endif
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
+    bool call_updateWinList = true;
     if (item) {
         item->setIsMapped(false);
         setWindowState(e->window, IconicState);
@@ -919,8 +920,12 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
             item->clearTexture();
             glwidget->update();
         }
-        if (MDecoratorFrame::instance()->managedWindow() == e->window)
+        if (MDecoratorFrame::instance()->managedWindow() == e->window) {
             MDecoratorFrame::instance()->lower();
+            MDecoratorFrame::instance()->setManagedWindow(0);
+            positionWindow(MDecoratorFrame::instance()->winId(), STACK_BOTTOM);
+            call_updateWinList = false;
+        }
     } else {
         // We got an unmap event from a framed window
         FrameData fd = framed_windows.value(e->window);
@@ -936,7 +941,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         XUngrabServer(QX11Info::display());
         delete fd.frame;
     }
-    updateWinList();
+    if (call_updateWinList)
+        updateWinList();
 
     for (int i = 0; i < TOTAL_LAYERS; ++i)
         if (stack[i] == e->window) stack[i] = 0;
@@ -2243,6 +2249,12 @@ static int cmp_windows(const void *a, const void *b)
     Window w_b = *((Window*)b);
     MCompositeWindow *cw_a = comp_man_priv->windows.value(w_a, 0),
                      *cw_b = comp_man_priv->windows.value(w_b, 0);
+    // a is unused decorator?
+    if (cw_a->isDecorator() && !MDecoratorFrame::instance()->managedWindow())
+        return -1;
+    // b is unused decorator?
+    if (cw_b->isDecorator() && !MDecoratorFrame::instance()->managedWindow())
+        return 1;
     // a iconified, or a is desktop and b not iconified?
     if (cw_a->windowState() == IconicState ||
         (cw_a->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP)
