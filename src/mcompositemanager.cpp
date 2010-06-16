@@ -1410,7 +1410,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 	if ((group = aw->windowGroup())) {
 	    for (int i = 0; i < app_i; ) {
 	         MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
-		 if (isAppWindow(cw) && cw->windowGroup() == group) {
+		 if (cw->windowState() == NormalState
+                     && isAppWindow(cw) && cw->windowGroup() == group) {
 	             stacking_list.move(i, last_i);
 	             /* active_app was moved, update the index */
 	             app_i = stacking_list.indexOf(active_app);
@@ -1745,7 +1746,8 @@ stack_and_return:
     }
 
     /* do this after bindWindow() so that the window is in stacking_list */
-    if (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win))
+    if (item->windowState() == NormalState &&
+        (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win)))
         activateWindow(win, CurrentTime, false);
     else
         // desktop is stacked below the active application
@@ -2332,11 +2334,18 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         return 0;
     }
 
-    // FIXME: when NB#167488 is fixed, initial state could be iconified
-    item->setZValue(wtype);
     item->saveState();
     item->setIsMapped(true);
     windows[window] = item;
+
+    const XWMHints &h = item->getWMHints();
+    if ((h.flags & StateHint) && (h.initial_state == IconicState)) {
+        setWindowState(window, IconicState);
+        item->setZValue(-1);
+    } else {
+        setWindowState(window, NormalState);
+        item->setZValue(wtype);
+    }
 
     QVector<Atom> states = atom->getAtomArray(window, ATOM(_NET_WM_STATE));
     item->setNetWmState(states.toList());
@@ -2409,14 +2418,6 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         MDecoratorFrame::instance()->setDecoratorItem(item);
     } else
         item->setVisible(true);
-
-#if 0 // FIXME: support initial_state==IconicState when NB#167488 is solved
-    const XWMHints &h = item->getWMHints();
-    if ((h.flags & StateHint) && (h.initial_state == IconicState)) {
-        setWindowState(window, IconicState);
-    }
-#endif
-    setWindowState(window, NormalState);
 
     checkStacking(false);
 
