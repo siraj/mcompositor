@@ -1135,7 +1135,6 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
             disableCompositing(FORCED);
         } else if (MDecoratorFrame::instance()->managedWindow() == e->window)
             enableCompositing();
-        i->restore();
     }
 }
 
