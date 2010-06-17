@@ -56,7 +56,7 @@ MDeviceState::MDeviceState(QObject* parent)
 {
     display_off = false;
 
-    call_prop = new ContextProperty("com.nokia.policy.call");
+    call_prop = new ContextProperty("Phone.Call");
     connect(call_prop, SIGNAL(valueChanged()), this, SLOT(callPropChanged()));
 
 #ifdef GLES2_VERSION

@@ -105,6 +105,7 @@ MCompAtoms::MCompAtoms()
         "_NET_WM_WINDOW_TYPE_INPUT",
         "_NET_WM_WINDOW_TYPE_NOTIFICATION",
         "_NET_WM_WINDOW_TYPE_DIALOG",
+        "_NET_WM_WINDOW_TYPE_MENU",
 
         // window states
         "_NET_WM_STATE_ABOVE",
@@ -181,7 +182,8 @@ MCompAtoms::Type MCompAtoms::windowType(Window w)
         return INPUT;
     else if (a[0] == atoms[_NET_WM_WINDOW_TYPE_NOTIFICATION])
         return NOTIFICATION;
-    else if (a[0] == atoms[_KDE_NET_WM_WINDOW_TYPE_OVERRIDE])
+    else if (a[0] == atoms[_KDE_NET_WM_WINDOW_TYPE_OVERRIDE] ||
+             a[0] == atoms[_NET_WM_WINDOW_TYPE_MENU])
         return FRAMELESS;
 
     if (transient_for(w))
@@ -659,7 +661,8 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
     else
         fs = FULLSCREEN_WINDOW(cw);
     if (device_state->ongoingCall() && fs && ((cw &&
-        cw->windowTypeAtom() != ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE)) ||
+        cw->windowTypeAtom() != ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) &&
+        cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)) ||
         (!cw && atom->windowType(window) != MCompAtoms::FRAMELESS)))
         // fullscreen window is decorated during call
         return true;
@@ -823,6 +826,7 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated()
             (cw->needDecoration() || cw->status() == MCompositeWindow::HUNG
              || (FULLSCREEN_WINDOW(cw) &&
                  cw->windowTypeAtom() != ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE)
+                 && cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
                  && device_state->ongoingCall())))
             return cw;
     }
@@ -1451,6 +1455,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                    cw->iconifyState() == MCompositeWindow::NoIconifyState &&
                    (cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
                     cw->meegoStackingLayer() == 4 || cw->isOverrideRedirect() ||
+                    cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU) ||
                     cw->netWmState().indexOf(ATOM(_NET_WM_STATE_ABOVE)) != -1))
     // Meego layer 5
     RAISE_MATCHING(!getLastVisibleParent(cw) && cw->meegoStackingLayer() == 5
@@ -1761,8 +1766,9 @@ static bool should_be_pinged(MCompositeWindow *cw)
 {
     if (cw && cw->supportedProtocols().indexOf(ATOM(_NET_WM_PING)) != -1
         && cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)
+        && cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
         && cw->iconifyState() == MCompositeWindow::NoIconifyState
-        && !cw->isDecorator()
+        && !cw->isDecorator() && !cw->isOverrideRedirect()
         && cw->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         return true;
     return false;
