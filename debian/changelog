@@ -1,6 +1,5 @@
-mcompositor (0.4.9~1) unstable; urgency=low
+mcompositor (0.4.9-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
   * Fixes: NB#173590 - Calling MApplicationWindow::showFullScreen() flashes Homescreen visible when run first time	
   * Fixes: NB#169665 - Calling showMinimized() for a new window does not open it minimised
   * Fixes: NB#175351 - bluetooth transfer to screenlocked device confuses window management	
@@ -79,7 +78,7 @@ mcompositor (0.4.0-1) unstable; urgency=low
   * Fixes: NB#162344 - Window manager fails to obey the full screen hint	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Thu, 15 Apr 2010 11:46:28 +0300
-
+`
 mcompositor (0.3.10-2) unstable; urgency=low
 
   * Fixes: NB#163684 - Reboot needed to recover if device sleeps with USB
