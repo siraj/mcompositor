@@ -646,6 +646,12 @@ void MCompositeManagerPrivate::prepare()
 
     xoverlay = XCompositeGetOverlayWindow(QX11Info::display(),
                                           RootWindow(QX11Info::display(), 0));
+    XWindowAttributes attrs;
+    if (!XGetWindowAttributes(QX11Info::display(), xoverlay, &attrs)) {
+        qCritical("XGetWindowAttributes for the overlay failed");
+        return;
+    }
+    overlay_mapped = (attrs.map_state != IsUnmapped);
     XReparentWindow(QX11Info::display(), localwin, xoverlay, 0, 0);
     enableInput();
 
@@ -898,8 +904,10 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     // do not keep unmapped windows in windows_as_mapped list
     windows_as_mapped.removeAll(e->window);
 
-    if (e->window == xoverlay)
+    if (e->window == xoverlay) {
+        overlay_mapped = false;
         return;
+    }
 
 #ifdef GLES2_VERSION
     Window topmost_win = 0;
@@ -1594,6 +1602,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     MCompAtoms::Type wtype;
 
     if (win == xoverlay) {
+        overlay_mapped = true;
         enableRedirection();
         return;
     }
@@ -1666,25 +1675,23 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             item->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
         else
             item->setWindowTypeAtom(atom->getType(win));
-        
-        if (!device_state->displayOff() ) {
-            
-            MCompositeWindow* tf = COMPOSITE_WINDOW(item->transientFor());
-            if (!item->hasAlpha() && !item->needDecoration() && (tf && !tf->needDecoration())) {
-                item->setVisible(true);
-                item->updateWindowPixmap();
-                check_compositing = true;
-            } else {
+
+        MCompositeWindow* tf = COMPOSITE_WINDOW(item->transientFor());
+        if (!item->hasAlpha() && !item->needDecoration() && tf
+            && !tf->needDecoration()) {
+            item->setVisible(true);
+            item->updateWindowPixmap();
+            check_compositing = true;
+        } else {
 #ifdef WINDOW_DEBUG
-                qDebug() << "Composition overhead (existing pixmap):" 
-                         << overhead_measure.elapsed();
+            qDebug() << "Composition overhead (existing pixmap):" 
+                     << overhead_measure.elapsed();
 #endif
-                if (((MTexturePixmapItem *)item)->isDirectRendered())
-                    ((MTexturePixmapItem *)item)->enableRedirectedRendering();
-                else
-                    item->saveBackingStore(true);
-                item->setVisible(true);
-            }
+            if (((MTexturePixmapItem *)item)->isDirectRendered())
+                ((MTexturePixmapItem *)item)->enableRedirectedRendering();
+            else
+                item->saveBackingStore(true);
+            item->setVisible(true);
         }
         goto stack_and_return;
     }
@@ -1790,9 +1797,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         bool needComp = false;
         if (d_item && d_item->isDirectRendered()) {
             needComp = true;
-            // _NET_ACTIVE_WINDOW comes from duihome when tapping on thumbnail
-            // so display will be on soon if it's not already
-            enableCompositing(true, true);
+            enableCompositing(true);
         }
         if (i && i->windowState() == IconicState) {
             i->setZValue(windows.size() + 1);
@@ -1894,7 +1899,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 bool needComp = false;
                 if (i->isDirectRendered() || d_item->isDirectRendered()) {
                     d_item->setVisible(true);
-                    enableCompositing(FORCED);
+                    enableCompositing(true);
                     needComp = true;
                 }
 
@@ -2057,7 +2062,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
 {
     if (display_off) {
         // keep compositing to have synthetic events to obscure all windows
-        enableCompositing(true, true);
+        enableCompositing(true);
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
@@ -2380,8 +2385,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         item->setDecorated(true);
     item->setIsDecorator(is_decorator);
 
-    if (!device_state->displayOff())
-        item->updateWindowPixmap();
+    item->updateWindowPixmap();
 
     int i = stacking_list.indexOf(window);
     if (i == -1)
@@ -2397,8 +2401,6 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         item->setWindowTypeAtom(atom->getType(window));
 
     if (wtype == MCompAtoms::INPUT) {
-        if (!device_state->displayOff())
-            item->updateWindowPixmap();
         checkStacking(false);
         return item;
     } else if (wtype == MCompAtoms::DESKTOP) {
@@ -2415,13 +2417,10 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     // the decorator got mapped. this is here because the compositor
     // could be restarted at any point
     if (is_decorator && !MDecoratorFrame::instance()->decoratorItem()) {
-        // initially update the texture for this window because this
-        // will be hidden on first show
-        if (!device_state->displayOff())
-            item->updateWindowPixmap();
+        // texture was already updated above
         item->setVisible(false);
         MDecoratorFrame::instance()->setDecoratorItem(item);
-    } else
+    } else if (!device_state->displayOff())
         item->setVisible(true);
 
     checkStacking(false);
@@ -2517,19 +2516,12 @@ MCompositeManagerPrivate::positionWindow(Window w,
     updateWinList();
 }
 
-void MCompositeManagerPrivate::enableCompositing(bool forced,
-                                                   bool ignore_display_off)
+void MCompositeManagerPrivate::enableCompositing(bool forced)
 {
-    if ((!ignore_display_off && device_state->displayOff())
-        || (compositing && !forced))
+    if (compositing && !forced)
         return;
 
-    XWindowAttributes a;
-    if (!XGetWindowAttributes(QX11Info::display(), xoverlay, &a)) {
-        qCritical("XGetWindowAttributes for the overlay failed");
-        return;
-    }
-    if (a.map_state == IsUnmapped)
+    if (!overlay_mapped)
         mapOverlayWindow();
     else
         enableRedirection();
@@ -2571,22 +2563,21 @@ void MCompositeManagerPrivate::enablePaintedCompositing()
 
 void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
 {
-    if (MCompositeWindow::isTransitioning() && forced != REALLY_FORCED)
+    if (device_state->displayOff() || MCompositeWindow::isTransitioning())
         return;
     if (!compositing && forced == NO_FORCED)
         return;
     
-    if (forced != REALLY_FORCED)
-        // we could still have existing decorator on-screen.
-        // ensure we don't accidentally disturb it
-        for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
-             it != windows.end(); ++it) {
-            MCompositeWindow *i  = it.value();
-            if (i->isDecorator())
-                continue;
-            if (i->windowVisible() && (i->hasAlpha() || i->needDecoration())) 
-                return;
-        }
+    // we could still have existing decorator on-screen.
+    // ensure we don't accidentally disturb it
+    for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
+         it != windows.end(); ++it) {
+        MCompositeWindow *i  = it.value();
+        if (i->isDecorator())
+            continue;
+        if (i->windowVisible() && (i->hasAlpha() || i->needDecoration())) 
+            return;
+    }
 
     scene()->views()[0]->setUpdatesEnabled(false);
 
@@ -2594,8 +2585,7 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
             it != windows.end(); ++it) {
         MCompositeWindow *tp  = it.value();
         // checks above fail. somehow decorator got in. stop it at this point
-        if (forced == REALLY_FORCED ||
-            (!tp->isDecorator() && !tp->isIconified() && !tp->hasAlpha()))
+        if (!tp->isDecorator() && !tp->isIconified() && !tp->hasAlpha())
             ((MTexturePixmapItem *)tp)->enableDirectFbRendering();
         setWindowDebugProperties(it.key());
     }

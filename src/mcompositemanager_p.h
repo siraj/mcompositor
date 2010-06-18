@@ -60,8 +60,7 @@ public:
     };
     enum ForcingLevel {
         NO_FORCED = 0,
-        FORCED,
-        REALLY_FORCED
+        FORCED
     };
 
     MCompositeManagerPrivate(QObject *p);
@@ -140,6 +139,7 @@ public:
     int damage_error;
 
     bool compositing;
+    bool overlay_mapped;
     MDeviceState *device_state;
 
 signals:
@@ -152,8 +152,7 @@ public slots:
     void sendPing(MCompositeWindow *window);
     void enableInput();
     void disableInput();
-    void enableCompositing(bool forced = false,
-                           bool ignore_display_off = false);
+    void enableCompositing(bool forced = false);
     void disableCompositing(ForcingLevel forced = NO_FORCED);
     void showLaunchIndicator(int timeout);
     void hideLaunchIndicator();
