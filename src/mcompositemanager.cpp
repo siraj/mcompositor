@@ -933,10 +933,26 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
             glwidget->update();
         }
         if (MDecoratorFrame::instance()->managedWindow() == e->window) {
-            MDecoratorFrame::instance()->lower();
-            MDecoratorFrame::instance()->setManagedWindow(0);
-            positionWindow(MDecoratorFrame::instance()->winId(), STACK_BOTTOM);
-            call_updateWinList = false;
+            // decorate next window in the stack if any
+            MCompositeWindow *cw = getHighestDecorated();
+            if (!cw) {
+                MDecoratorFrame::instance()->lower();
+                MDecoratorFrame::instance()->setManagedWindow(0);
+                positionWindow(MDecoratorFrame::instance()->winId(),
+                               STACK_BOTTOM);
+                call_updateWinList = false;
+            } else {
+                if (cw->status() == MCompositeWindow::HUNG) {
+                    MDecoratorFrame::instance()->setManagedWindow(cw, true);
+                    MDecoratorFrame::instance()->setOnlyStatusbar(false);
+                } else if (FULLSCREEN_WINDOW(cw) && device_state->ongoingCall()) {
+                    MDecoratorFrame::instance()->setManagedWindow(cw, true);
+                    MDecoratorFrame::instance()->setOnlyStatusbar(true);
+                } else {
+                    MDecoratorFrame::instance()->setManagedWindow(cw);
+                    MDecoratorFrame::instance()->setOnlyStatusbar(false);
+                }
+            }
         }
     } else {
         // We got an unmap event from a framed window
