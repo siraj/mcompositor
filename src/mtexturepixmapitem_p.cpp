@@ -168,7 +168,6 @@ QGLShaderProgram *MGLResourceManager::shader[ShaderTotal];
 
 void MTexturePixmapPrivate::drawTexture(const QTransform &transform, const QRectF &drawRect, qreal opacity)
 {
-    glwidget->makeCurrent();
     // TODO only update if matrix is dirty
     glresource->updateVertices(transform, item->blurred() ?
                                MGLResourceManager::BlurShader :
