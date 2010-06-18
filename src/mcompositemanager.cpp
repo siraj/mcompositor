@@ -646,12 +646,7 @@ void MCompositeManagerPrivate::prepare()
 
     xoverlay = XCompositeGetOverlayWindow(QX11Info::display(),
                                           RootWindow(QX11Info::display(), 0));
-    XWindowAttributes attrs;
-    if (!XGetWindowAttributes(QX11Info::display(), xoverlay, &attrs)) {
-        qCritical("XGetWindowAttributes for the overlay failed");
-        return;
-    }
-    overlay_mapped = (attrs.map_state != IsUnmapped);
+    overlay_mapped = false; // make sure we try to map it in startup
     XReparentWindow(QX11Info::display(), localwin, xoverlay, 0, 0);
     enableInput();
 
