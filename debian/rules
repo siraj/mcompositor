@@ -129,3 +129,8 @@ binary-arch: build install
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install configure
+
+# aegis deps
+PACKAGE_TARGETS :=  $(foreach pkg,$(DEB_ALL_PACKAGES),binary/$(pkg))
+$(PACKAGE_TARGETS)::
+[ ! -f debian/$(notdir $@).aegis ] || aegis-deb-add -control debian/$(notdir $@)/DEBIAN/control .. debian/$(notdir $@).aegis=_aegis
