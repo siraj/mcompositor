@@ -1,3 +1,9 @@
+mcompositor (0.4.10~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Sun, 20 Jun 2010 21:02:34 +0300
+
 mcompositor (0.4.9-1) unstable; urgency=low
 
   * Fixes: NB#173590 - Calling MApplicationWindow::showFullScreen() flashes Homescreen visible when run first time	
