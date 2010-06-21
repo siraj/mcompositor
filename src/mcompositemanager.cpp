@@ -2558,9 +2558,6 @@ void MCompositeManagerPrivate::enableRedirection()
     XSync(QX11Info::display(), False);
     
     compositing = true;
-    /* send VisibilityNotifies */
-    checkStacking(true);
-
     QTimer::singleShot(100, this, SLOT(enablePaintedCompositing()));
 }
 
