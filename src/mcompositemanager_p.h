@@ -88,6 +88,8 @@ public:
     void mapRequestEvent(XMapRequestEvent *);
     void rootMessageEvent(XClientMessageEvent *);
     void clientMessageEvent(XClientMessageEvent *);
+    void keyEvent(XKeyEvent*);
+    
     void redirectWindows();
     void mapOverlayWindow();
     void enableRedirection();
@@ -101,7 +103,6 @@ public:
                          Window ignore_window = 0);
     Window getLastVisibleParent(MCompositeWindow *cw);
 
-    bool isAppWindow(MCompositeWindow *cw, bool include_transients = false);
     bool possiblyUnredirectTopmostWindow();
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
@@ -161,7 +162,8 @@ public slots:
     void onDesktopActivated(MCompositeWindow*);
     void exposeDesktop();
     void enablePaintedCompositing();
-
+    void exposeSwitcher();
+    
     void displayOff(bool display_off);
     void callOngoing(bool call_ongoing);
 };

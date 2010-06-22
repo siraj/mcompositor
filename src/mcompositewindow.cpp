@@ -553,3 +553,21 @@ bool MCompositeWindow::windowVisible() const
 {
     return window_visible;
 }
+
+bool MCompositeWindow::isAppWindow(bool include_transients)
+{
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    
+    if (!include_transients && p->d->getLastVisibleParent(this))
+        return false;
+    
+    if (!isOverrideRedirect() &&
+            (windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
+             windowTypeAtom() == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
+             /* non-modal, non-transient dialogs behave like applications */
+             (windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
+              (netWmState().indexOf(ATOM(_NET_WM_STATE_MODAL)) == -1)))
+        && !isDecorator())
+        return true;
+    return false;
+}

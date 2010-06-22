@@ -568,6 +568,20 @@ static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
     return False;
 }
 
+static void grab_pointer_keyboard(Window window)
+{
+    Display* dpy = QX11Info::display();
+    static KeyCode key = 0;
+    if (!key)
+        key = XKeysymToKeycode(dpy, XStringToKeysym("BackSpace"));
+    
+    XGrabButton(dpy, AnyButton, AnyModifier, window, True,
+                ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+                GrabModeSync, GrabModeSync, None, None);
+    XGrabKey(dpy, key, AnyModifier, window, True,
+             GrabModeSync, GrabModeSync);
+}
+
 MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
     : QObject(p),
       glwidget(0),
@@ -779,22 +793,6 @@ Window MCompositeManagerPrivate::getLastVisibleParent(MCompositeWindow *cw)
     return last;
 }
 
-bool MCompositeManagerPrivate::isAppWindow(MCompositeWindow *cw,
-                                           bool include_transients)
-{
-    if (!include_transients && cw && getLastVisibleParent(cw))
-        return false;
-    if (cw && !cw->isOverrideRedirect() &&
-            (cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
-             cw->windowTypeAtom() == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
-             /* non-modal, non-transient dialogs behave like applications */
-             (cw->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
-              !MODAL_WINDOW(cw)))
-            && !cw->isDecorator())
-        return true;
-    return false;
-}
-
 Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
                                                Window ignore_window)
 {
@@ -805,7 +803,7 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
             /* desktop is above all applications */
             return 0;
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (cw && cw->isMapped() && isAppWindow(cw) &&
+        if (cw && cw->isMapped() && cw->isAppWindow() &&
             cw->iconifyState() == MCompositeWindow::NoIconifyState &&
             cw->windowState() == NormalState && !cw->isTransitioning()) {
             if (index_in_stacking_list)
@@ -855,7 +853,7 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
             (cw->hasAlpha() || cw->needDecoration() || cw->isDecorator()))
             // this window prevents direct rendering
             return false;
-        if (cw->isMapped() && isAppWindow(cw, true)) {
+        if (cw->isMapped() && cw->isAppWindow(true)) {
             top = w;
             win_i = i;
             break;
@@ -1433,7 +1431,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 	    for (int i = 0; i < app_i; ) {
 	         MCompositeWindow *cw = COMPOSITE_WINDOW(stacking_list.at(i));
 		 if (cw->windowState() == NormalState
-                     && isAppWindow(cw) && cw->windowGroup() == group) {
+                     && cw->isAppWindow() && cw->windowGroup() == group) {
 	             stacking_list.move(i, last_i);
 	             /* active_app was moved, update the index */
 	             app_i = stacking_list.indexOf(active_app);
@@ -1497,7 +1495,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
              break;
          if (!(cw = COMPOSITE_WINDOW(w)))
              continue;
-         if (cw->isMapped() && isAppWindow(cw, true)) {
+         if (cw->isMapped() && cw->isAppWindow(true)) {
              topmost = cw;
              top_i = i;
              break;
@@ -1710,9 +1708,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     if (win == localwin || win == parentWindow(localwin))
         return;
 
-    XGrabButton(QX11Info::display(), AnyButton, AnyModifier, win, True,
-                ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-                GrabModeSync, GrabModeSync, None, None);
+    grab_pointer_keyboard(win);
 
     // only composite top-level windows
     if ((parentWindow(win) == RootWindow(QX11Info::display(), 0))
@@ -1927,7 +1923,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                      if (w == stack[DESKTOP_LAYER])
                          break;
                      MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-                     if (cw && cw->isMapped() && isAppWindow(cw))
+                     if (cw && cw->isMapped() && cw->isAppWindow())
                          setWindowState(cw->window(), IconicState);
                 }
                 Q_ASSERT(lower_i > 0);
@@ -2193,10 +2189,20 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
         activateWindow(event->xbutton.window, event->xbutton.time);
         // Qt needs to handle this event for the window frame buttons
         return false;
+    case KeyPress:
+    case KeyRelease:
+        XAllowEvents(QX11Info::display(), ReplayKeyboard, event->xkey.time);
+        keyEvent(&event->xkey); break;
     default:
         return false;
     }
     return true;
+}
+
+void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
+{    
+    if(e->state & (ShiftMask | ControlMask))
+        exposeSwitcher();
 }
 
 QGraphicsScene *MCompositeManagerPrivate::scene()
@@ -2228,10 +2234,7 @@ void MCompositeManagerPrivate::redirectWindows()
             if (bindWindow(kids[i], &attr)) {
                 if (kids[i] == localwin || kids[i] == parentWindow(localwin))
                     continue;
-                XGrabButton(QX11Info::display(), AnyButton, AnyModifier, kids[i],
-                            True,
-                            ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-                            GrabModeSync, GrabModeSync, None, None);
+                grab_pointer_keyboard(kids[i]);
             }
         }
     }
@@ -2345,7 +2348,8 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     bool is_decorator = atom->isDecorator(window);
 
     // no need for StructureNotifyMask because of root's SubstructureNotifyMask
-    XSelectInput(display, window, PropertyChangeMask | ButtonPressMask);
+    XSelectInput(display, window, PropertyChangeMask | ButtonPressMask | 
+                 KeyPressMask | KeyReleaseMask);
     XCompositeRedirectWindow(display, window, CompositeRedirectManual);
 
     MCompAtoms::Type wtype = atom->windowType(window);
@@ -2641,6 +2645,33 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w)
     checkStacking(false);
     MDecoratorFrame::instance()->raise();
     w->updateWindowPixmap();
+}
+
+void MCompositeManagerPrivate::exposeSwitcher()
+{    
+    Display* dpy =  QX11Info::display();
+
+    for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
+         it != windows.end(); ++it) {
+        MCompositeWindow *i  = it.value();
+        if (!i->isAppWindow() || i->windowState() == IconicState ||
+            (i->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP)))
+            continue;
+        
+        XEvent e;
+        e.xclient.type = ClientMessage;
+        e.xclient.message_type = ATOM(WM_CHANGE_STATE);
+        e.xclient.display = dpy;
+        e.xclient.window = i->window();
+        e.xclient.format = 32;
+        e.xclient.data.l[0] = IconicState;
+        e.xclient.data.l[1] = 0;
+        e.xclient.data.l[2] = 0;
+        e.xclient.data.l[3] = 0;
+        e.xclient.data.l[4] = 0;
+        XSendEvent(dpy, RootWindow(dpy, 0),
+                   False, (SubstructureNotifyMask|SubstructureRedirectMask), &e);
+    }
 }
 
 void MCompositeManagerPrivate::showLaunchIndicator(int timeout)

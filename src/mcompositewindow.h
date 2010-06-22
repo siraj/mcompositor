@@ -331,6 +331,11 @@ public:
      */
     bool propertyEvent(XPropertyEvent *e);
 
+    /*! 
+     * Returns whether this is an application window
+     */
+    bool isAppWindow(bool include_transients = false);
+
 public slots:
 
     void startTransition();
