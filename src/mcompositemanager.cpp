@@ -1223,6 +1223,9 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     if (atom->hasState(e->window, ATOM(_NET_WM_STATE_FULLSCREEN)))
         fullscreen_wm_state(this, 1, e->window);
 
+    // required to get property changes happening just after mapping
+    XSelectInput(dpy, e->window, PropertyChangeMask);
+
     if (needDecoration(e->window)) {
         XAddToSaveSet(QX11Info::display(), e->window);
 
@@ -1822,10 +1825,21 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             setWindowState(fd.frame->managedWindow(), NormalState);
         else
             setWindowState(event->window, NormalState);
-        if (event->window == stack[DESKTOP_LAYER])
-            // raising home does not have a transition
+        if (event->window == stack[DESKTOP_LAYER]) {
+            // Mark normal applications on top of home Iconic to make our
+            // qsort() function to work
+            for (int wi = stacking_list.size() - 1; wi >= 0; --wi) {
+                 Window w = stacking_list.at(wi);
+                 if (w == stack[DESKTOP_LAYER])
+                     break;
+                 MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+                 if (cw && cw->isMapped() && !cw->meegoStackingLayer()
+                     && isAppWindow(cw, true))
+                     setWindowState(cw->window(), IconicState);
+            }
             activateWindow(event->window, CurrentTime, true);
-        else
+        } else
+            // use composition due to the transition effect
             activateWindow(event->window, CurrentTime, false);
     } else if (event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
         Window close_window = event->window;
