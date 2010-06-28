@@ -101,6 +101,12 @@ public:
      */
     bool isRedirected(Qt::HANDLE window);
     
+    /*
+     * Returns the current state of windows whether it is being composited
+     * or not
+     */
+    bool isCompositing();
+    
 public slots:
     void enableCompositing();
     void disableCompositing();

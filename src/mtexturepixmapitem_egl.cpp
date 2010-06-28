@@ -162,8 +162,8 @@ void MTexturePixmapItem::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }
 
-MTexturePixmapItem::MTexturePixmapItem(Window window, QGLWidget *glwidget, QGraphicsItem *parent)
-    : MCompositeWindow(window, parent),
+MTexturePixmapItem::MTexturePixmapItem(Window window, MCompAtoms::Type windowType, QGLWidget *glwidget, QGraphicsItem* parent)
+    : MCompositeWindow(window, windowType, parent),
       d(new MTexturePixmapPrivate(window, glwidget, this))
 {
     if (!d->ctx)

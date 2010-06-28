@@ -157,8 +157,8 @@ void MTexturePixmapItem::init()
     glXBindTexImageEXT(QX11Info::display(), d->glpixmap, GLX_FRONT_LEFT_EXT, NULL);
 }
 
-MTexturePixmapItem::MTexturePixmapItem(Window window, QGLWidget *glwidget, QGraphicsItem *parent)
-    : MCompositeWindow(window, parent),
+MTexturePixmapItem::MTexturePixmapItem(Window window, MCompAtoms::Type windowType, QGLWidget *glwidget, QGraphicsItem *parent)
+    : MCompositeWindow(window, windowType, parent),
       d(new MTexturePixmapPrivate(window, glwidget, this))
 {
     init();

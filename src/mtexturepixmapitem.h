@@ -44,11 +44,12 @@ public:
     /*!
      * Constructs a MTexturePixmapItem
      *
-     * \param w the redirected window where the texture is derived.
-     * \param enableAlpha if the alpha component of window is rendered
+     * \param window the redirected window where the texture is derived.
+     * \param windowType internal window type representation of this window
      * \param parent QGraphicsItem, defaults to 0
      */
-    MTexturePixmapItem(Window window, QGLWidget *glwidget, QGraphicsItem *parent = 0);
+    MTexturePixmapItem(Window window, MCompAtoms::Type windowType,
+                       QGLWidget *glwidget, QGraphicsItem *parent = 0);
     /*!
      * Destroys the MTexturePixmapItem and frees the allocated
      * surface and texture

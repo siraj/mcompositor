@@ -22,7 +22,6 @@
 #include "mcompositemanager.h"
 #include "mcompositemanager_p.h"
 #include "mtexturepixmapitem.h"
-#include "mcompatoms_p.h"
 
 #include <QX11Info>
 #include <QGraphicsScene>
@@ -31,7 +30,11 @@
 
 bool MCompositeWindow::window_transitioning = false;
 
-MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
+static QRectF fadeRect = QRectF();
+
+MCompositeWindow::MCompositeWindow(Qt::HANDLE window, 
+                                   MCompAtoms::Type windowType, 
+                                   QGraphicsItem *p)
     : QGraphicsItem(p),
       scalefrom(1),
       scaleto(1),
@@ -45,10 +48,10 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
       process_status(NORMAL),
       need_decor(false),
       is_decorator(false),
-      window_visible(true),
       transient_for((Window)-1),
       wm_protocols_valid(false),
       window_obscured(true), // true to synthesize initial visibility event
+      is_closing(false),
       wmhints(0),
       attrs(0),
       meego_layer(-1),
@@ -73,6 +76,27 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window, QGraphicsItem *p)
         is_valid = false;
     } else
         is_valid = true;
+    
+    MCompAtoms* atoms = MCompAtoms::instance(); 
+    setIsDecorator(atoms->isDecorator(window));
+    if (windowType == MCompAtoms::NORMAL)
+        setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
+    else
+        setWindowTypeAtom(atoms->getType(window));
+    
+    // Newly-mapped non-decorated application windows are not initially 
+    // visible to prevent flickering when animation is started.
+    // We initially prevent item visibility from compositor itself
+    // or it's corresponding thumbnail rendered by the switcher
+    window_visible = !isAppWindow();
+    newly_mapped = isAppWindow();
+
+    if (fadeRect.isEmpty()) {
+        QRectF d = QApplication::desktop()->availableGeometry();
+        fadeRect.setWidth(d.width()/2);
+        fadeRect.setHeight(d.height()/2);
+        fadeRect.moveTo(fadeRect.width()/2, fadeRect.height()/2);
+    }
 }
 
 MCompositeWindow::~MCompositeWindow()
@@ -210,6 +234,48 @@ void MCompositeWindow::restore(const QRectF &iconGeometry, bool defer)
     iconified = false;
     // do this to avoid stacking code disturbing Z values
     window_transitioning = true;
+}
+
+void MCompositeWindow::fadeIn()
+{
+    // defer putting this window in the _NET_CLIENT_LIST
+    // only after animation is done to prevent the switcher from rendering it
+    if (!isAppWindow())
+        return;
+    
+    newly_mapped = false;
+    setVisible(true);
+    setOpacity(0.0);
+    updateWindowPixmap();
+    origPosition = pos();
+    setPos(fadeRect.topLeft());
+    restore(fadeRect, false);
+    newly_mapped = true;
+}
+
+void MCompositeWindow::fadeOut()
+{
+    if (!isAppWindow()) {
+        setVisible(false);
+        return;
+    }
+    
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    bool defer = false;
+    if (!p->isCompositing()) {
+        p->enableCompositing();
+        defer = true;
+    }
+    
+    updateWindowPixmap();
+    iconify(fadeRect, defer);
+}
+
+void MCompositeWindow::deleteLater()
+{
+    destroyed = true;
+    if (!window_transitioning)
+        QObject::deleteLater();
 }
 
 void MCompositeWindow::prettyDestroy()
@@ -423,6 +489,9 @@ void MCompositeWindow::manipulationEnabled(bool isEnabled)
 
 void MCompositeWindow::setVisible(bool visible)
 {
+    if (visible && newly_mapped && isAppWindow())
+        return;
+
     // Set the iconification status as well
     iconified_final = !visible;
     if (visible != window_visible)

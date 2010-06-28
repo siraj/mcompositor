@@ -23,6 +23,7 @@
 #include <QGraphicsItem>
 #include <QtOpenGL>
 #include <X11/Xutil.h>
+#include "mcompatoms_p.h"
 
 class MCompWindowAnimator;
 
@@ -54,14 +55,21 @@ public:
     /*! Construct a MCompositeWindow
      *
      * \param window id to the window represented by this item
+     * \param windowType internal window type representation of this window
      * \param item QGraphicsItem parent, defaults to none
      */
-    MCompositeWindow(Qt::HANDLE window, QGraphicsItem *item = 0);
+    MCompositeWindow(Qt::HANDLE window, MCompAtoms::Type windowType,
+                     QGraphicsItem *item = 0);
 
     /*! Destroys this MCompositeWindow and frees resources
      *
      */
     virtual ~MCompositeWindow();
+
+    /*!
+     * Overriden QObject::deleteLater()
+     */
+    void deleteLater();
 
     /*!
      * Saves the global state of this item. Possibly transformations and
@@ -157,9 +165,7 @@ public:
 
     Atom windowTypeAtom() const { return window_type_atom; }
 
-    void setWindowTypeAtom(Atom atom) {
-        window_type_atom = atom;
-    }
+    void setWindowTypeAtom(Atom atom) { window_type_atom = atom; }
 
     void setRequestedGeometry(const QRect &rect) {
         req_geom = rect;
@@ -190,6 +196,9 @@ public:
 
     void setIsMapped(bool mapped) { window_mapped = mapped; }
     bool isMapped() const { return window_mapped; }
+    
+    void setNewlyMapped(bool newlyMapped) { newly_mapped = newlyMapped; }
+    bool isNewlyMapped() const { return newly_mapped; }
 
     /*!
      * Restores window with animation. If deferAnimation is set to true
@@ -336,12 +345,17 @@ public:
      */
     bool isAppWindow(bool include_transients = false);
 
+    void setClosing(bool closing) { is_closing = closing; }
+    bool isClosing() const { return is_closing; }
+
 public slots:
 
     void startTransition();
     void manipulationEnabled(bool isEnabled);
     void setUnBlurred();
     void setBlurred(bool);
+    void fadeIn();
+    void fadeOut();
 
 private slots:
 
@@ -409,6 +423,8 @@ private:
     bool window_obscured;
     bool window_mapped;
     bool is_valid;
+    bool newly_mapped;
+    bool is_closing;
     QRect req_geom;
     XWMHints *wmhints;
     XWindowAttributes *attrs;
