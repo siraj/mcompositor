@@ -63,10 +63,13 @@ int main(int argc, char *argv[])
     fmt.setSampleBuffers(false);
 
     QGLWidget *w = new QGLWidget(fmt);
+    w->setAttribute(Qt::WA_PaintOutsidePaintEvent);
     QPalette p = w->palette();
     p.setColor(QPalette::Background, QColor(Qt::black));
     w->setPalette(p);
-    w->setAutoFillBackground(true);
+    w->update();
+    
+    w->setAutoFillBackground(false);
     w->setMinimumSize(QApplication::desktop()->width(),
                       QApplication::desktop()->height());
     w->setMaximumSize(QApplication::desktop()->width(),

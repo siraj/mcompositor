@@ -2731,7 +2731,6 @@ MCompositeManager::~MCompositeManager()
 
 void MCompositeManager::setGLWidget(QGLWidget *glw)
 {
-    glw->setAttribute(Qt::WA_PaintOutsidePaintEvent);
     d->glwidget = glw;
 }
 
