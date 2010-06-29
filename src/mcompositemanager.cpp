@@ -1995,10 +1995,9 @@ void MCompositeManagerPrivate::raiseOnRestore(MCompositeWindow *window)
         to_stack = window;
     setWindowState(to_stack->window(), NormalState);
     
-    if (window->isNewlyMapped()) {
+    if (window->isNewlyMapped())
         window->setNewlyMapped(false);
-        checkStacking(false);
-    }
+
     positionWindow(to_stack->window(), STACK_TOP);
 
     /* the animation is finished, compositing needs to be reconsidered */

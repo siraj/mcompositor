@@ -15,7 +15,7 @@ fd = os.popen('windowctl d')
 old_win = fd.readline().strip()
 fd = os.popen('windowctl d')
 new_win = fd.readline().strip()
-time.sleep(1)
+time.sleep(4)
 
 ret = 0
 fd = os.popen('windowstack m')

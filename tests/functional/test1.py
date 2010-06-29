@@ -10,17 +10,9 @@
 
 import os, re, sys, time
 
-os.system('/usr/share/meegotouch/testapps/testApp1 &')
+fd = os.popen('windowctl kn')
+testapp_win = fd.readline().strip()
 time.sleep(2)
-
-fd = os.popen('windowstack m')
-s = fd.read(5000)
-win_re = re.compile('^0x[0-9a-f]+')
-testapp_win = 0
-for l in s.splitlines():
-  if re.search(' testApp1 ', l.strip()):
-    testapp_win = win_re.match(l.strip()).group()
-    break
 
 # create new dialog window on top
 fd = os.popen('windowctl md')
@@ -35,7 +27,7 @@ ret = 0
 fd = os.popen('windowstack m')
 s = fd.read(5000)
 for l in s.splitlines():
-  if re.search(' testApp1 ', l.strip()):
+  if re.search('%s ' % testapp_win, l.strip()):
     print 'FAIL: dialog is not on top'
     print 'Failed stack:\n', s
     ret = 1
@@ -46,7 +38,6 @@ for l in s.splitlines():
 
 # cleanup
 os.popen('pkill windowctl')
-os.popen('pkill testApp1')
 time.sleep(1)
 
 sys.exit(ret)
