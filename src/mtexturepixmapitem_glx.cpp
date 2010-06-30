@@ -101,7 +101,7 @@ void MTexturePixmapItem::init()
         initCustomTfp();
         return;
     }
-    static const int pixmapAttribs[] = {
+    const int pixmapAttribs[] = {
         GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
         GLX_TEXTURE_FORMAT_EXT, d->has_alpha ? GLX_TEXTURE_FORMAT_RGBA_EXT : GLX_TEXTURE_FORMAT_RGB_EXT,
         None
@@ -171,7 +171,7 @@ void MTexturePixmapItem::saveBackingStore(bool renew)
 
 void MTexturePixmapItem::rebindPixmap()
 {
-    static const int pixmapAttribs[] = {
+    const int pixmapAttribs[] = {
         GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
         GLX_TEXTURE_FORMAT_EXT, d->has_alpha ? GLX_TEXTURE_FORMAT_RGBA_EXT : GLX_TEXTURE_FORMAT_RGB_EXT,
         None
