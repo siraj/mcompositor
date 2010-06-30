@@ -1761,7 +1761,7 @@ stack_and_return:
     }
 
     /* do this after bindWindow() so that the window is in stacking_list */
-    if (item->windowState() == NormalState &&
+    if (item && item->windowState() == NormalState &&
         (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win)))
         activateWindow(win, CurrentTime, false);
     else
