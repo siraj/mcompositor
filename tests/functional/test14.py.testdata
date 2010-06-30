@@ -1,0 +1,11 @@
+CaseName="verify_removal_of_window_attributes"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that removal of _NET_WM_STATE_FULLSCREEN in _NET_WM_STATE is respected.\n
+\n
+- Test steps\n
+\t- show a fullscreen application window\n
+\t- verify that the window has fullscreen size\n
+\t request removal of _NET_WM_STATE_FULLSCREEN for the window\n
+- Post-conditions\n
+\t- verify that the window now has non-fullscreen size (due to decorator)\n"

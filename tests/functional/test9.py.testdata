@@ -1,0 +1,13 @@
+CaseName="verify_configure_changes_for_stack_order"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that configure requests for changing stacking order are supported.\n
+\n
+- Test steps\n
+\t- show an application window\n
+\t- show another application window\n
+\t- configure topmost application below the other\n
+\t- configure bottommost application above the other\n
+\t- configure bottommost application to the top (sibling None)\n
+- Post-conditions\n
+\t- stacking order is changed according to the configure requests\n"

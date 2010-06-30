@@ -1,0 +1,10 @@
+CaseName="verify_duihome_activation_and_deactivation"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that duihome can be activated and deactivated\n
+\n
+- Test steps\n
+\t- start test app
+\t- activate duihome
+- Post-conditions
+\t- duihome should be above test app"

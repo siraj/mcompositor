@@ -3,6 +3,7 @@ CONFIG+=ordered
 SUBDIRS = \
     decorators \
     src \
+    tests \
 
 src.depends=decorators
 

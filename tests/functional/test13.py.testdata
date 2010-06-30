@@ -1,0 +1,10 @@
+CaseName="verify_window_attributes_are_respected"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that _NET_WM_STATE_FULLSCREEN in _NET_WM_STATE is respected.\n
+\n
+- Test steps\n
+\t- show a non-fullscreen application window\n
+\t- request _NET_WM_STATE _NET_WM_STATE_FULLSCREEN for the window\n
+- Post-conditions\n
+\t- verify that the window now has fullscreen size\n"

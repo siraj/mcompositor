@@ -1,0 +1,10 @@
+CaseName="activate_background_app_and_raise_to_top"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Background application raises on top when activated.\n
+\n
+- Test steps\n
+\t- create new application window\n
+\t- activate a background application\n
+- Post-conditions\n
+\t- background application is stacked above the new application\n"

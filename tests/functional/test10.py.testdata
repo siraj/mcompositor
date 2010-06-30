@@ -1,0 +1,14 @@
+CaseName="group_windows_that_are_stacked_together"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that windows belonging to the same group are stacked together.\n
+\n
+- Test steps\n
+\t- show two application windows in the same group\n
+\t- show another application window that is not in the group\n
+\t- raise the desktop\n
+\t- raise the first grouped application window\n
+\t- raise the non-grouped application window\n
+\t- raise the second grouped application window\n
+- Post-conditions\n
+\t- grouped application windows are stacked together above the desktop\n"
