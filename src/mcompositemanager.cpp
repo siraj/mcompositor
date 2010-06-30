@@ -1738,7 +1738,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     }
 
 stack_and_return:
-    if (e->event != QX11Info::appRootWindow())
+    if ((e->event != QX11Info::appRootWindow()) || !item)
         // only handle the MapNotify sent for the root window
         return;
 
@@ -1761,7 +1761,7 @@ stack_and_return:
     }
 
     /* do this after bindWindow() so that the window is in stacking_list */
-    if (item && item->windowState() == NormalState &&
+    if (item->windowState() == NormalState &&
         (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win)))
         activateWindow(win, CurrentTime, false);
     else
