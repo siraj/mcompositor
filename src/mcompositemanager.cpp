@@ -2059,7 +2059,7 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         // move it to the correct position in the stack
         positionWindow(to_stack->window(), STACK_TOP);
         // possibly set decorator
-        if (cw == getHighestDecorated()) {
+        if (cw == getHighestDecorated() || cw->status() == MCompositeWindow::HUNG) {
             if (FULLSCREEN_WINDOW(cw)) {
                 // fullscreen window has decorator above it during ongoing call
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
@@ -2659,7 +2659,11 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w)
     MDecoratorFrame::instance()->setAutoRotation(true);
     checkStacking(false);
     MDecoratorFrame::instance()->raise();
-    w->updateWindowPixmap();
+    
+    // We need to activate the window as well with instructions to decorate
+    // the hung window. Above call just seems to mark the window as needing
+    // decoration
+    activateWindow(w->window(), CurrentTime, false);
 }
 
 void MCompositeManagerPrivate::exposeSwitcher()

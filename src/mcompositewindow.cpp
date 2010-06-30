@@ -529,8 +529,8 @@ void MCompositeWindow::pingTimeout()
 {
     if (ping_server_timestamp != ping_client_timestamp && process_status != HUNG) {
         setBlurred(true);
-        emit windowHung(this);
         process_status = HUNG;
+        emit windowHung(this);
     }
 }
 
