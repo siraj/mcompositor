@@ -1,0 +1,13 @@
+CaseName="unmap_background_window_not_causing_changes_in_stack"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that unmapping a background application does not cause other\n
+changes in the window stack\n
+\n
+- Test steps\n
+\t- show an application window\n
+\t- show another application window\n
+\t- raise the desktop\n
+\t- unmap the application that was opened last\n
+- Post-conditions\n
+\t- remaining application is still stacked below the desktop\n"

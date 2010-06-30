@@ -1,0 +1,10 @@
+CaseName="nothing_can_come_over_modal_dialog"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that we can't raise app over a modal, non-transient dialog.\n
+\n
+- Test steps\n
+\t- create a modal, non-transient dialog\n
+\t- activate application in background\n
+- Post-conditions\n
+\t- dialog should be stacked above the application\n"

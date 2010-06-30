@@ -1,0 +1,80 @@
+#!/bin/sh
+
+INSTALL_PATH=$1
+shift 
+TESTCASES=""
+
+. setandsuite.testdata
+
+# remove old version
+if [ -e tests.xml ]; then
+    rm tests.xml
+fi
+
+. setandsuite.testdata
+
+
+#####################################################
+# We'll build up a blocks that are not necessery to 
+# the tests.xml to work but sometimes very hand to 
+# have them around ..
+#
+# SetPreSteps parser 
+#
+if [ -n "${SetPreSteps+x}" ]; then
+    PRESTEPS="\t\t\t<pre_steps>\n\t\t\t\t<step>$SetPreSteps</step>\n\t\t\t</pre_steps>"        
+else
+    PRESTEPS=""
+fi
+
+#
+# SetPostSteps parser 
+#
+
+if [ -n "${SetPostSteps+x}" ]; then
+    POSTSTEPS="\t\t\t<post_steps>\n\t\t\t\t<step>$SetPostSteps</step>\n\t\t\t</post_steps>"        
+else
+    POSTSTEPS=""
+fi
+
+#
+# SetLogFiles parser
+#
+
+if [ -n "${SetLogFiles+x}" ]; then
+    LOGFILES="\t\t\t<get>\n"
+    for LOGFILE in ${SetLogFiles}; do 
+        LOGFILES="${LOGFILES}\t\t\t\t<file>$LOGFILE</file>\n"
+    done
+    LOGFILES="${LOGFILES}\t\t\t</get>"        
+else
+    LOGFILES=""
+fi
+
+# 
+# and then we iterate the testcases and build up
+# xml block for each of them ..
+#
+
+for CASEFILE in $*; do
+    BNAME=${CASEFILE}.testdata
+    if [ -e $BNAME ]; then
+        . ./$BNAME
+        TESTCASE_TEMPLATE="\t\t\t<case name=\"$CaseName\" description=\"$CaseDescription\" requirement=\"$CaseRequirement\" timeout=\"$CaseTimeout\">\n\t\t\t\t<step expected_result=\"0\">$INSTALL_PATH/$CASEFILE</step>\n\t\t\t</case>\n"
+      TESTCASES="${TESTCASES}${TESTCASE_TEMPLATE}"
+    fi
+done
+
+#
+# And create the actual whole xml template 
+#
+
+TESTSUITE_TEMPLATE="<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<testdefinition version=\"0.1\">\n\t<suite name=\"${SuiteName}\" domain=\"$SuiteDomain\" type=\"$SuiteType\" level=\"$SuiteLevel\">\n\t\t<set name=\"$SetName\" description=\"$SetDescription\" feature=\"$SetFeature\" timeout=\"$SetTimeout\">\n$PRESTEPS\n$TESTCASES\n\t\t\t<environments>\n\t\t\t\t<scratchbox>$SetScratchbox</scratchbox>\n\t\t\t\t<hardware>$SetHardware</hardware>\n\t\t\t</environments>\n$LOGFILES\n$POSTSTEPS\n\t\t</set>\n\t</suite>\n</testdefinition>\n"
+
+#
+# And output it !
+#
+
+echo -e $TESTSUITE_TEMPLATE > tests.xml
+
+exit 0

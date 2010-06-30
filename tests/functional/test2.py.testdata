@@ -1,0 +1,10 @@
+CaseName="check_modal_dialog_is_coming_to_top"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that new dialog is stacked above old one.\n
+\n
+- Test steps\n
+\t- create a non-transient dialog\n
+\t- create another non-transient dialog\n
+- Post-conditions\n
+\t- the new dialog should be stacked above the old dialog\n"

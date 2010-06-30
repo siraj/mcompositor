@@ -1,0 +1,10 @@
+CaseName="verify_support_for_argb_windows"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that ARGB windows can be shown.\n
+\n
+- Test steps\n
+\t- create and show ARGB application window\n
+\t- create and show ARGB dialog window\n
+- Post-conditions\n
+\t- both windows are mapped\n"

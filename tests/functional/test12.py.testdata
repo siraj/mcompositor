@@ -1,0 +1,15 @@
+CaseName="verify_selective_compositing_usecases"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that selective compositing works in most important cases.\n
+\n
+- Test steps\n
+\t- start test app
+\t- check that test app is not composited
+\t- show a normal (non-fullscreen) application window\n
+\t- check that application is composited (due to the decorator)\n
+\t- iconify the application by raising desktop\n
+\t- check that desktop is not composited\n
+\t- show a non-decorated RGBA application window\n
+- Post-conditions\n
+\t- check that compositing is on (because the topmost window is RGBA)\n"

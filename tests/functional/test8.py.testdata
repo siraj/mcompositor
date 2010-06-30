@@ -1,0 +1,13 @@
+CaseName="verify_transient_dialog_functionality"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that a transient dialog is raised with the application it is\n
+transient for.\n
+\n
+- Test steps\n
+\t- show an application window\n
+\t- create and show a dialog window that is transient for the application\n
+\t- activate the duihome window\n
+\t- activate the application window\n
+- Post-conditions\n
+\t- dialog is above the application window\n"
