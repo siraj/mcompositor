@@ -61,6 +61,10 @@ MRmiServerPrivateSocket::MRmiServerPrivateSocket(const QString& key)
 {
 }
 
+MRmiServerPrivateSocket::~MRmiServerPrivateSocket()
+{
+}
+
 void MRmiServerPrivateSocket::exportObject(QObject* p)
 {
     Q_Q(MRmiServer);

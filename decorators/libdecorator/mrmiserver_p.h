@@ -55,6 +55,7 @@ class MRmiServerPrivateSocket: public QObject, public MRmiServerPrivate
 
 public:
     MRmiServerPrivateSocket(const QString& key);
+    virtual ~MRmiServerPrivateSocket();
 
     virtual void exportObject(QObject* p);
 
