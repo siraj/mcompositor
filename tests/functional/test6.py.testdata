@@ -1,0 +1,12 @@
+CaseName="verify_window_stack_while_rotation"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that window stack stays static while rotating the screen.\n
+\n
+- Test steps\n
+\t- create and show TYPE_INPUT window\n
+\t- create and show application window\n
+\t- create and show dialog window\n
+\t- rotate screen step-by-step and check that window stack says the same\n
+- Post-conditions\n
+\t- None\n"

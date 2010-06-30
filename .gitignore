@@ -11,9 +11,16 @@ debian/tmp
 debian/duicompositor
 debian/duicompositor-dbg
 debian/duicompositor-tests
+debian/mcompositor-dbg/
+debian/mcompositor-functional-tests/
+debian/mcompositor/
 *.debhelper
+*.debhelper.log
 debian/files
 debian/*.substvars
 tests/ut_duicompositescene/ut_duicompositescene
 tests/ut_duisimplewindowframe/ut_duisimplewindowframe
 *-stamp
+tests.xml
+decorators/mdecorator/mdecorator
+src/mcompositor

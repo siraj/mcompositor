@@ -1,0 +1,11 @@
+CaseName="verify_input_window_is_always_topmost"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that TYPE_INPUT window is stacked above applications and dialogs.\n
+\n
+- Test steps\n
+\t- create and show TYPE_INPUT window\n
+\t- create and show application window\n
+\t- create and show dialog window\n
+- Post-conditions\n
+\t- TYPE_INPUT window is stacked above application and dialog windows.\n"
