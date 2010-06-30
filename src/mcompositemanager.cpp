@@ -2059,7 +2059,7 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         // move it to the correct position in the stack
         positionWindow(to_stack->window(), STACK_TOP);
         // possibly set decorator
-        if (cw == getHighestDecorated() || cw->status() == MCompositeWindow::HUNG) {
+        if (cw == getHighestDecorated()) {
             if (FULLSCREEN_WINDOW(cw)) {
                 // fullscreen window has decorator above it during ongoing call
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
