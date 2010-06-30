@@ -2392,9 +2392,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         item->setZValue(wtype);
     }
 
-    QVector<Atom> states = atom->getAtomArray(window, ATOM(_NET_WM_STATE));
-    item->setNetWmState(states.toList());
-    int fs_i = states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
+    int fs_i = item->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
     if (wa && fs_i == -1) {
         item->setRequestedGeometry(QRect(wa->x, wa->y, wa->width, wa->height));
     } else if (fs_i == -1) {
