@@ -1,3 +1,9 @@
+mcompositor (0.4.10-3) unstable; urgency=low
+
+  * Fixes: missing tests.xml from functional tests package added
+
+ -- Jani Mikkonen <jani.3.mikkonen@nokia.com> Thu, 01 Jul 2010 16:25:00 +0300
+
 mcompositor (0.4.10-2) unstable; urgency=low
 
   * Fixes: NB#175086 - QMenu texts open as black boxes
