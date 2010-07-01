@@ -83,13 +83,18 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
     else
         setWindowTypeAtom(atoms->getType(window));
-    
+
+    // needed before calling isAppWindow()
+    QVector<Atom> states = atoms->getAtomArray(window, ATOM(_NET_WM_STATE));
+    setNetWmState(states.toList());
+
     // Newly-mapped non-decorated application windows are not initially 
     // visible to prevent flickering when animation is started.
     // We initially prevent item visibility from compositor itself
     // or it's corresponding thumbnail rendered by the switcher
-    window_visible = !isAppWindow();
-    newly_mapped = isAppWindow();
+    bool is_app = isAppWindow();
+    window_visible = !is_app;
+    newly_mapped = is_app;
 
     if (fadeRect.isEmpty()) {
         QRectF d = QApplication::desktop()->availableGeometry();

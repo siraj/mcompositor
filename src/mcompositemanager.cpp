@@ -757,8 +757,12 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
 {
     MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
-    if (cw && cw->propertyEvent(e))
+    if (cw && cw->propertyEvent(e)) {
         checkStacking(false);
+        // window on top could have changed
+        if (!possiblyUnredirectTopmostWindow())
+            enableCompositing(false);
+    }
 }
 
 // -1: cw_a is cw_b's ancestor; 1: cw_b is cw_a's ancestor; 0: no relation
@@ -2064,6 +2068,9 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
                 // fullscreen window has decorator above it during ongoing call
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
                 MDecoratorFrame::instance()->setOnlyStatusbar(true);
+            } else if (cw->status() == MCompositeWindow::HUNG) {
+                MDecoratorFrame::instance()->setManagedWindow(cw, true);
+                MDecoratorFrame::instance()->setOnlyStatusbar(false);
             } else {
                 MDecoratorFrame::instance()->setManagedWindow(cw);
                 MDecoratorFrame::instance()->setOnlyStatusbar(false);
@@ -2392,9 +2399,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
         item->setZValue(wtype);
     }
 
-    QVector<Atom> states = atom->getAtomArray(window, ATOM(_NET_WM_STATE));
-    item->setNetWmState(states.toList());
-    int fs_i = states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
+    int fs_i = item->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN));
     if (wa && fs_i == -1) {
         item->setRequestedGeometry(QRect(wa->x, wa->y, wa->width, wa->height));
     } else if (fs_i == -1) {
