@@ -1,4 +1,4 @@
-mcompositor (0.4.10-1) unstable; urgency=low
+mcompositor (0.4.10-2) unstable; urgency=low
 
   * Fixes: NB#175086 - QMenu texts open as black boxes
   * Fixes: NB#174193 - MDecorator opens in landscape when device is in portrait orientation
