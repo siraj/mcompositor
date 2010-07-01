@@ -757,7 +757,7 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
 {
     MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
-    if (cw && cw->propertyEvent(e)) {
+    if (cw && cw->propertyEvent(e) && cw->isMapped()) {
         checkStacking(false);
         if (!cw->isNewlyMapped()) {
             // window on top could have changed
