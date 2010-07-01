@@ -759,9 +759,11 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
     MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
     if (cw && cw->propertyEvent(e)) {
         checkStacking(false);
-        // window on top could have changed
-        if (!possiblyUnredirectTopmostWindow())
-            enableCompositing(false);
+        if (!cw->isNewlyMapped()) {
+            // window on top could have changed
+            if (!possiblyUnredirectTopmostWindow())
+                enableCompositing(false);
+        }
     }
 }
 
