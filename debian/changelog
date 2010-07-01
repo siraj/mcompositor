@@ -2,7 +2,8 @@ mcompositor (0.4.10~1) unstable; urgency=low
 
   * New version [UNRELEASED]
   * Fixes: NB#175086 - QMenu texts open as black boxes
-  * Fixes: NB#174193 - MDecorator opens in landscape when device is in portrait orientation	
+  * Fixes: NB#174193 - MDecorator opens in landscape when device is in portrait orientation
+  * Fixes: NB#175245 - Alarm window/dialog doesn't get redraw after call-ui window priority change	
   * Improvements: initial support for window transitions when opening a new window or closing an existing one
   * Lots of alreadyfixed critical bugs	
 
