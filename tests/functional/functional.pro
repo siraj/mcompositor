@@ -18,5 +18,7 @@ metadata.path=/usr/share/$$SUITENAME
 
 metadata.files += tests.xml 
 
+metadata.CONFIG += no_check_exist
+
 INSTALLS += metadata scripts
 

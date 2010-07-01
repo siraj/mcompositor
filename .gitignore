@@ -24,3 +24,5 @@ tests/ut_duisimplewindowframe/ut_duisimplewindowframe
 tests.xml
 decorators/mdecorator/mdecorator
 src/mcompositor
+tests/windowctl/windowctl
+tests/windowstack/windowstack
