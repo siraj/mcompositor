@@ -757,8 +757,12 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
 {
     MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
-    if (cw && cw->propertyEvent(e))
+    if (cw && cw->propertyEvent(e)) {
         checkStacking(false);
+        // window on top could have changed
+        if (!possiblyUnredirectTopmostWindow())
+            enableCompositing(false);
+    }
 }
 
 // -1: cw_a is cw_b's ancestor; 1: cw_b is cw_a's ancestor; 0: no relation
