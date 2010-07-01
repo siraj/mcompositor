@@ -1,3 +1,9 @@
+mcompositor (0.5.0~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Thu, 01 Jul 2010 14:40:58 +0300
+
 mcompositor (0.4.10-1) unstable; urgency=low
 
   * Fixes: NB#175086 - QMenu texts open as black boxes
