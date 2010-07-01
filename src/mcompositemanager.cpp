@@ -2064,6 +2064,9 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
                 // fullscreen window has decorator above it during ongoing call
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
                 MDecoratorFrame::instance()->setOnlyStatusbar(true);
+            } else if (cw->status() == MCompositeWindow::HUNG) {
+                MDecoratorFrame::instance()->setManagedWindow(cw, true);
+                MDecoratorFrame::instance()->setOnlyStatusbar(false);
             } else {
                 MDecoratorFrame::instance()->setManagedWindow(cw);
                 MDecoratorFrame::instance()->setOnlyStatusbar(false);
