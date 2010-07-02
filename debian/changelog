@@ -1,8 +1,14 @@
+mcompositor (0.4.10-4) unstable; urgency=low
+
+  * Fixes: changelog fixed
+
+ -- Jani Mikkonen <jani.3.mikkonen@nokia.com>  Fri, 02 Jul 2010 11:06:57 +0300
+
 mcompositor (0.4.10-3) unstable; urgency=low
 
   * Fixes: missing tests.xml from functional tests package added
 
- -- Jani Mikkonen <jani.3.mikkonen@nokia.com> Thu, 01 Jul 2010 16:25:00 +0300
+ -- Jani Mikkonen <jani.3.mikkonen@nokia.com>  Thu, 01 Jul 2010 16:25:00 +0300
 
 mcompositor (0.4.10-2) unstable; urgency=low
 
@@ -19,7 +25,7 @@ mcompositor (0.4.9-1) unstable; urgency=low
   * Fixes: NB#173590 - Calling MApplicationWindow::showFullScreen() flashes Homescreen visible when run first time	
   * Fixes: NB#169665 - Calling showMinimized() for a new window does not open it minimised
   * Fixes: NB#175351 - bluetooth transfer to screenlocked device confuses window management	
-	
+
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 15 Jun 2010 19:30:02 +0300
 
 mcompositor (0.4.8-1) unstable; urgency=low
