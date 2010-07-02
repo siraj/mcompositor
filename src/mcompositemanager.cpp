@@ -584,6 +584,7 @@ static void grab_pointer_keyboard(Window window)
 
 MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
     : QObject(p),
+      prev_focus(0),
       glwidget(0),
       compositing(true)
 {
