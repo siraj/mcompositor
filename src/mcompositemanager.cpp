@@ -1945,7 +1945,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                      if (w == stack[DESKTOP_LAYER])
                          break;
                      MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-                     if (cw && cw->isMapped() && cw->isAppWindow() &&
+                     if (cw && cw->isMapped() && cw->isAppWindow(true) &&
                          // skip devicelock and screenlock windows
                          (cw->meegoStackingLayer() > 2 ||
                           cw->meegoStackingLayer() == 0))
