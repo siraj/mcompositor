@@ -584,6 +584,7 @@ static void grab_pointer_keyboard(Window window)
 
 MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
     : QObject(p),
+      prev_focus(0),
       glwidget(0),
       compositing(true)
 {
@@ -1806,7 +1807,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         Window raise = event->window;
         MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
         bool needComp = false;
-        if (d_item && d_item->isDirectRendered()) {
+        if (d_item && d_item->isDirectRendered()
+            && raise != stack[DESKTOP_LAYER]) {
             needComp = true;
             enableCompositing(true);
         }
@@ -1943,7 +1945,10 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                      if (w == stack[DESKTOP_LAYER])
                          break;
                      MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-                     if (cw && cw->isMapped() && cw->isAppWindow())
+                     if (cw && cw->isMapped() && cw->isAppWindow(true) &&
+                         // skip devicelock and screenlock windows
+                         (cw->meegoStackingLayer() > 2 ||
+                          cw->meegoStackingLayer() == 0))
                          setWindowState(cw->window(), IconicState);
                 }
                 Q_ASSERT(lower_i > 0);

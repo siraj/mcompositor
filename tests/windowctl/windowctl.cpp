@@ -21,6 +21,9 @@
 #include <signal.h>
 #include <sys/prctl.h>
 
+#define WIN_W 864
+#define WIN_H 480
+
 static Atom win_type_atom, trans_for_atom, workarea_atom;
 static int xerror_happened;
 
@@ -659,8 +662,8 @@ static bool old_main(QStringList& args, QString& stdOut)
 		return false;
 	}
 
-	w = create_window (dpy, 400, 400, argb, fullscreen, &colormap,
-			   override_redirect);
+	w = create_window (dpy, WIN_W * 2 / 3, WIN_H * 2 / 3, argb, fullscreen,
+                           &colormap, override_redirect);
 	/* print XID of the window */
 	{
 		char buf[20];
@@ -744,12 +747,11 @@ static bool old_main(QStringList& args, QString& stdOut)
 		  item.delta = 0;
 		  item.font = None;
 
-#if 0
                   if (argb) {
                     /* draw background with transparent colour */
                     XImage ximage;
-                    ximage.width = 800;
-                    ximage.height = 480;
+                    ximage.width = WIN_W;
+                    ximage.height = WIN_H;
                     ximage.format = ZPixmap;
                     ximage.byte_order = LSBFirst;
                     ximage.bitmap_unit = 32;
@@ -761,16 +763,15 @@ static bool old_main(QStringList& args, QString& stdOut)
                     ximage.blue_mask = 0;
                     ximage.xoffset = 0;
                     ximage.bits_per_pixel = 32;
-                    ximage.bytes_per_line = 800 * 4;
-                    ximage.data = calloc (1, 800 * 480 * 4);
+                    ximage.bytes_per_line = WIN_W * 4;
+                    ximage.data = (char*)calloc (1, WIN_W * WIN_H * 4);
 
                     XInitImage (&ximage);
 
                     XPutImage (dpy, w, green_gc, &ximage, 0, 0, 0, 0,
-                               800, 480);
+                               WIN_W, WIN_H);
                     free (ximage.data);
                   }
-#endif
                   //draw_rect (dpy, w, green_gc, &green_col, 100, 100);
 		  XDrawText (dpy, w, green_gc, 300, 200, &item, 1);
                 }

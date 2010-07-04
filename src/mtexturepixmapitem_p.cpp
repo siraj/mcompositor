@@ -232,6 +232,7 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MT
       has_alpha(false),
       direct_fb_render(false),
       angle(0),
+      damage_object(0),
       item(p)
 {
     damageTracking(true);
