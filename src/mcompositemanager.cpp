@@ -927,7 +927,11 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         setWindowState(e->window, IconicState);
         if (item->isVisible() && !item->isClosing())
             item->setVisible(false);
-            
+        if (!item->isClosing())
+            // mark it direct-rendered so we create damage object etc.
+            // in case it is re-mapped
+            ((MTexturePixmapItem *)item)->enableDirectFbRendering();
+
         if (MDecoratorFrame::instance()->managedWindow() == e->window) {
             // decorate next window in the stack if any
             MCompositeWindow *cw = getHighestDecorated();
