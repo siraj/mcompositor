@@ -1,0 +1,17 @@
+CaseName="verify_visibility_event_sending"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that synthetic VisibilityNotifys are generated.\n
+\n
+- Test steps\n
+\t- show a non-decorated window\n
+\t- verify that it's unobscured\n
+\t- show a non-decorated window\n
+\t- verify that the lower one is obscured\n
+\t- unmap the topmost window\n
+\t- verify that the remaining window is unobscured\n
+\t- show a decorated window\n
+\t- verify that it's unobscured\n
+\t- show a decorated window\n
+- Post-conditions\n
+\t- verify that the lower decorated window is obscured\n"

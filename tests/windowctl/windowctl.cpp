@@ -695,7 +695,7 @@ static bool old_main(QStringList& args, QString& stdOut)
         if (kde_override && windowtype != TYPE_NORMAL)
             set_kde_override(dpy, w);
 
-        XSelectInput (dpy, w,
+        XSelectInput (dpy, w, VisibilityChangeMask |
                       ExposureMask | ButtonReleaseMask | ButtonPressMask);
 
 	/* set WM_NAME */
@@ -803,6 +803,18 @@ static bool old_main(QStringList& args, QString& stdOut)
                   XDamageSubtract(dpy, ((XDamageNotifyEvent*)&xev)->damage,
                                   None, None);
                                   */
+                }
+                else if (xev.type == VisibilityNotify) {
+                  XVisibilityEvent *e = (XVisibilityEvent*)&xev;
+                  if (e->send_event) {
+                    printf("(Synthetic) visibility of 0x%lx is %s\n", w,
+                           (e->state == VisibilityFullyObscured ?
+                            "obscured" : "unobscured"));
+                    Atom a = XInternAtom(dpy, "_M_TEST_VISIBILITY", False);
+                    long val = e->state == VisibilityFullyObscured ? 0 : 1;
+		    XChangeProperty(dpy, w, a, XA_CARDINAL, 32,
+                                    PropModeReplace, (unsigned char*)&val, 1);
+                  }
                 }
         }
 

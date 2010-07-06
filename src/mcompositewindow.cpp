@@ -74,8 +74,11 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         free(attrs);
         attrs = 0;
         is_valid = false;
-    } else
+    } else {
         is_valid = true;
+        QRect r(attrs->x, attrs->y, attrs->width, attrs->height);
+        setRealGeometry(r);
+    }
     
     MCompAtoms* atoms = MCompAtoms::instance(); 
     setIsDecorator(atoms->isDecorator(window));

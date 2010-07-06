@@ -21,7 +21,7 @@
 static int verbose, list_mapped_only;
 
 static Atom class_atom, name_atom, name_atom2, xembed_atom, pid_atom,
-            trans_atom,
+            trans_atom, visi_atom,
             utf8_string_atom,
 	    current_app_atom, win_type_atom, wm_state_atom;
 
@@ -69,7 +69,6 @@ static Window get_win_prop(Display *dpy, Window w, Atom atom)
           }
 }
 
-#if 0
 static unsigned long get_card_prop(Display *dpy, Window w, Atom atom)
 { 
           Atom type;
@@ -89,6 +88,7 @@ static unsigned long get_card_prop(Display *dpy, Window w, Atom atom)
           }
 }
 
+#if 0
 static long get_int_prop(Display *dpy, Window w, Atom atom)
 { 
           Atom type;
@@ -257,6 +257,7 @@ static void print_children(Display *dpy, Window w, int level, QString& stdOut)
 		const int state_i = sizeof ("_NET_WM_STATE");
 		for (i = 1; i < level; ++i)
 			strcat(indent, " ");
+                long visibility = get_card_prop(dpy, w, visi_atom);
 		if (verbose) {
                   int x2, y2;
                   unsigned int w2, h2, b2, d2;
@@ -269,7 +270,7 @@ static void print_children(Display *dpy, Window w, int level, QString& stdOut)
                   /* generate X error for invalid pixmap */
                   XGetGeometry(dpy, pixmap, &r2, &x2, &y2, &w2, &h2, &b2, &d2);
 		  snprintf(outbuf, 200,
-			"%s0x%lx %s %s %s %s '%s' '%s' %s %s %s %d,%d %dx%dx%d\n",
+			"%s0x%lx %s %s %s %s '%s' '%s' %s %s %s %s %d,%d %dx%dx%d\n",
 			indent, w,
 			wmtype[0] ? wmtype + type_i : "no-TYPE",
 			wmstate[0] ? wmstate + state_i : "no-STATE",
@@ -280,6 +281,7 @@ static void print_children(Display *dpy, Window w, int level, QString& stdOut)
 			buf[0] ? buf : "no-TR",
                         xerror == 0 ? "redir." : "dir.",
 			attrs.override_redirect ? "OR" : "no-OR",
+                        (visibility ? "UNOBS." : "OBS."),
 			attrs.x, attrs.y,
 			attrs.width, attrs.height, attrs.depth);
                   if (pixmap != None)
@@ -287,7 +289,7 @@ static void print_children(Display *dpy, Window w, int level, QString& stdOut)
                 }
 		else
 		  snprintf(outbuf, 200,
-		           "%s0x%lx %s %s %s '%s' %s %s %d,%d %dx%dx%d\n",
+		           "%s0x%lx %s %s %s '%s' %s %s %s %d,%d %dx%dx%d\n",
 			indent, w,
 			wmtype[0] ? wmtype + type_i : "no-TYPE",
 			/*wmstate[0] ? wmstate + state_i : "no-STATE",*/
@@ -297,6 +299,7 @@ static void print_children(Display *dpy, Window w, int level, QString& stdOut)
 			/*wmname ? wmname : "no-NNAME"*/
 			buf[0] ? buf : "no-TR",
 			attrs.override_redirect ? "OR" : "no-OR",
+                        (visibility ? "UNOBS." : "OBS."),
 			attrs.x, attrs.y,
 			attrs.width, attrs.height, attrs.depth);
 		stdOut.append(outbuf);
@@ -366,6 +369,7 @@ static bool old_main(QStringList& args, QString& stdOut)
         current_app_atom = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
         win_type_atom = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
         wm_state_atom = XInternAtom(dpy, "_NET_WM_STATE", False);
+        visi_atom = XInternAtom(dpy, "_M_TEST_VISIBILITY", False);
 
 	root = XDefaultRootWindow(dpy);
 

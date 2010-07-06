@@ -174,6 +174,13 @@ public:
         return req_geom;
     }
 
+    void setRealGeometry(const QRect &rect) {
+        real_geom = rect;
+    }
+    const QRect realGeometry() const {
+        return real_geom;
+    }
+
     /*!
      * Returns true if this window needs a decoration
      */
@@ -425,7 +432,7 @@ private:
     bool is_valid;
     bool newly_mapped;
     bool is_closing;
-    QRect req_geom;
+    QRect req_geom, real_geom;
     XWMHints *wmhints;
     XWindowAttributes *attrs;
     int meego_layer;

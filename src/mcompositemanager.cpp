@@ -992,10 +992,21 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
+        bool check_visibility = false;
+        QRect g = item->realGeometry();
+        if (e->x != g.x() || e->y != g.y() || e->width != g.width() ||
+            e->height != g.height()) {
+            QRect r(e->x, e->y, e->width, e->height);
+            item->setRealGeometry(r);
+            check_visibility = true;
+        }
         item->setPos(e->x, e->y);
         item->resize(e->width, e->height);
-        if (e->override_redirect == True)
+        if (e->override_redirect == True) {
+            if (check_visibility)
+                checkStacking(true);
             return;
+        }
 
         Window above = e->above;
         if (above != None) {
@@ -1014,7 +1025,8 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
                 MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
                 MDecoratorFrame::instance()->raise();
                 item->update();
-                checkStacking(false);
+                checkStacking(check_visibility);
+                check_visibility = false;
             }
         } else {
             // FIXME: seems that this branch is never executed?
@@ -1030,6 +1042,8 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
                 item->stackBefore(desktop);
 #endif
         }
+        if (check_visibility)
+            checkStacking(true);
     }
 }
 
@@ -1584,6 +1598,30 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         XSync(QX11Info::display(), False);
     }
     if (order_changed || force_visibility_check) {
+        int xres = ScreenOfDisplay(QX11Info::display(),
+                                   DefaultScreen(QX11Info::display()))->width;
+        int yres = ScreenOfDisplay(QX11Info::display(),
+                                   DefaultScreen(QX11Info::display()))->height;
+        int covering_i = 0;
+        for (int i = stacking_list.size() - 1; i >= 0; --i) {
+             Window w = stacking_list.at(i);
+             if (w == stack[DESKTOP_LAYER]) {
+                 covering_i = i;
+                 break;
+             }
+             MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+             QRect r;
+             if (cw)
+                 r = cw->realGeometry();
+             if (cw && cw->isMapped() && !cw->hasAlpha() &&
+                 /* FIXME: decorated window is assumed to be fullscreen */
+                 !cw->isTransitioning() && (cw->needDecoration() ||
+                 (r.x() <= 0 && r.y() <= 0 && r.height() >= yres
+                  && r.width() >= xres))) {
+                 covering_i = i;
+                 break;
+             }
+        }
         /* Send synthetic visibility events for our babies */
         int home_i = stacking_list.indexOf(duihome);
         for (int i = 0; i <= last_i; ++i) {
@@ -1593,25 +1631,20 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 cw->setWindowObscured(true);
                 if (cw->window() != duihome)
                     cw->setVisible(false);
+                if (!duihome || (duihome && i >= home_i))
+                    setWindowState(cw->window(), NormalState);
                 continue;
             }
-            if (duihome && i > home_i) {
+            if (i >= covering_i) {
                 cw->setWindowObscured(false);
                 cw->setVisible(true);
-                setWindowState(cw->window(), NormalState);
-            } else if (i == home_i && desktop_up) {
-                cw->setWindowObscured(false);
-                cw->setVisible(true);
-                setWindowState(cw->window(), NormalState);
-            } else if (!duihome) {
-                cw->setWindowObscured(false);
-                cw->setVisible(true);
-                setWindowState(cw->window(), NormalState);
             } else {
                 cw->setWindowObscured(true);
                 if (cw->window() != duihome)
                     cw->setVisible(false);
             }
+            if (!duihome || (duihome && i >= home_i))
+                setWindowState(cw->window(), NormalState);
         }
     }
 }
@@ -2414,14 +2447,8 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     if (wa && fs_i == -1) {
         item->setRequestedGeometry(QRect(wa->x, wa->y, wa->width, wa->height));
     } else if (fs_i == -1) {
-        XWindowAttributes a;
-        if (!XGetWindowAttributes(display, window, &a)) {
-            qWarning("XGetWindowAttributes for 0x%lx failed", window);
-            windows.remove(window);
-            item->deleteLater();
-            return 0;
-        }
-        item->setRequestedGeometry(QRect(a.x, a.y, a.width, a.height));
+        QRect r = item->realGeometry();
+        item->setRequestedGeometry(r);
     } else {
         int xres = ScreenOfDisplay(display, DefaultScreen(display))->width;
         int yres = ScreenOfDisplay(display, DefaultScreen(display))->height;
