@@ -320,6 +320,11 @@ public:
     virtual void resize(int w, int h) = 0;
 
     static bool isTransitioning();
+
+    /*!
+     * Tells if this window is transitioning.
+     */
+    bool thisIsTransitioning() const { return is_transitioning; }
     
     /*!
      * Returns whether this object represents a valid (i.e. viewable) window
@@ -432,6 +437,7 @@ private:
     bool is_valid;
     bool newly_mapped;
     bool is_closing;
+    bool is_transitioning;
     QRect req_geom, real_geom;
     XWMHints *wmhints;
     XWindowAttributes *attrs;

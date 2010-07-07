@@ -52,6 +52,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       wm_protocols_valid(false),
       window_obscured(true), // true to synthesize initial visibility event
       is_closing(false),
+      is_transitioning(false),
       wmhints(0),
       attrs(0),
       meego_layer(-1),
@@ -182,7 +183,7 @@ void MCompositeWindow::iconify(const QRectF &iconGeometry, bool defer)
                          iconGeometry.topLeft());
     iconified = true;
     // do this to avoid stacking code disturbing Z values
-    window_transitioning = true;
+    window_transitioning = is_transitioning = true;
 }
 
 void MCompositeWindow::setIconified(bool iconified)
@@ -241,7 +242,7 @@ void MCompositeWindow::restore(const QRectF &iconGeometry, bool defer)
     anim->translateScale(qreal(1.0), qreal(1.0), sx, sy, origPosition, true);
     iconified = false;
     // do this to avoid stacking code disturbing Z values
-    window_transitioning = true;
+    window_transitioning = is_transitioning = true;
 }
 
 void MCompositeWindow::fadeIn()
@@ -282,7 +283,7 @@ void MCompositeWindow::fadeOut()
 void MCompositeWindow::deleteLater()
 {
     destroyed = true;
-    if (!window_transitioning)
+    if (!is_transitioning)
         QObject::deleteLater();
 }
 
@@ -295,7 +296,7 @@ void MCompositeWindow::prettyDestroy()
 
 void MCompositeWindow::finalizeState()
 {
-    window_transitioning = false;
+    window_transitioning = is_transitioning = false;
     if (window_type_atom == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         emit desktopActivated(this);
 
@@ -591,7 +592,7 @@ void MCompositeWindow::setIsDecorator(bool decorator)
 
 void MCompositeWindow::windowTransitioning()
 {
-    window_transitioning = true;
+    window_transitioning = is_transitioning = true;
 }
 
 bool MCompositeWindow::isTransitioning()

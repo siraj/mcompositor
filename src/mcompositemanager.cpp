@@ -810,7 +810,7 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         if (cw && cw->isMapped() && cw->isAppWindow() &&
             cw->iconifyState() == MCompositeWindow::NoIconifyState &&
-            cw->windowState() == NormalState && !cw->isTransitioning()) {
+            cw->windowState() == NormalState && !cw->thisIsTransitioning()) {
             if (index_in_stacking_list)
                 *index_in_stacking_list = i;
             return w;
