@@ -213,25 +213,6 @@ bool MCompAtoms::hasState(Window w, Atom a)
     return states.indexOf(a) != -1;
 }
 
-QRectF MCompAtoms::iconGeometry(Window w)
-{
-    Atom actual;
-    int format;
-    unsigned long n, left;
-    unsigned char *data;
-    int result = XGetWindowProperty(QX11Info::display(), w, atoms[_NET_WM_ICON_GEOMETRY], 0L, 4L, False,
-                                    XA_CARDINAL, &actual, &format,
-                                    &n, &left, &data);
-    if (result == Success && data != NULL) {
-        unsigned long *geom = (unsigned long *) data;
-        QRectF r(geom[0], geom[1], geom[2], geom[3]);
-        XFree((void *) data);
-        return r;
-
-    }
-    return QRectF(); // empty
-}
-
 QVector<Atom> MCompAtoms::getAtomArray(Window w, Atom array_atom)
 {
     QVector<Atom> ret;
@@ -307,27 +288,6 @@ double MCompAtoms::get_opacity_percent(Display *dpy, Window w, double def)
     unsigned int opacity = get_opacity_prop(dpy, w,
                                             (unsigned int)(OPAQUE * def));
     return opacity * 1.0 / OPAQUE;
-}
-
-int MCompAtoms::globalAlphaFromWindow(Window w)
-{
-    Atom actual;
-    int format;
-    unsigned long n, left;
-
-    unsigned char *data = 0;
-    int result = XGetWindowProperty(QX11Info::display(), w, atoms[_MEEGOTOUCH_GLOBAL_ALPHA], 0L, 1L, False,
-                                    XA_CARDINAL, &actual, &format,
-                                    &n, &left, &data);
-    if (result == Success && data != NULL) {
-        unsigned int i;
-        memcpy(&i, data, sizeof(unsigned int));
-        XFree((void *) data);
-        double opacity = i * 1.0 / OPAQUE;
-        return (opacity * 255);
-    }
-
-    return 255;
 }
 
 Atom MCompAtoms::getAtom(const unsigned int name)
@@ -1225,16 +1185,21 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
 
 void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 {
-    MWindowPropertyCache *pc = new MWindowPropertyCache(e->window);
-    if (!pc->is_valid) {
-        delete pc;
-        return;
-    }
     Display *dpy = QX11Info::display();
-    // required to get property changes happening before mapping
-    XSelectInput(dpy, e->window, PropertyChangeMask);
+    MWindowPropertyCache *pc;
+    if (prop_caches.contains(e->window))
+        pc = prop_caches.value(e->window);
+    else {
+        pc = new MWindowPropertyCache(e->window);
+        if (!pc->is_valid) {
+            delete pc;
+            return;
+        }
+        prop_caches[e->window] = pc;
+        // required to get property changes happening before mapping
+        XSelectInput(dpy, e->window, PropertyChangeMask);
+    }
 
-    prop_caches[e->window] = pc;
     MCompAtoms::Type wtype = pc->windowType();
     const XWindowAttributes* a = pc->windowAttributes();
     if (!hasDock) {
@@ -1642,7 +1607,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         prev_only_mapped = QList<Window>(only_mapped);
 
         checkInputFocus(timestamp);
-        XSync(QX11Info::display(), False);
     }
     if (order_changed || force_visibility_check) {
         int xres = ScreenOfDisplay(QX11Info::display(),
@@ -1757,7 +1721,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     // TODO: this should probably be done on the focus level. Rewrite this
     // once new stacking code from Kimmo is done
     // FIXME: this works only if this window is on top
-    int g_alpha = atom->globalAlphaFromWindow(win);
+    int g_alpha = wpc->globalAlpha();
     if (g_alpha == 255)
         toggle_global_alpha_blend(0);
     else if (g_alpha < 255)
@@ -1905,7 +1869,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         }
         if (i && i->pc->windowState() == IconicState) {
             i->setZValue(windows.size() + 1);
-            QRectF iconGeometry = atom->iconGeometry(raise);
+            QRectF iconGeometry = i->pc->iconGeometry();
             i->setPos(iconGeometry.topLeft());
             i->restore(iconGeometry, needComp);
             if (!device_state->displayOff() && should_be_pinged(i))
@@ -1953,7 +1917,6 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
 
         XSendEvent(QX11Info::display(), close_window, False, NoEventMask, &ev);
         setExposeDesktop(true);
-        XSync(QX11Info::display(), False);
 
         MCompositeWindow *check_hung = w;
         if (check_hung) {
@@ -2049,7 +2012,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 // Delayed transition is only available on platforms
                 // that have selective compositing. This is triggered
                 // when windows are rendered off-screen
-                i->iconify(atom->iconGeometry(lower), needComp);
+                i->iconify(i->pc->iconGeometry(), needComp);
                 if (i->needDecoration())
                     i->startTransition();
                 i->stopPing();

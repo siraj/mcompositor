@@ -109,7 +109,6 @@ public:
     int getPid(Window w);
     long getWmState(Window w);
     bool hasState(Window w, Atom a);
-    QRectF iconGeometry(Window w);
     QVector<Atom> getAtomArray(Window w, Atom array_atom);
     unsigned int get_opacity_prop(Display *dpy, Window w, unsigned int def);
     double get_opacity_percent(Display *dpy, Window w, double def);

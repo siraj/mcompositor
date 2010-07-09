@@ -117,6 +117,8 @@ public:
 
     const XWindowAttributes* windowAttributes() const { return attrs; };
 
+    const QRectF &iconGeometry();
+
     /*!
      * Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 6].
      */
@@ -134,6 +136,8 @@ public:
 
     bool isDecorator() const { return is_decorator; }
 
+    int globalAlpha();
+
     bool is_valid;
 
 private:
@@ -141,7 +145,10 @@ private:
     Window transient_for;
     QList<Atom> wm_protocols;
     bool wm_protocols_valid;
+    bool icon_geometry_valid;
+    QRectF icon_geometry;
     bool has_alpha;
+    int global_alpha;
     bool is_decorator;
     QList<Atom> net_wm_state;
     QRect req_geom, real_geom;

@@ -262,16 +262,11 @@ void MTexturePixmapItem::cleanup()
 {    
     eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
     d->egl_image = EGL_NO_IMAGE_KHR;
-    XSync(QX11Info::display(), FALSE);
 
     if (!d->custom_tfp)
         d->eglresource->texman->closeTexture(d->textureId);
     else
         d->eglresource->texman->closeTexture(d->ctextureId);
-
-#if (QT_VERSION < 0x040600)
-    eglMakeCurrent(d->eglresource->dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-#endif
 
     XFreePixmap(QX11Info::display(), d->windowp);
 }

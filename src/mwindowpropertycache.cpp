@@ -28,7 +28,9 @@
 MWindowPropertyCache::MWindowPropertyCache(Window w, XWindowAttributes *wa)
     : transient_for((Window)-1),
       wm_protocols_valid(false),
+      icon_geometry_valid(false),
       has_alpha(false),
+      global_alpha(-1),
       is_decorator(false),
       wmhints(0),
       attrs(0),
@@ -136,7 +138,11 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         }
         return true;
     } else if (e->atom == ATOM(_NET_WM_WINDOW_TYPE)) {
-        printf("_NET_WM_WINDOW_TYPE for 0x%lx\n", window);
+        qWarning("_NET_WM_WINDOW_TYPE for 0x%lx changed", window);
+    } else if (e->atom == ATOM(_NET_WM_ICON_GEOMETRY)) {
+        icon_geometry_valid = false;
+    } else if (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA)) {
+        global_alpha = -1;
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
         wm_protocols_valid = false;
     } else if (e->atom == ATOM(WM_STATE)) {
@@ -185,4 +191,52 @@ const QList<Atom>& MWindowPropertyCache::supportedProtocols()
         if (data) XFree(data);
     }
     return wm_protocols;
+}
+
+const QRectF &MWindowPropertyCache::iconGeometry()
+{
+    if (icon_geometry_valid)
+        return icon_geometry;
+    Atom actual;
+    int format;
+    unsigned long n, left;
+    unsigned char *data;
+    int result = XGetWindowProperty(QX11Info::display(), window,
+                                    ATOM(_NET_WM_ICON_GEOMETRY), 0L, 4L, False,
+                                    XA_CARDINAL, &actual, &format,
+                                    &n, &left, &data);
+    if (result == Success && data != NULL) {
+        unsigned long *geom = (unsigned long *) data;
+        QRectF r(geom[0], geom[1], geom[2], geom[3]);
+        XFree((void *) data);
+        icon_geometry = r;
+    } else
+        icon_geometry = QRectF(); // empty
+    icon_geometry_valid = true;
+    return icon_geometry;
+}
+
+#define OPAQUE 0xffffffff
+int MWindowPropertyCache::globalAlpha()
+{
+    if (global_alpha != -1)
+        return global_alpha;
+    Atom actual;
+    int format;
+    unsigned long n, left;
+    unsigned char *data = 0;
+    int result = XGetWindowProperty(QX11Info::display(), window,
+                                    ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
+                                    0L, 1L, False,
+                                    XA_CARDINAL, &actual, &format,
+                                    &n, &left, &data);
+    if (result == Success && data != NULL) {
+        unsigned int i;
+        memcpy(&i, data, sizeof(unsigned int));
+        XFree((void *) data);
+        double opacity = i * 1.0 / OPAQUE;
+        global_alpha = opacity * 255;
+    } else
+        global_alpha = 255;
+    return global_alpha;
 }
