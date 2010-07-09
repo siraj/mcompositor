@@ -122,7 +122,7 @@ EGLDisplay EglResourceManager::dpy = 0;
 
 void MTexturePixmapItem::init()
 {
-    if (isValid() && (windowAttributes()->map_state != IsViewable)) {
+    if (isValid() && (pc->windowAttributes()->map_state != IsViewable)) {
         qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
                  __func__);
         d->setValid(false);
@@ -162,8 +162,10 @@ void MTexturePixmapItem::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }
 
-MTexturePixmapItem::MTexturePixmapItem(Window window, MCompAtoms::Type windowType, QGLWidget *glwidget, QGraphicsItem* parent)
-    : MCompositeWindow(window, windowType, parent),
+MTexturePixmapItem::MTexturePixmapItem(Window window, MWindowPropertyCache *mpc,
+                                       QGLWidget *glwidget,
+                                       QGraphicsItem* parent)
+    : MCompositeWindow(window, mpc, parent),
       d(new MTexturePixmapPrivate(window, glwidget, this))
 {
     if (!d->ctx)
@@ -276,7 +278,7 @@ void MTexturePixmapItem::cleanup()
 
 void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
 {
-    if (isTransitioning() || d->direct_fb_render || !windowVisible())
+    if (hasTransitioningWindow() || d->direct_fb_render || !windowVisible())
         return;
 
     QRegion r;
@@ -324,7 +326,7 @@ void MTexturePixmapItem::paint(QPainter *painter,
     if (!d->ctx)
         d->ctx = const_cast<QGLContext *>(gl->context());
 
-    if (d->has_alpha || opacity() < 1.0f) {
+    if (pc->hasAlpha() || opacity() < 1.0f) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
@@ -380,11 +382,6 @@ QPainterPath MTexturePixmapItem::shape() const
     QPainterPath path;
     path.addRect(boundingRect());
     return path;
-}
-
-bool MTexturePixmapItem::hasAlpha() const
-{
-    return d->has_alpha;
 }
 
 void MTexturePixmapItem::clearTexture()

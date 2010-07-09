@@ -68,8 +68,8 @@ typedef enum {
 	TYPE_NOTIFICATION
 } WindowType;
 
-static const char *win_type_str[] = {"INVALID",
-	 		       "TYPE_NORMAL", "TYPE_DIALOG", "TYPE_INPUT"};
+static const char *win_type_str[] = {"INVALID", "TYPE_NORMAL", "TYPE_DIALOG",
+                                     "TYPE_INPUT", "TYPE_NOTIFICATION"};
 
 static void set_window_type (Display *dpy, Window w, WindowType type)
 {

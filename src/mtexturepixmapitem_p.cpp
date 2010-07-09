@@ -210,12 +210,10 @@ void MTexturePixmapPrivate::init()
         glresource->initVertices(glwidget);
     }
 
-    XRenderPictFormat *format = XRenderFindVisualFormat(QX11Info::display(),
-                                                        item->windowAttributes()->visual);
-    has_alpha = (format && format->type == PictTypeDirect && format->direct.alphaMask);
-
-    resize(item->windowAttributes()->width, item->windowAttributes()->height);
-    item->setPos(item->windowAttributes()->x, item->windowAttributes()->y);
+    resize(item->pc->windowAttributes()->width,
+           item->pc->windowAttributes()->height);
+    item->setPos(item->pc->windowAttributes()->x,
+                 item->pc->windowAttributes()->y);
 }
 
 MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MTexturePixmapItem *p)
@@ -229,7 +227,6 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MT
       textureId(0),
       ctextureId(0),
       custom_tfp(false),
-      has_alpha(false),
       direct_fb_render(false),
       angle(0),
       damage_object(0),
@@ -287,11 +284,6 @@ void MTexturePixmapPrivate::resize(int w, int h)
     }
     brect.setWidth(w);
     brect.setHeight(h);
-}
-
-bool MTexturePixmapPrivate::hasAlpha() const
-{
-    return has_alpha;
 }
 
 void MTexturePixmapPrivate::setValid(bool valid)

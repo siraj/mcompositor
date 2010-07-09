@@ -32,6 +32,7 @@ HEADERS += \
     mtexturepixmapitem.h \
     mcompositescene.h \
     mcompositewindow.h \
+    mwindowpropertycache.h \
     mcompwindowanimator.h \
     mcompositemanager.h \
     msimplewindowframe.h \
@@ -45,6 +46,7 @@ SOURCES += \
     mtexturepixmapitem_p.cpp \
     mcompositescene.cpp \
     mcompositewindow.cpp \
+    mwindowpropertycache.cpp \
     mcompwindowanimator.cpp \
     mcompositemanager.cpp \
     msimplewindowframe.cpp \

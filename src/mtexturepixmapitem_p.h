@@ -54,7 +54,6 @@ public:
     void saveBackingStore(bool renew = false);
     void clearTexture();
     bool isDirectRendered() const;
-    bool hasAlpha() const;
     void resize(int w, int h);
     void windowRaised();
     void drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
@@ -74,7 +73,6 @@ public:
     GLuint ctextureId;
     static bool inverted_texture;
     bool custom_tfp;
-    bool has_alpha;
     bool direct_fb_render;
 
     QRect brect;
