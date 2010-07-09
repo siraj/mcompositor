@@ -36,6 +36,7 @@ class MSimpleWindowFrame;
 class MCompAtoms;
 class MCompositeWindow;
 class MDeviceState;
+class MWindowPropertyCache;
 
 enum {
     INPUT_LAYER = 0,
@@ -101,13 +102,13 @@ public:
 
     Window getTopmostApp(int *index_in_stacking_list = 0,
                          Window ignore_window = 0);
-    Window getLastVisibleParent(MCompositeWindow *cw);
+    Window getLastVisibleParent(MWindowPropertyCache *pc);
 
     bool possiblyUnredirectTopmostWindow();
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
     bool removeWindow(Window w);
-    bool needDecoration(Window w, MCompositeWindow *cw = 0);
+    bool needDecoration(Window w, MWindowPropertyCache *pc = 0);
     MCompositeWindow *getHighestDecorated();
     void roughSort();
     int transiencyRelation(MCompositeWindow *cw_a, MCompositeWindow *cw_b);
@@ -134,6 +135,7 @@ public:
     };
     QHash<Window, FrameData> framed_windows;
     QHash<Window, QList<XConfigureRequestEvent*> > configure_reqs;
+    QHash<Window, MWindowPropertyCache*> prop_caches;
     QRegion dock_region;
 
     int damage_event;

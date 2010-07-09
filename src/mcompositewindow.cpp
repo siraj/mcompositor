@@ -28,14 +28,15 @@
 #include <QGraphicsSceneMouseEvent>
 #include <X11/Xatom.h>
 
-bool MCompositeWindow::window_transitioning = false;
+int MCompositeWindow::window_transitioning = 0;
 
 static QRectF fadeRect = QRectF();
 
 MCompositeWindow::MCompositeWindow(Qt::HANDLE window, 
-                                   MCompAtoms::Type windowType, 
+                                   MWindowPropertyCache *mpc, 
                                    QGraphicsItem *p)
     : QGraphicsItem(p),
+      pc(mpc),
       scalefrom(1),
       scaleto(1),
       scaled(false),
@@ -47,18 +48,17 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       destroyed(false),
       process_status(NORMAL),
       need_decor(false),
-      is_decorator(false),
-      transient_for((Window)-1),
-      wm_protocols_valid(false),
       window_obscured(true), // true to synthesize initial visibility event
       is_closing(false),
-      wmhints(0),
-      attrs(0),
-      meego_layer(-1),
-      win_id(window),
-      window_state(-1)
+      is_transitioning(false),
+      win_id(window)
 {
-    memset(&req_geom, 0, sizeof(req_geom));
+    if (!mpc->is_valid) {
+        is_valid = false;
+        pc = 0;
+        return;
+    } else
+        is_valid = true;
     anim = new MCompWindowAnimator(this);
     connect(anim, SIGNAL(transitionDone()),  SLOT(finalizeState()));
     connect(anim, SIGNAL(transitionStart()), SLOT(windowTransitioning()));
@@ -67,29 +67,16 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 
     t_ping = new QTimer(this);
     connect(t_ping, SIGNAL(timeout()), SLOT(pingWindow()));
-
-    attrs = (XWindowAttributes*)calloc(1, sizeof(XWindowAttributes));
-    if (!XGetWindowAttributes(QX11Info::display(), win_id, attrs)) {
-        qWarning("%s: invalid window 0x%lx", __func__, win_id);
-        free(attrs);
-        attrs = 0;
-        is_valid = false;
-    } else {
-        is_valid = true;
-        QRect r(attrs->x, attrs->y, attrs->width, attrs->height);
-        setRealGeometry(r);
-    }
     
     MCompAtoms* atoms = MCompAtoms::instance(); 
-    setIsDecorator(atoms->isDecorator(window));
-    if (windowType == MCompAtoms::NORMAL)
-        setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
+    if (pc->windowType() == MCompAtoms::NORMAL)
+        pc->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
     else
-        setWindowTypeAtom(atoms->getType(window));
+        pc->setWindowTypeAtom(atoms->getType(window));
 
     // needed before calling isAppWindow()
     QVector<Atom> states = atoms->getAtomArray(window, ATOM(_NET_WM_STATE));
-    setNetWmState(states.toList());
+    pc->setNetWmState(states.toList());
 
     // Newly-mapped non-decorated application windows are not initially 
     // visible to prevent flickering when animation is started.
@@ -109,15 +96,14 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 
 MCompositeWindow::~MCompositeWindow()
 {
+    if (is_transitioning) {
+        // we got destroyed during animation
+        --window_transitioning;
+        is_transitioning = false;
+    }
+    t_ping = 0;
     anim = 0;
-    if (wmhints) {
-        XFree(wmhints);
-        wmhints = 0;
-    }
-    if (attrs) {
-        free(attrs);
-        attrs = 0;
-    }
+    pc = 0;
 }
 
 void MCompositeWindow::setBlurred(bool b)
@@ -182,7 +168,10 @@ void MCompositeWindow::iconify(const QRectF &iconGeometry, bool defer)
                          iconGeometry.topLeft());
     iconified = true;
     // do this to avoid stacking code disturbing Z values
-    window_transitioning = true;
+    if (!is_transitioning) {
+        ++window_transitioning;
+        is_transitioning = true;
+    }
 }
 
 void MCompositeWindow::setIconified(bool iconified)
@@ -241,7 +230,10 @@ void MCompositeWindow::restore(const QRectF &iconGeometry, bool defer)
     anim->translateScale(qreal(1.0), qreal(1.0), sx, sy, origPosition, true);
     iconified = false;
     // do this to avoid stacking code disturbing Z values
-    window_transitioning = true;
+    if (!is_transitioning) {
+        ++window_transitioning;
+        is_transitioning = true;
+    }
 }
 
 void MCompositeWindow::fadeIn()
@@ -282,7 +274,7 @@ void MCompositeWindow::fadeOut()
 void MCompositeWindow::deleteLater()
 {
     destroyed = true;
-    if (!window_transitioning)
+    if (!is_transitioning)
         QObject::deleteLater();
 }
 
@@ -295,8 +287,11 @@ void MCompositeWindow::prettyDestroy()
 
 void MCompositeWindow::finalizeState()
 {
-    window_transitioning = false;
-    if (window_type_atom == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
+    if (is_transitioning) {
+        --window_transitioning;
+        is_transitioning = false;
+    }
+    if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         emit desktopActivated(this);
 
     // iconification status
@@ -344,116 +339,6 @@ bool MCompositeWindow::isScaled() const
 void MCompositeWindow::setScaled(bool s)
 {
     scaled = s;
-}
-
-Window MCompositeWindow::transientFor()
-{
-    if (transient_for == (Window)-1) {
-        XGetTransientForHint(QX11Info::display(), win_id, &transient_for);
-        if (transient_for == win_id)
-            transient_for = 0;
-    }
-    return transient_for;
-}
-
-unsigned int MCompositeWindow::meegoStackingLayer()
-{
-    if (meego_layer < 0)
-        meego_layer = MCompAtoms::instance()->cardValueProperty(window(),
-                                                ATOM(_MEEGO_STACKING_LAYER));
-    if (meego_layer > 6) meego_layer = 6;
-    return (unsigned)meego_layer;
-}
-
-bool MCompositeWindow::wantsFocus()
-{
-    bool val = true;
-    const XWMHints &h = getWMHints();
-    if ((h.flags & InputHint) && (h.input == False))
-        val = false;
-    return val;
-}
-
-XID MCompositeWindow::windowGroup()
-{
-    XID val = 0;
-    const XWMHints &h = getWMHints();
-    if (h.flags & WindowGroupHint)
-        val = h.window_group;
-    return val;
-}
-
-const XWMHints &MCompositeWindow::getWMHints()
-{
-    if (!wmhints) {
-        wmhints = XGetWMHints(QX11Info::display(), win_id);
-        if (!wmhints) {
-            wmhints = XAllocWMHints();
-            memset(wmhints, 0, sizeof(XWMHints));
-        }
-    }
-    return *wmhints;
-}
-
-bool MCompositeWindow::propertyEvent(XPropertyEvent *e)
-{
-    if (e->atom == ATOM(WM_TRANSIENT_FOR)) {
-        transient_for = (Window)-1;
-        return true;
-    } else if (e->atom == ATOM(WM_HINTS)) {
-        if (wmhints) {
-            XFree(wmhints);
-            wmhints = 0;
-        }
-        return true;
-    } else if (e->atom == ATOM(WM_PROTOCOLS)) {
-        wm_protocols_valid = false;
-    } else if (e->atom == ATOM(WM_STATE)) {
-        Atom type;
-        int format;
-        unsigned long length, after;
-        uchar *data = 0;
-        int r = XGetWindowProperty(QX11Info::display(),window(), 
-                                   ATOM(WM_STATE), 0, 2,
-                                   False, AnyPropertyType, &type, &format,
-                                   &length, &after, &data);
-        if (r == Success && data && format == 32) {
-            unsigned long *wstate = (unsigned long *) data;
-            window_state = *wstate;
-            XFree((char *)data);
-            return true;
-        }
-    } else if (e->atom == ATOM(_MEEGO_STACKING_LAYER)) {
-        meego_layer = MCompAtoms::instance()->cardValueProperty(window(),
-                                                 ATOM(_MEEGO_STACKING_LAYER));
-        return true;
-    }
-    return false;
-}
-
-const QList<Atom>& MCompositeWindow::supportedProtocols()
-{
-    if (!wm_protocols_valid) {
-        Atom actual_type;
-        int actual_format;
-        unsigned long actual_n, left;
-        unsigned char *data = NULL;
-        int result = XGetWindowProperty(QX11Info::display(), win_id,
-                                        ATOM(WM_PROTOCOLS), 0, 100,
-                                        False, XA_ATOM, &actual_type,
-                                        &actual_format,
-                                        &actual_n, &left, &data);
-        if (result == Success && data && actual_type == XA_ATOM) {
-            wm_protocols.clear();
-            for (unsigned int i = 0; i < actual_n; ++i)
-                 wm_protocols.append(((Atom *)data)[i]);
-        }
-        if (result == Success &&
-            (actual_type == XA_ATOM || (actual_type == None && !actual_format)))
-            wm_protocols_valid = true;
-        if (data) XFree(data);
-    }
-    return wm_protocols;
 }
 
 void MCompositeWindow::hoverEnterEvent(QGraphicsSceneHoverEvent *e)
@@ -574,29 +459,17 @@ MCompositeWindow *MCompositeWindow::compositeWindow(Qt::HANDLE window)
     return p->d->windows.value(window, 0);
 }
 
-Qt::HANDLE MCompositeWindow::window() const
-{
-    return win_id;
-}
-
-bool MCompositeWindow::isDecorator() const
-{
-    return is_decorator;
-}
-
-void MCompositeWindow::setIsDecorator(bool decorator)
-{
-    is_decorator = decorator;
-}
-
 void MCompositeWindow::windowTransitioning()
 {
-    window_transitioning = true;
+    if (!is_transitioning) {
+        ++window_transitioning;
+        is_transitioning = true;
+    }
 }
 
-bool MCompositeWindow::isTransitioning()
+bool MCompositeWindow::hasTransitioningWindow()
 {
-    return window_transitioning;
+    return window_transitioning > 0;
 }
 
 void MCompositeWindow::q_delayShow()
@@ -635,16 +508,16 @@ bool MCompositeWindow::isAppWindow(bool include_transients)
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
     
-    if (!include_transients && p->d->getLastVisibleParent(this))
+    if (!include_transients && p->d->getLastVisibleParent(pc))
         return false;
     
-    if (!isOverrideRedirect() &&
-            (windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
-             windowTypeAtom() == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
+    if (!pc->isOverrideRedirect() &&
+            (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
+             pc->windowTypeAtom() == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
              /* non-modal, non-transient dialogs behave like applications */
-             (windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
-              (netWmState().indexOf(ATOM(_NET_WM_STATE_MODAL)) == -1)))
-        && !isDecorator())
+             (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
+              (pc->netWmState().indexOf(ATOM(_NET_WM_STATE_MODAL)) == -1)))
+        && !pc->isDecorator())
         return true;
     return false;
 }

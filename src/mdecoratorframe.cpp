@@ -117,7 +117,8 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
     
     if(cw)
         remote_decorator->invoke("MAbstractDecorator",
-                                 "RemoteSetClientGeometry", cw->requestedGeometry());
+                                 "RemoteSetClientGeometry",
+                                 cw->pc->requestedGeometry());
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetAutoRotation", false);
     /* FIXME: replaced with a window property due to reliability problems
@@ -138,7 +139,6 @@ void MDecoratorFrame::setDecoratorWindow(Qt::HANDLE window)
 void MDecoratorFrame::setDecoratorItem(MCompositeWindow *window)
 {
     decorator_item = window;
-    decorator_item->setIsDecorator(true);
     connect(decorator_item, SIGNAL(destroyed()), SLOT(destroyDecorator()));
 
     MTexturePixmapItem *item = (MTexturePixmapItem *) window;
@@ -193,7 +193,7 @@ void MDecoratorFrame::setDecoratorAvailableRect(const QRect& decorect)
     decorator_rect = decorect;    
 
     // if window is not same width as screen, stretch it.
-    QRect appgeometry = client->requestedGeometry();
+    QRect appgeometry = client->pc->requestedGeometry();
     if(appgeometry.width() < decorect.width())
         appgeometry = QApplication::desktop()->screenGeometry();
     

@@ -24,6 +24,7 @@
 #include <QtOpenGL>
 #include <X11/Xutil.h>
 #include "mcompatoms_p.h"
+#include "mwindowpropertycache.h"
 
 class MCompWindowAnimator;
 
@@ -55,16 +56,18 @@ public:
     /*! Construct a MCompositeWindow
      *
      * \param window id to the window represented by this item
-     * \param windowType internal window type representation of this window
+     * \param mpc property cache object for this window
      * \param item QGraphicsItem parent, defaults to none
      */
-    MCompositeWindow(Qt::HANDLE window, MCompAtoms::Type windowType,
+    MCompositeWindow(Qt::HANDLE window, MWindowPropertyCache *mpc,
                      QGraphicsItem *item = 0);
 
     /*! Destroys this MCompositeWindow and frees resources
      *
      */
     virtual ~MCompositeWindow();
+
+    Qt::HANDLE window() const { return win_id; }
 
     /*!
      * Overriden QObject::deleteLater()
@@ -163,24 +166,6 @@ public:
      */
     IconifyState iconifyState() const;
 
-    Atom windowTypeAtom() const { return window_type_atom; }
-
-    void setWindowTypeAtom(Atom atom) { window_type_atom = atom; }
-
-    void setRequestedGeometry(const QRect &rect) {
-        req_geom = rect;
-    }
-    const QRect requestedGeometry() const {
-        return req_geom;
-    }
-
-    void setRealGeometry(const QRect &rect) {
-        real_geom = rect;
-    }
-    const QRect realGeometry() const {
-        return real_geom;
-    }
-
     /*!
      * Returns true if this window needs a decoration
      */
@@ -191,18 +176,9 @@ public:
      */
     void setDecorated(bool decorated);
 
-    /*!
-     * Returns whether this item is the decorator window or not.
-     */
-    bool isDecorator() const;
-
-    /*!
-     * Sets whether or not this window is a decorator window.
-     */
-    void setIsDecorator(bool decorator);
-
-    void setIsMapped(bool mapped) { window_mapped = mapped; }
-    bool isMapped() const { return window_mapped; }
+    void setIsMapped(bool mapped) { pc->setIsMapped(mapped); }
+    bool isMapped() const {
+       return pc->windowAttributes()->map_state == IsViewable; }
     
     void setNewlyMapped(bool newlyMapped) { newly_mapped = newlyMapped; }
     bool isNewlyMapped() const { return newly_mapped; }
@@ -223,33 +199,9 @@ public:
     bool blurred();
 
     /*!
-     * Returns value of TRANSIENT_FOR property.
-     */
-    Window transientFor();
-
-    /*!
      * Returns true if we should give focus to this window.
      */
     bool wantsFocus();
-
-    /*!
-     * Returns the window group or 0.
-     */
-    XID windowGroup();
-
-    /*!
-     * Returns list of WM_PROTOCOLS of the window.
-     */
-    const QList<Atom>& supportedProtocols();
-
-    /*!
-     * Returns list of _NET_WM_STATE of the window.
-     */
-    const QList<Atom>& netWmState() const { return net_wm_state; }
-
-    void setNetWmState(const QList<Atom>& s) {
-            net_wm_state = s;
-    }
 
     /*!
      * Returns if window is hung or not.
@@ -262,23 +214,7 @@ public:
     void receivedPing(ulong timeStamp);
     void setClientTimeStamp(ulong timeStamp);
 
-    // Window geometry
-    void setOriginalGeometry(const QRect geometry) {
-        origGeometry = geometry;
-    }
-
-    /*!
-     * Returns the WM_STATE of this window
-     */
-    int windowState() const { return window_state; }
-
-    void setWindowState(int state) { window_state = state; }
-    
-    QRect originalGeometry() const { return origGeometry; }
-
     static MCompositeWindow *compositeWindow(Qt::HANDLE window);
-
-    Qt::HANDLE window() const;
 
     virtual void windowRaised() = 0;
 
@@ -309,43 +245,21 @@ public:
     virtual bool isDirectRendered() const = 0;
 
     /*!
-      Returns true if the window corresponding to the offscreen pixmap has an
-      alpha channel, otherwise returns false.
-     */
-    virtual bool hasAlpha() const = 0;
-
-    /*!
      * Sets the width and height if the item
      */
     virtual void resize(int w, int h) = 0;
 
-    static bool isTransitioning();
+    static bool hasTransitioningWindow();
+
+    /*!
+     * Tells if this window is transitioning.
+     */
+    bool isWindowTransitioning() const { return is_transitioning; }
     
     /*!
      * Returns whether this object represents a valid (i.e. viewable) window
      */
     bool isValid() const { return is_valid; }
-
-    /*!
-     * Returns whether override_redirect flag was in XWindowAttributes at
-     * object creation time.
-     */
-    bool isOverrideRedirect() const { return attrs->override_redirect; }
-
-    const XWMHints &getWMHints();
-
-    const XWindowAttributes* windowAttributes() const { return attrs; };
-
-    /*!
-     * Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 6].
-     */
-    unsigned int meegoStackingLayer();
-
-    /*!
-     * Called on PropertyNotify for this window.
-     * Returns true if we should re-check stacking order.
-     */
-    bool propertyEvent(XPropertyEvent *e);
 
     /*! 
      * Returns whether this is an application window
@@ -354,6 +268,9 @@ public:
 
     void setClosing(bool closing) { is_closing = closing; }
     bool isClosing() const { return is_closing; }
+
+    /*! window property cache for this window */
+    MWindowPropertyCache *pc;
 
 public slots:
 
@@ -420,35 +337,22 @@ private:
     bool destroyed;
     ProcessStatus process_status;
     bool need_decor;
-    bool is_decorator;
     bool window_visible;
-    Atom window_type_atom;
-    Window transient_for;
-    QList<Atom> wm_protocols;
-    bool wm_protocols_valid;
-    QList<Atom> net_wm_state;
     bool window_obscured;
-    bool window_mapped;
     bool is_valid;
     bool newly_mapped;
     bool is_closing;
-    QRect req_geom, real_geom;
-    XWMHints *wmhints;
-    XWindowAttributes *attrs;
-    int meego_layer;
+    bool is_transitioning;
 
-    static bool window_transitioning;
+    static int window_transitioning;
 
     // location of this window's icon
     QRectF iconGeometry;
     QPointF origPosition;
-    // _NET_WM_STATE_FULLSCREEN
-    QRect origGeometry;
 
     // Main ping timer
     QTimer *t_ping;
     Qt::HANDLE win_id;
-    int  window_state;
 
     friend class MTexturePixmapPrivate;
 };

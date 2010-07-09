@@ -26,7 +26,7 @@ new_win = fd.readline().strip()
 time.sleep(1)
 fd = os.popen('windowctl i')
 input_win = fd.readline().strip()
-time.sleep(1)
+time.sleep(2)
 
 ret = 0
 fd = os.popen('windowstack m')

@@ -45,10 +45,10 @@ public:
      * Constructs a MTexturePixmapItem
      *
      * \param window the redirected window where the texture is derived.
-     * \param windowType internal window type representation of this window
+     * \param mpc window property cache
      * \param parent QGraphicsItem, defaults to 0
      */
-    MTexturePixmapItem(Window window, MCompAtoms::Type windowType,
+    MTexturePixmapItem(Window window, MWindowPropertyCache *mpc,
                        QGLWidget *glwidget, QGraphicsItem *parent = 0);
     /*!
      * Destroys the MTexturePixmapItem and frees the allocated
@@ -81,12 +81,6 @@ public:
       is rendering directly to the framebuffer, otherwise return false.
      */
     bool isDirectRendered() const;
-
-    /*!
-      Returns true if the window corresponding to the offscreen pixmap has an
-      alpha channel, otherwise returns false.
-     */
-    bool hasAlpha() const;
 
     /*!
      * Sets the width and height if the item
