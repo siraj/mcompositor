@@ -784,7 +784,10 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
             /* desktop is above all applications */
             return 0;
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (cw && cw->isMapped() && cw->isAppWindow() &&
+        if (cw && cw->isMapped() && (cw->isAppWindow() ||
+            /* non-transient TYPE_MENU is on the same stacking layer */
+            (!getLastVisibleParent(cw->pc) &&
+            cw->pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU))) &&
             cw->iconifyState() == MCompositeWindow::NoIconifyState &&
             cw->pc->windowState() == NormalState && !cw->isWindowTransitioning()) {
             if (index_in_stacking_list)
@@ -1506,7 +1509,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         cw->iconifyState() == MCompositeWindow::NoIconifyState &&
         (cw->pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_INPUT) ||
          cw->pc->meegoStackingLayer() == 4 || cw->pc->isOverrideRedirect() ||
-         cw->pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU) ||
          cw->pc->netWmState().indexOf(ATOM(_NET_WM_STATE_ABOVE)) != -1))
     // Meego layer 5
     RAISE_MATCHING(!getLastVisibleParent(cw->pc) &&
