@@ -268,6 +268,11 @@ void MTexturePixmapItem::cleanup()
     else
         d->eglresource->texman->closeTexture(d->ctextureId);
 
+    // Work-around for crashes on some versions of below Qt 4.6
+#if (QT_VERSION < 0x040600)
+    eglMakeCurrent(d->eglresource->dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+#endif
+
     XFreePixmap(QX11Info::display(), d->windowp);
 }
 
