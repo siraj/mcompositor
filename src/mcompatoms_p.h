@@ -29,7 +29,8 @@ public:
     // note that this enum is ordered and presents
     // the depth ordering of different window types
     enum Type {
-        DESKTOP = 0,
+        INVALID = 0,
+        DESKTOP,
         NORMAL,
         DIALOG,
         NO_DECOR_DIALOG,

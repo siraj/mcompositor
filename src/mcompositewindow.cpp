@@ -133,11 +133,6 @@ void MCompositeWindow::localSaveState()
     anim->localSaveState();
 }
 
-// void MCompositeWindow::restore()
-// {
-//     anim->restore();
-// }
-
 // set the scale point to actual values
 void MCompositeWindow::setScalePoint(qreal from, qreal to)
 {

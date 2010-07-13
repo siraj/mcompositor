@@ -84,7 +84,8 @@ static bool hasTextureFromPixmap()
 
 void MTexturePixmapItem::init()
 {
-    if (isValid() && (pc->windowAttributes()->map_state != IsViewable)) {
+    MWindowPropertyCache *pc = propertyCache();
+    if (isValid() && !pc->isMapped()) {
         qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
                  __func__);
         d->setValid(false);
@@ -103,8 +104,8 @@ void MTexturePixmapItem::init()
     }
     const int pixmapAttribs[] = {
         GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-        GLX_TEXTURE_FORMAT_EXT, pc->hasAlpha() ? GLX_TEXTURE_FORMAT_RGBA_EXT :
-                                                 GLX_TEXTURE_FORMAT_RGB_EXT,
+        GLX_TEXTURE_FORMAT_EXT, propertyCache()->hasAlpha() ?
+                GLX_TEXTURE_FORMAT_RGBA_EXT : GLX_TEXTURE_FORMAT_RGB_EXT,
         None
     };
 
@@ -179,8 +180,8 @@ void MTexturePixmapItem::rebindPixmap()
 {
     const int pixmapAttribs[] = {
         GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-        GLX_TEXTURE_FORMAT_EXT, pc->hasAlpha() ? GLX_TEXTURE_FORMAT_RGBA_EXT :
-                                                 GLX_TEXTURE_FORMAT_RGB_EXT,
+        GLX_TEXTURE_FORMAT_EXT, propertyCache()->hasAlpha() ?
+        GLX_TEXTURE_FORMAT_RGBA_EXT : GLX_TEXTURE_FORMAT_RGB_EXT,
         None
     };
 
@@ -188,8 +189,9 @@ void MTexturePixmapItem::rebindPixmap()
         Display *display = QX11Info::display();
         glXReleaseTexImageEXT(display, d->glpixmap, GLX_FRONT_LEFT_EXT);
         glXDestroyPixmap(display, d->glpixmap);
-        d->glpixmap = glXCreatePixmap(display, pc->hasAlpha() ? configAlpha :
-                        config, d->windowp, pixmapAttribs);
+        d->glpixmap = glXCreatePixmap(display, propertyCache()->hasAlpha() ?
+                                                 configAlpha : config,
+                                                 d->windowp, pixmapAttribs);
         glBindTexture(GL_TEXTURE_2D, d->textureId);
         glXBindTexImageEXT(display, d->glpixmap, GLX_FRONT_LEFT_EXT, NULL);
     }
@@ -312,7 +314,7 @@ void MTexturePixmapItem::paint(QPainter *painter,
 #endif
 
     glEnable(GL_TEXTURE_2D);
-    if (pc->hasAlpha() || opacity() < 1.0f) {
+    if (propertyCache()->hasAlpha() || opacity() < 1.0f) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glColor4f(1.0, 1.0, 1.0, opacity());

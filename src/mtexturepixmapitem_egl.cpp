@@ -122,7 +122,8 @@ EGLDisplay EglResourceManager::dpy = 0;
 
 void MTexturePixmapItem::init()
 {
-    if (isValid() && (pc->windowAttributes()->map_state != IsViewable)) {
+    if (isValid() &&
+        propertyCache()->windowAttributes()->map_state != IsViewable) {
         qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
                  __func__);
         d->setValid(false);
@@ -326,7 +327,7 @@ void MTexturePixmapItem::paint(QPainter *painter,
     if (!d->ctx)
         d->ctx = const_cast<QGLContext *>(gl->context());
 
-    if (pc->hasAlpha() || opacity() < 1.0f) {
+    if (propertyCache()->hasAlpha() || opacity() < 1.0f) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }

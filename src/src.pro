@@ -62,7 +62,8 @@ QT += core gui opengl
 target.path += $$M_INSTALL_BIN
 INSTALLS += target 
 
-LIBS += -lXdamage -lXcomposite -lXfixes ../decorators/libdecorator/libdecorator.so
+LIBS += -lXdamage -lXcomposite -lXfixes -lX11-xcb -lxcb-render \
+        ../decorators/libdecorator/libdecorator.so
 
 QMAKE_EXTRA_TARGETS += check
 check.depends = $$TARGET

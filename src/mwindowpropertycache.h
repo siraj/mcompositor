@@ -21,6 +21,8 @@
 #define MWINDOWPROPERTYCACHE_H
 
 #include <X11/Xutil.h>
+#include <X11/Xlib-xcb.h>
+#include <xcb/render.h>
 #include "mcompatoms_p.h"
 
 /*!
@@ -33,7 +35,9 @@ public:
     /*! Construct a MWindowPropertyCache
      * \param window id to the window whose properties are cached
      */
-    MWindowPropertyCache(Window window, XWindowAttributes *attrs = 0);
+    MWindowPropertyCache(Window window,
+                         xcb_get_window_attributes_reply_t *attrs = 0,
+                         xcb_get_geometry_reply_t *geom = 0);
     virtual ~MWindowPropertyCache();
 
     Atom windowTypeAtom() const { return window_type_atom; }
@@ -50,7 +54,16 @@ public:
     void setRealGeometry(const QRect &rect) {
         real_geom = rect;
     }
-    const QRect realGeometry() const {
+    const QRect realGeometry() {
+        if (!xcb_real_geom) {
+            xcb_real_geom = xcb_get_geometry_reply(xcb_conn,
+                                                   xcb_real_geom_cookie, 0);
+            if (!xcb_real_geom)
+                is_valid = false;
+            else
+                real_geom = QRect(xcb_real_geom->x, xcb_real_geom->y,
+                                  xcb_real_geom->width, xcb_real_geom->height);
+        }
         return real_geom;
     }
 
@@ -90,14 +103,14 @@ public:
     bool beingMapped() const { return being_mapped; }
     void setBeingMapped(bool s) { being_mapped = s; }
 
-    bool isMapped() const { return attrs->map_state == IsViewable; }
+    bool isMapped() const { return attrs->map_state == XCB_MAP_STATE_VIEWABLE; }
 
     void setIsMapped(bool s) {
         // a bit ugly but avoids a round trip to X...
         if (s)
-            attrs->map_state = IsViewable;
+            attrs->map_state = XCB_MAP_STATE_VIEWABLE;
         else
-            attrs->map_state = IsUnmapped;
+            attrs->map_state = XCB_MAP_STATE_UNVIEWABLE;
     }
 
     /*!
@@ -115,7 +128,8 @@ public:
 
     const XWMHints &getWMHints();
 
-    const XWindowAttributes* windowAttributes() const { return attrs; };
+    const xcb_get_window_attributes_reply_t* windowAttributes() const {
+            return attrs; };
 
     const QRectF &iconGeometry();
 
@@ -130,15 +144,16 @@ public:
      */
     bool propertyEvent(XPropertyEvent *e);
 
-    MCompAtoms::Type windowType() const { return window_type; }
+    MCompAtoms::Type windowType();
 
-    bool hasAlpha() const { return has_alpha; }
-
-    bool isDecorator() const { return is_decorator; }
-
+    bool hasAlpha();
+    bool isDecorator();
     int globalAlpha();
-
     bool is_valid;
+
+    static void set_xcb_connection(xcb_connection_t *c) {
+        MWindowPropertyCache::xcb_conn = c;
+    }
 
 private:
     Atom window_type_atom;
@@ -147,17 +162,26 @@ private:
     bool wm_protocols_valid;
     bool icon_geometry_valid;
     QRectF icon_geometry;
-    bool has_alpha;
+    int has_alpha;
     int global_alpha;
-    bool is_decorator;
+    int is_decorator;
     QList<Atom> net_wm_state;
     QRect req_geom, real_geom;
     XWMHints *wmhints;
-    XWindowAttributes *attrs;
+    xcb_get_window_attributes_reply_t *attrs;
     int meego_layer, window_state;
     MCompAtoms::Type window_type;
     Window window;
     bool being_mapped;
+    xcb_get_geometry_reply_t *xcb_real_geom;
+    xcb_get_geometry_cookie_t xcb_real_geom_cookie;
+    xcb_get_property_cookie_t xcb_transient_for_cookie;
+    xcb_get_property_cookie_t xcb_meego_layer_cookie;
+    xcb_get_property_cookie_t xcb_is_decorator_cookie;
+    xcb_get_property_cookie_t xcb_window_type_cookie;
+    xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
+
+    static xcb_connection_t *xcb_conn;
 };
 
 #endif

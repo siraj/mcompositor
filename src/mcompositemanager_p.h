@@ -23,10 +23,12 @@
 #include <QObject>
 #include <QHash>
 #include <QPixmap>
+#include <QTimer>
 
 #include <X11/Xutil.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xdamage.h>
+#include <X11/Xlib-xcb.h>
 
 class QGraphicsScene;
 class QGLWidget;
@@ -68,7 +70,9 @@ public:
     ~MCompositeManagerPrivate();
 
     static Window parentWindow(Window child);
-    MCompositeWindow *bindWindow(Window w, XWindowAttributes *attr = 0);
+    MCompositeWindow *bindWindow(Window w,
+                    xcb_get_window_attributes_reply_t *attr = 0,
+                    xcb_get_geometry_reply_t *geom = 0);
     QGraphicsScene *scene();
 
     void prepare();
@@ -145,6 +149,13 @@ public:
     bool overlay_mapped;
     MDeviceState *device_state;
 
+    xcb_connection_t *xcb_conn;
+
+    // mechanism for lazy stacking
+    QTimer stacking_timer;
+    bool stacking_timeout_check_visibility;
+    void dirtyStacking(bool force_visibility_check);
+
 signals:
     void inputEnabled();
     void compositingEnabled();
@@ -168,6 +179,7 @@ public slots:
     
     void displayOff(bool display_off);
     void callOngoing(bool call_ongoing);
+    void stackingTimeout();
 };
 
 #endif

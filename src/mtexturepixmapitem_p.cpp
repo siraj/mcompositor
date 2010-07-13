@@ -210,10 +210,10 @@ void MTexturePixmapPrivate::init()
         glresource->initVertices(glwidget);
     }
 
-    resize(item->pc->windowAttributes()->width,
-           item->pc->windowAttributes()->height);
-    item->setPos(item->pc->windowAttributes()->x,
-                 item->pc->windowAttributes()->y);
+    resize(item->propertyCache()->realGeometry().width(),
+           item->propertyCache()->realGeometry().height());
+    item->setPos(item->propertyCache()->realGeometry().x(),
+                 item->propertyCache()->realGeometry().y());
 }
 
 MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MTexturePixmapItem *p)

@@ -37,6 +37,9 @@ class MCompWindowAnimator;
 class MCompositeWindow: public QObject, public QGraphicsItem
 {
     Q_OBJECT
+private:
+    MWindowPropertyCache *pc;
+public:
 #if QT_VERSION >= 0x040600
     Q_INTERFACES(QGraphicsItem)
 #endif
@@ -269,8 +272,7 @@ public:
     void setClosing(bool closing) { is_closing = closing; }
     bool isClosing() const { return is_closing; }
 
-    /*! window property cache for this window */
-    MWindowPropertyCache *pc;
+    MWindowPropertyCache *propertyCache() const { return pc; }
 
 public slots:
 
