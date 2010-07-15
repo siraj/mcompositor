@@ -1,6 +1,15 @@
 mcompositor (0.5.0~1) unstable; urgency=low
 
   * New version [UNRELEASED]
+  * Fixes: NB#179016 - Strange mcompositor crash: "double free or corruption (fasttop)
+  * Fixes: NB#177583 - PIN query is not shown after boot
+  * Fixes: NB#180220 - Backspace in text entry minimizes app to switcher
+  * Fixes: NB#177840 - Window manager brings only the first transient (WM_TRANSIENT_FOR) window foreground if application has multiple transient windows open.
+  * Fixes: NB#173246 - Custom behavior for the home button in call-ui when the device is locked
+  * Fixes: NB#177932 - Notifications are not visible
+  * Fixes: NB#168065 - VisibilityNotify signal received multiple times
+  * Fixes: NB#176845 - Internet connection and Date Settings windows are viewed underneath the Status Indicator Menu
+  * Improvements: Optimized checkStacking code	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Sun, 04 Jul 2010 21:29:17 +0300
 
