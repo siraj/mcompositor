@@ -238,6 +238,16 @@ void MCompositeWindow::fadeIn()
     if (!isAppWindow())
         return;
     
+    ++window_transitioning;
+    if (newly_mapped) 
+        QTimer::singleShot(700, this, SLOT(q_fadeIn()));
+    else
+        q_fadeIn();
+}
+
+void MCompositeWindow::q_fadeIn()
+{   
+    --window_transitioning;
     newly_mapped = false;
     setVisible(true);
     setOpacity(0.0);

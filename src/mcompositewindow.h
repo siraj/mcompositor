@@ -37,9 +37,6 @@ class MCompWindowAnimator;
 class MCompositeWindow: public QObject, public QGraphicsItem
 {
     Q_OBJECT
-private:
-    MWindowPropertyCache *pc;
-public:
 #if QT_VERSION >= 0x040600
     Q_INTERFACES(QGraphicsItem)
 #endif
@@ -295,6 +292,7 @@ private slots:
     void windowTransitioning();
     void q_delayShow();
     void q_itemRestored();
+    void q_fadeIn();
 
 signals:
     /*!
@@ -324,6 +322,7 @@ protected:
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
     virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 private:
+    MWindowPropertyCache *pc;
     bool thumb_mode;
     MCompWindowAnimator *anim;
     qreal scalefrom;

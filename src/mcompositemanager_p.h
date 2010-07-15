@@ -94,6 +94,7 @@ public:
     void rootMessageEvent(XClientMessageEvent *);
     void clientMessageEvent(XClientMessageEvent *);
     void keyEvent(XKeyEvent*);
+    void buttonEvent(XButtonEvent*);
     
     void redirectWindows();
     void mapOverlayWindow();
