@@ -221,7 +221,7 @@ QVector<Atom> MCompAtoms::getAtomArray(Window w, Atom array_atom)
     Atom actual;
     int format;
     unsigned long n, left;
-    unsigned char *data;
+    unsigned char *data = 0;
     int result = XGetWindowProperty(QX11Info::display(), w, array_atom, 0, 0,
                                     False, XA_ATOM, &actual, &format,
                                     &n, &left, &data);
