@@ -159,6 +159,16 @@ static void set_meego_layer (Display *dpy, Window w, int layer)
   XSync(dpy, False);
 }
 
+static void set_decorator_buttons (Display *dpy, Window w)
+{
+  unsigned int data[8] = {0, 0, 100, 100,
+                          WIN_W - 100, 0, 100, 100};
+  Atom a = XInternAtom (dpy, "_MEEGOTOUCH_DECORATOR_BUTTONS", False);
+  XChangeProperty (dpy, w, a, XA_CARDINAL, 32, PropModeReplace,
+                   (unsigned char*)&data, 8);
+  XSync(dpy, False);
+}
+
 static void activate_window (Display *dpy, Window window)
 {
       XClientMessageEvent xclient;
@@ -296,11 +306,12 @@ static void print_usage_and_exit(QString& stdOut)
 	 "e - do not exit on unmapping of the window\n"
 	 "m - set _NET_WM_STATE_MODAL (makes sense for dialogs only)\n"
 	 "k - set _KDE_NET_WM_WINDOW_TYPE_OVERRIDE\n"
+         "h - set _MEEGOTOUCH_DECORATOR_BUTTONS for home and close buttons\n"
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
 	 "b - WM_TYPE_NOTIFICATION window ('b' is for banner)\n\n"
-	 "Usage 2: " PROG " N|U|F|C|M|T|A|W <XID>\n"
+	 "Usage 2: " PROG " N|U|F|C|M|T|A|W|H <XID>\n"
 	 "N - unfullscreen the window with <XID>\n"
 	 "U - unmap the window with <XID>\n"
 	 "F - fullscreen the window with <XID>\n"
@@ -308,7 +319,8 @@ static void print_usage_and_exit(QString& stdOut)
 	 "M - map the window with <XID>\n"
 	 "T - make the window with <XID> non-transient\n"
 	 "A - activate (_NET_ACTIVE_WINDOW) the window with <XID>\n"
-	 "W - wait for mapping of the window with <XID>\n\n"
+	 "W - wait for mapping of the window with <XID>\n"
+	 "H - set _MEEGOTOUCH_DECORATOR_BUTTONS to the window with <XID>\n\n"
 	 "Usage 3: " PROG " t|L|V|G <XID> (<XID>|'None')\n"
 	 "t - make the first window transient for the second one\n"
 	 "L - configure the first window beLow the second one\n"
@@ -389,6 +401,9 @@ static void do_command (Display *dpy, char command, Window window,
 			break;
 		case 'W':
 			wait_for_mapnotify(dpy, window);
+			break;
+		case 'H':
+			set_decorator_buttons(dpy, window);
 			break;
 		case 't':
 			XSetTransientForHint(dpy, window, target);
@@ -515,7 +530,7 @@ static bool old_main(QStringList& args, QString& stdOut)
         Colormap colormap;
         char green[] = "#00ff00";
         time_t last_time;
-	int argb = 0, fullscreen = 0, override_redirect = 0,
+	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1;
 	WindowType windowtype = TYPE_INVALID;
 
@@ -558,6 +573,10 @@ static bool old_main(QStringList& args, QString& stdOut)
                 }
 		if (*p == 'k') {
 			kde_override = 1;
+                        continue;
+                }
+		if (*p == 'h') {
+                        decor_buttons = 1;
                         continue;
                 }
 		if (*p == 'd') {
@@ -648,7 +667,7 @@ static bool old_main(QStringList& args, QString& stdOut)
 				return false;
                         }
                 }
-		if ((command = strchr("NUFCMTAW", *p))) {
+		if ((command = strchr("NUFCMTAWH", *p))) {
 			if (args.count() != 2) {
 	  			print_usage_and_exit(stdOut);
 				return false;
@@ -683,6 +702,8 @@ static bool old_main(QStringList& args, QString& stdOut)
 
         if (meego_layer >= 0)
                 set_meego_layer(dpy, w, meego_layer);
+
+        if (decor_buttons) set_decorator_buttons(dpy, w);
 
         green_gc = XCreateGC (dpy, w, 0, NULL);
         XParseColor (dpy, colormap, green, &green_col);

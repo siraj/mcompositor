@@ -135,6 +135,7 @@ MCompAtoms::MCompAtoms()
         "_DUI_STATUSBAR_OVERLAY",
         "_MEEGOTOUCH_GLOBAL_ALPHA",
         "_MEEGO_STACKING_LAYER",
+        "_MEEGOTOUCH_DECORATOR_BUTTONS",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
@@ -2292,6 +2293,7 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
         damageEvent(e);
         return true;
     }
+    MCompositeWindow *cw;
     switch (event->type) {
 
     case DestroyNotify:
@@ -2312,6 +2314,25 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
         clientMessageEvent(&event->xclient); break;
     case ButtonRelease:
     case ButtonPress:
+        cw = COMPOSITE_WINDOW(event->xbutton.window);
+        if (cw) {
+            int ev_x = event->xbutton.x;
+            int ev_y = event->xbutton.y;
+            QRect h = cw->propertyCache()->homeButtonGeometry();
+            if (h.x() <= ev_x && h.y() <= ev_y && h.y() + h.height() >= ev_y
+                && h.x() + h.width() >= ev_x)
+                exposeSwitcher();
+            QRect c = cw->propertyCache()->closeButtonGeometry();
+            if (c.x() <= ev_x && c.y() <= ev_y && c.y() + c.height() >= ev_y
+                && c.x() + c.width() >= ev_x) {
+                XClientMessageEvent ev;
+                memset(&ev, 0, sizeof(ev));
+                ev.type = ClientMessage;
+                ev.window = cw->window();
+                ev.message_type = ATOM(_NET_CLOSE_WINDOW);
+                rootMessageEvent(&ev);
+            }
+        }
         XAllowEvents(QX11Info::display(), ReplayPointer, event->xbutton.time);
         activateWindow(event->xbutton.window, event->xbutton.time);
         // Qt needs to handle this event for the window frame buttons

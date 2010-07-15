@@ -133,6 +133,9 @@ public:
 
     const QRectF &iconGeometry();
 
+    const QRect &homeButtonGeometry();
+    const QRect &closeButtonGeometry();
+
     /*!
      * Returns value of _MEEGO_STACKING_LAYER. The value is between [0, 6].
      */
@@ -156,17 +159,21 @@ public:
     }
 
 private:
+    void buttonGeometryHelper();
+
     Atom window_type_atom;
     Window transient_for;
     QList<Atom> wm_protocols;
     bool wm_protocols_valid;
     bool icon_geometry_valid;
+    bool decor_buttons_valid;
     QRectF icon_geometry;
     int has_alpha;
     int global_alpha;
     int is_decorator;
     QList<Atom> net_wm_state;
     QRect req_geom, real_geom;
+    QRect home_button_geom, close_button_geom;
     XWMHints *wmhints;
     xcb_get_window_attributes_reply_t *attrs;
     int meego_layer, window_state;
@@ -179,6 +186,7 @@ private:
     xcb_get_property_cookie_t xcb_meego_layer_cookie;
     xcb_get_property_cookie_t xcb_is_decorator_cookie;
     xcb_get_property_cookie_t xcb_window_type_cookie;
+    xcb_get_property_cookie_t xcb_decor_buttons_cookie;
     xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
 
     static xcb_connection_t *xcb_conn;

@@ -35,6 +35,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     : transient_for((Window)-1),
       wm_protocols_valid(false),
       icon_geometry_valid(false),
+      decor_buttons_valid(false),
       has_alpha(-1),
       global_alpha(-1),
       is_decorator(-1),
@@ -48,6 +49,8 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       xcb_real_geom(0)
 {
     memset(&req_geom, 0, sizeof(req_geom));
+    memset(&home_button_geom, 0, sizeof(home_button_geom));
+    memset(&close_button_geom, 0, sizeof(close_button_geom));
 
     if (!wa) {
         attrs = xcb_get_window_attributes_reply(xcb_conn,
@@ -81,6 +84,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                                               ATOM(_NET_WM_WINDOW_TYPE),
                                               XCB_ATOM_ATOM, 0, MAX_TYPES);
     xcb_pict_formats_cookie = xcb_render_query_pict_formats(xcb_conn);
+    xcb_decor_buttons_cookie = xcb_get_property(xcb_conn, 0, window,
+                                       ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
+                                       XCB_ATOM_CARDINAL, 0, 8);
 }
 
 MWindowPropertyCache::~MWindowPropertyCache()
@@ -122,6 +128,10 @@ MWindowPropertyCache::~MWindowPropertyCache()
         pfr = xcb_render_query_pict_formats_reply(xcb_conn,
                                                   xcb_pict_formats_cookie, 0);
         if (pfr) free(pfr);
+    }
+    if (!decor_buttons_valid) {
+        r = xcb_get_property_reply(xcb_conn, xcb_decor_buttons_cookie, 0);
+        if (r) free(r);
     }
 }
 
@@ -277,6 +287,14 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         icon_geometry_valid = false;
     } else if (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA)) {
         global_alpha = -1;
+    } else if (e->atom == ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS)) {
+        if (!decor_buttons_valid)
+            // collect the old reply
+            buttonGeometryHelper();
+        decor_buttons_valid = false;
+        xcb_decor_buttons_cookie = xcb_get_property(xcb_conn, 0, window,
+                                       ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
+                                       XCB_ATOM_CARDINAL, 0, 8);
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
         wm_protocols_valid = false;
     } else if (e->atom == ATOM(WM_STATE)) {
@@ -305,6 +323,53 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         return true;
     }
     return false;
+}
+
+void MWindowPropertyCache::buttonGeometryHelper()
+{
+    xcb_get_property_reply_t *r;
+    r = xcb_get_property_reply(xcb_conn, xcb_decor_buttons_cookie, 0);
+    if (!r) {
+        decor_buttons_valid = true;
+        return;
+    }
+    int len = xcb_get_property_value_length(r);
+    unsigned long x, y, w, h;
+    if (len == 0)
+        goto go_out;
+    else if (len != 8 * sizeof(unsigned long)) {
+        qWarning("%s: _MEEGOTOUCH_DECORATOR_BUTTONS size is %d", __func__, len);
+        goto go_out;
+    }
+    x = ((unsigned long*)xcb_get_property_value(r))[0];
+    y = ((unsigned long*)xcb_get_property_value(r))[1];
+    w = ((unsigned long*)xcb_get_property_value(r))[2];
+    h = ((unsigned long*)xcb_get_property_value(r))[3];
+    home_button_geom.setRect(x, y, w, h);
+    x = ((unsigned long*)xcb_get_property_value(r))[4];
+    y = ((unsigned long*)xcb_get_property_value(r))[5];
+    w = ((unsigned long*)xcb_get_property_value(r))[6];
+    h = ((unsigned long*)xcb_get_property_value(r))[7];
+    close_button_geom.setRect(x, y, w, h);
+go_out:
+    free(r);
+    decor_buttons_valid = true;
+}
+
+const QRect &MWindowPropertyCache::homeButtonGeometry()
+{
+    if (decor_buttons_valid)
+        return home_button_geom;
+    buttonGeometryHelper();
+    return home_button_geom;
+}
+
+const QRect &MWindowPropertyCache::closeButtonGeometry()
+{
+    if (decor_buttons_valid)
+        return close_button_geom;
+    buttonGeometryHelper();
+    return close_button_geom;
 }
 
 const QList<Atom>& MWindowPropertyCache::supportedProtocols()
