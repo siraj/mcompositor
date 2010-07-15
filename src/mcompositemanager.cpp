@@ -227,8 +227,8 @@ QVector<Atom> MCompAtoms::getAtomArray(Window w, Atom array_atom)
                                     &n, &left, &data);
     if (result == Success && actual == XA_ATOM && format == 32) {
         ret.resize(left / 4);
-        XFree((void *) data);
-
+        if (data) XFree((void *) data);
+        
         if (XGetWindowProperty(QX11Info::display(), w, array_atom, 0,
                                ret.size(), False, XA_ATOM, &actual, &format,
                                &n, &left, &data) != Success) {
@@ -239,7 +239,7 @@ QVector<Atom> MCompAtoms::getAtomArray(Window w, Atom array_atom)
         if (!ret.isEmpty())
             memcpy(ret.data(), data, ret.size() * sizeof(Atom));
 
-        XFree((void *) data);
+        if (data) XFree((void *) data);
     }
 
     return ret;
@@ -543,7 +543,7 @@ static void grab_pointer_keyboard(Window window)
     XGrabButton(dpy, AnyButton, AnyModifier, window, True,
                 ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
                 GrabModeSync, GrabModeSync, None, None);
-    XGrabKey(dpy, key, AnyModifier, window, True,
+    XGrabKey(dpy, key, Mod5Mask, window, True,
              GrabModeSync, GrabModeSync);
 }
 
@@ -2320,6 +2320,10 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
     case KeyRelease:
         XAllowEvents(QX11Info::display(), ReplayKeyboard, event->xkey.time);
         keyEvent(&event->xkey); break;
+    case ReparentNotify: 
+        // Prevent this event from internally cascading inside Qt. Causing some
+        // random crashes in XCheckTypedWindowEvent
+        break;
     default:
         return false;
     }
@@ -2328,7 +2332,7 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
 
 void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
 {    
-    if(e->state & (ShiftMask | ControlMask))
+    if(e->state & Mod5Mask)
         exposeSwitcher();
 }
 
