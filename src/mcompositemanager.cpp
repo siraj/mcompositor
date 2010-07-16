@@ -206,11 +206,6 @@ bool MCompAtoms::statusBarOverlayed(Window w)
     return (cardValueProperty(w, atoms[_DUI_STATUSBAR_OVERLAY]) == 1);
 }
 
-int MCompAtoms::getPid(Window w)
-{
-    return cardValueProperty(w, atoms[_NET_WM_PID]);
-}
-
 bool MCompAtoms::hasState(Window w, Atom a)
 {
     QVector<Atom> states = getAtomArray(w, atoms[_NET_WM_STATE]);
@@ -246,25 +241,6 @@ QVector<Atom> MCompAtoms::getAtomArray(Window w, Atom array_atom)
     }
 
     return ret;
-}
-
-long MCompAtoms::getWmState(Window w)
-{
-    Atom actual;
-    int format;
-    unsigned long n, left;
-    unsigned char *data = 0, state = WithdrawnState;
-    int result = XGetWindowProperty(QX11Info::display(), w,
-                                    atoms[WM_STATE], 0L, 2L, False,
-                                    atoms[WM_STATE], &actual, &format,
-                                    &n, &left, &data);
-    if (result == Success && data != NULL) {
-        state = *data;
-        if (data)
-            XFree((void *)data);
-    }
-
-    return state;
 }
 
 unsigned int MCompAtoms::get_opacity_prop(Display *dpy, Window w, unsigned int def)

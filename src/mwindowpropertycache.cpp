@@ -23,6 +23,7 @@
 #include <QDebug>
 #include <X11/Xatom.h>
 #include <X11/extensions/Xrender.h>
+#include <X11/Xmd.h>
 #include "mwindowpropertycache.h"
 
 #define MAX_TYPES 10
@@ -36,6 +37,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       wm_protocols_valid(false),
       icon_geometry_valid(false),
       decor_buttons_valid(false),
+      wm_state_query(true),
       has_alpha(-1),
       global_alpha(-1),
       is_decorator(-1),
@@ -87,14 +89,26 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     xcb_decor_buttons_cookie = xcb_get_property(xcb_conn, 0, window,
                                        ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
                                        XCB_ATOM_CARDINAL, 0, 8);
+    xcb_wm_protocols_cookie = xcb_get_property(xcb_conn, 0, window,
+                                               ATOM(WM_PROTOCOLS),
+                                               XCB_ATOM_ATOM, 0, 100);
+    xcb_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
+                                  ATOM(WM_STATE), ATOM(WM_STATE), 0, 1);
+    xcb_wm_hints_cookie = xcb_get_property(xcb_conn, 0, window,
+                                  XCB_ATOM_WM_HINTS, XCB_ATOM_WM_HINTS, 0, 10);
+    xcb_icon_geom_cookie = xcb_get_property(xcb_conn, 0, window,
+                                            ATOM(_NET_WM_ICON_GEOMETRY),
+                                            XCB_ATOM_CARDINAL, 0, 4);
+    xcb_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
+                                               ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
+                                               XCB_ATOM_CARDINAL, 0, 1);
 }
 
 MWindowPropertyCache::~MWindowPropertyCache()
 {
-    if (wmhints) {
-        XFree(wmhints);
-        wmhints = 0;
-    }
+    if (!wmhints)
+        getWMHints();
+    XFree(wmhints);
     if (attrs) {
         free(attrs);
         attrs = 0;
@@ -133,6 +147,16 @@ MWindowPropertyCache::~MWindowPropertyCache()
         r = xcb_get_property_reply(xcb_conn, xcb_decor_buttons_cookie, 0);
         if (r) free(r);
     }
+    if (!wm_protocols_valid) {
+        r = xcb_get_property_reply(xcb_conn, xcb_wm_protocols_cookie, 0);
+        if (r) free(r);
+    }
+    if (wm_state_query)
+        windowState();
+    if (!icon_geometry_valid)
+        iconGeometry();
+    if (global_alpha < 0)
+        globalAlpha();
 }
 
 bool MWindowPropertyCache::hasAlpha()
@@ -207,8 +231,8 @@ bool MWindowPropertyCache::isDecorator()
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, xcb_is_decorator_cookie, 0);
         if (r) {
-            if (xcb_get_property_value_length(r) == sizeof(int))
-                is_decorator = *((int*)xcb_get_property_value(r));
+            if (xcb_get_property_value_length(r) == sizeof(CARD32))
+                is_decorator = *((CARD32*)xcb_get_property_value(r));
             else
                 is_decorator = 0;
             free(r);
@@ -223,8 +247,8 @@ unsigned int MWindowPropertyCache::meegoStackingLayer()
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, xcb_meego_layer_cookie, 0);
         if (r) {
-            if (xcb_get_property_value_length(r) == sizeof(int))
-                meego_layer = *((int*)xcb_get_property_value(r));
+            if (xcb_get_property_value_length(r) == sizeof(CARD32))
+                meego_layer = *((CARD32*)xcb_get_property_value(r));
             else
                 meego_layer = 0;
             free(r);
@@ -255,12 +279,24 @@ XID MWindowPropertyCache::windowGroup()
 const XWMHints &MWindowPropertyCache::getWMHints()
 {
     if (!wmhints) {
-        wmhints = XGetWMHints(QX11Info::display(), window);
-        if (!wmhints) {
-            wmhints = XAllocWMHints();
-            memset(wmhints, 0, sizeof(XWMHints));
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, xcb_wm_hints_cookie, 0);
+        int len;
+        if (!r)
+            goto empty_value;
+        len = xcb_get_property_value_length(r);
+        if ((unsigned)len < sizeof(XWMHints)) {
+            free(r);
+            goto empty_value;
         }
+        wmhints = XAllocWMHints();
+        memcpy(wmhints, xcb_get_property_value(r), sizeof(XWMHints));
+        free(r);
     }
+    return *wmhints;
+empty_value:
+    wmhints = XAllocWMHints();
+    memset(wmhints, 0, sizeof(XWMHints));
     return *wmhints;
 }
 
@@ -276,17 +312,32 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
                                                     XCB_ATOM_WINDOW, 0, 1);
         return true;
     } else if (e->atom == ATOM(WM_HINTS)) {
-        if (wmhints) {
-            XFree(wmhints);
-            wmhints = 0;
-        }
+        if (!wmhints)
+            // collect the old reply
+            getWMHints();
+        XFree(wmhints);
+        wmhints = 0;
+        xcb_wm_hints_cookie = xcb_get_property(xcb_conn, 0, window,
+                                  XCB_ATOM_WM_HINTS, XCB_ATOM_WM_HINTS, 0, 10);
         return true;
     } else if (e->atom == ATOM(_NET_WM_WINDOW_TYPE)) {
         qWarning("_NET_WM_WINDOW_TYPE for 0x%lx changed", window);
     } else if (e->atom == ATOM(_NET_WM_ICON_GEOMETRY)) {
+        if (!icon_geometry_valid)
+            // collect the old reply
+            iconGeometry();
         icon_geometry_valid = false;
+        xcb_icon_geom_cookie = xcb_get_property(xcb_conn, 0, window,
+                                            ATOM(_NET_WM_ICON_GEOMETRY),
+                                            XCB_ATOM_CARDINAL, 0, 4);
     } else if (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA)) {
+        if (global_alpha < 0)
+            // collect the old reply
+            globalAlpha();
         global_alpha = -1;
+        xcb_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
+                                       ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
+                                       XCB_ATOM_CARDINAL, 0, 1);
     } else if (e->atom == ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS)) {
         if (!decor_buttons_valid)
             // collect the old reply
@@ -296,22 +347,21 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
                                        ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
                                        XCB_ATOM_CARDINAL, 0, 8);
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
+        if (!wm_protocols_valid)
+            // collect the old reply
+            supportedProtocols();
         wm_protocols_valid = false;
+        xcb_wm_protocols_cookie = xcb_get_property(xcb_conn, 0, window,
+                                                   ATOM(WM_PROTOCOLS),
+                                                   XCB_ATOM_ATOM, 0, 100);
     } else if (e->atom == ATOM(WM_STATE)) {
-        Atom type;
-        int format;
-        unsigned long length, after;
-        uchar *data = 0;
-        int r = XGetWindowProperty(QX11Info::display(), window, 
-                                   ATOM(WM_STATE), 0, 2,
-                                   False, AnyPropertyType, &type, &format,
-                                   &length, &after, &data);
-        if (r == Success && data && format == 32) {
-            unsigned long *wstate = (unsigned long *) data;
-            window_state = *wstate;
-            XFree((char *)data);
-            return true;
-        }
+        if (wm_state_query)
+            // collect the old reply
+            windowState();
+        xcb_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
+                                  ATOM(WM_STATE), ATOM(WM_STATE), 0, 1);
+        wm_state_query = true;
+        return true;
     } else if (e->atom == ATOM(_MEEGO_STACKING_LAYER)) {
         if (meego_layer < 0)
             // collect the old reply
@@ -323,6 +373,22 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         return true;
     }
     return false;
+}
+
+int MWindowPropertyCache::windowState()
+{
+    if (wm_state_query) {
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, xcb_wm_state_cookie, 0);
+        if (r && (unsigned)xcb_get_property_value_length(r) >= sizeof(CARD32))
+            window_state = ((CARD32*)xcb_get_property_value(r))[0];
+        else {
+            window_state = NormalState;
+        }
+        if (r) free(r);
+        wm_state_query = false;
+    }
+    return window_state;
 }
 
 void MWindowPropertyCache::buttonGeometryHelper()
@@ -337,19 +403,19 @@ void MWindowPropertyCache::buttonGeometryHelper()
     unsigned long x, y, w, h;
     if (len == 0)
         goto go_out;
-    else if (len != 8 * sizeof(unsigned long)) {
+    else if (len != 8 * sizeof(CARD32)) {
         qWarning("%s: _MEEGOTOUCH_DECORATOR_BUTTONS size is %d", __func__, len);
         goto go_out;
     }
-    x = ((unsigned long*)xcb_get_property_value(r))[0];
-    y = ((unsigned long*)xcb_get_property_value(r))[1];
-    w = ((unsigned long*)xcb_get_property_value(r))[2];
-    h = ((unsigned long*)xcb_get_property_value(r))[3];
+    x = ((CARD32*)xcb_get_property_value(r))[0];
+    y = ((CARD32*)xcb_get_property_value(r))[1];
+    w = ((CARD32*)xcb_get_property_value(r))[2];
+    h = ((CARD32*)xcb_get_property_value(r))[3];
     home_button_geom.setRect(x, y, w, h);
-    x = ((unsigned long*)xcb_get_property_value(r))[4];
-    y = ((unsigned long*)xcb_get_property_value(r))[5];
-    w = ((unsigned long*)xcb_get_property_value(r))[6];
-    h = ((unsigned long*)xcb_get_property_value(r))[7];
+    x = ((CARD32*)xcb_get_property_value(r))[4];
+    y = ((CARD32*)xcb_get_property_value(r))[5];
+    w = ((CARD32*)xcb_get_property_value(r))[6];
+    h = ((CARD32*)xcb_get_property_value(r))[7];
     close_button_geom.setRect(x, y, w, h);
 go_out:
     free(r);
@@ -374,26 +440,22 @@ const QRect &MWindowPropertyCache::closeButtonGeometry()
 
 const QList<Atom>& MWindowPropertyCache::supportedProtocols()
 {
-    if (!wm_protocols_valid) {
-        Atom actual_type;
-        int actual_format;
-        unsigned long actual_n, left;
-        unsigned char *data = NULL;
-        int result = XGetWindowProperty(QX11Info::display(), window,
-                                        ATOM(WM_PROTOCOLS), 0, 100,
-                                        False, XA_ATOM, &actual_type,
-                                        &actual_format,
-                                        &actual_n, &left, &data);
-        if (result == Success && data && actual_type == XA_ATOM) {
-            wm_protocols.clear();
-            for (unsigned int i = 0; i < actual_n; ++i)
-                 wm_protocols.append(((Atom *)data)[i]);
-        }
-        if (result == Success &&
-            (actual_type == XA_ATOM || (actual_type == None && !actual_format)))
-            wm_protocols_valid = true;
-        if (data) XFree(data);
+    if (wm_protocols_valid)
+        return wm_protocols;
+
+    xcb_get_property_reply_t *r;
+    r = xcb_get_property_reply(xcb_conn, xcb_wm_protocols_cookie, 0);
+    if (!r) {
+        wm_protocols_valid = true;
+        wm_protocols.clear();
+        return wm_protocols;
     }
+    int n_atoms = xcb_get_property_value_length(r) / sizeof(Atom);
+    wm_protocols.clear();
+    for (int i = 0; i < n_atoms; ++i)
+        wm_protocols.append(((Atom*)xcb_get_property_value(r))[i]);
+    free(r);
+    wm_protocols_valid = true;
     return wm_protocols;
 }
 
@@ -401,21 +463,25 @@ const QRectF &MWindowPropertyCache::iconGeometry()
 {
     if (icon_geometry_valid)
         return icon_geometry;
-    Atom actual;
-    int format;
-    unsigned long n, left;
-    unsigned char *data;
-    int result = XGetWindowProperty(QX11Info::display(), window,
-                                    ATOM(_NET_WM_ICON_GEOMETRY), 0L, 4L, False,
-                                    XA_CARDINAL, &actual, &format,
-                                    &n, &left, &data);
-    if (result == Success && data != NULL) {
-        unsigned long *geom = (unsigned long *) data;
-        QRectF r(geom[0], geom[1], geom[2], geom[3]);
-        XFree((void *) data);
-        icon_geometry = r;
-    } else
-        icon_geometry = QRectF(); // empty
+    xcb_get_property_reply_t *r;
+    r = xcb_get_property_reply(xcb_conn, xcb_icon_geom_cookie, 0);
+    int len;
+    if (!r)
+        goto empty_geom;
+    len = xcb_get_property_value_length(r);
+    if ((unsigned)len < 4 * sizeof(CARD32)) {
+        free(r);
+        goto empty_geom;
+    }
+    icon_geometry.setRect(((CARD32*)xcb_get_property_value(r))[0],
+                          ((CARD32*)xcb_get_property_value(r))[1],
+                          ((CARD32*)xcb_get_property_value(r))[2],
+                          ((CARD32*)xcb_get_property_value(r))[3]);
+    free(r);
+    icon_geometry_valid = true;
+    return icon_geometry;
+empty_geom:
+    icon_geometry = QRectF();
     icon_geometry_valid = true;
     return icon_geometry;
 }
@@ -425,23 +491,21 @@ int MWindowPropertyCache::globalAlpha()
 {
     if (global_alpha != -1)
         return global_alpha;
-    Atom actual;
-    int format;
-    unsigned long n, left;
-    unsigned char *data = 0;
-    int result = XGetWindowProperty(QX11Info::display(), window,
-                                    ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
-                                    0L, 1L, False,
-                                    XA_CARDINAL, &actual, &format,
-                                    &n, &left, &data);
-    if (result == Success && data != NULL) {
-        unsigned int i;
-        memcpy(&i, data, sizeof(unsigned int));
-        XFree((void *) data);
-        double opacity = i * 1.0 / OPAQUE;
-        global_alpha = opacity * 255;
-    } else
+    xcb_get_property_reply_t *r;
+    r = xcb_get_property_reply(xcb_conn, xcb_global_alpha_cookie, 0);
+    if (!r) {
         global_alpha = 255;
+        return global_alpha;
+    }
+    int len = xcb_get_property_value_length(r);
+    if ((unsigned)len < sizeof(CARD32)) {
+        free(r);
+        global_alpha = 255;
+        return global_alpha;
+    }
+    CARD32 i = *((CARD32*)xcb_get_property_value(r));
+    double opacity = i * 1.0 / OPAQUE;
+    global_alpha = opacity * 255;
     return global_alpha;
 }
 
