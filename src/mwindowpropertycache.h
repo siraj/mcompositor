@@ -114,9 +114,9 @@ public:
     }
 
     /*!
-     * Returns the WM_STATE of this window
+     * Returns the first cardinal of WM_STATE of this window
      */
-    int windowState() const { return window_state; }
+    int windowState();
 
     void setWindowState(int state) { window_state = state; }
     
@@ -167,6 +167,7 @@ private:
     bool wm_protocols_valid;
     bool icon_geometry_valid;
     bool decor_buttons_valid;
+    bool wm_state_query;
     QRectF icon_geometry;
     int has_alpha;
     int global_alpha;
@@ -187,6 +188,11 @@ private:
     xcb_get_property_cookie_t xcb_is_decorator_cookie;
     xcb_get_property_cookie_t xcb_window_type_cookie;
     xcb_get_property_cookie_t xcb_decor_buttons_cookie;
+    xcb_get_property_cookie_t xcb_wm_protocols_cookie;
+    xcb_get_property_cookie_t xcb_wm_state_cookie;
+    xcb_get_property_cookie_t xcb_wm_hints_cookie;
+    xcb_get_property_cookie_t xcb_icon_geom_cookie;
+    xcb_get_property_cookie_t xcb_global_alpha_cookie;
     xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
 
     static xcb_connection_t *xcb_conn;
