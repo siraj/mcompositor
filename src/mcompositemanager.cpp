@@ -38,6 +38,9 @@
 #include <X11/Xmd.h>
 #include "mcompatoms_p.h"
 
+#include <sys/types.h>
+#include <signal.h>
+
 #define TRANSLUCENT 0xe0000000
 #define OPAQUE      0xffffffff
 
@@ -545,6 +548,13 @@ static void grab_pointer_keyboard(Window window)
                 GrabModeSync, GrabModeSync, None, None);
     XGrabKey(dpy, key, Mod5Mask, window, True,
              GrabModeSync, GrabModeSync);
+}
+
+static void kill_window(Window window)
+{
+    int pid = MCompAtoms::instance()->getPid(window);
+    ::kill(pid, SIGKILL);
+    XKillClient(QX11Info::display(), window);
 }
 
 MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
@@ -1882,7 +1892,6 @@ static bool should_be_pinged(MCompositeWindow *cw)
     if (pc->supportedProtocols().indexOf(ATOM(_NET_WM_PING)) != -1
         && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)
         && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
-        && cw->iconifyState() == MCompositeWindow::NoIconifyState
         && !pc->isDecorator() && !pc->isOverrideRedirect()
         && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         return true;
@@ -1963,8 +1972,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         MCompositeWindow *check_hung = w;
         if (check_hung) {
             if (check_hung->status() == MCompositeWindow::HUNG) {
-                // destroy at the server level
-                XKillClient(QX11Info::display(), close_window);
+                kill_window(close_window);
                 delete check_hung;
                 MDecoratorFrame::instance()->lower();
                 removeWindow(close_window);
