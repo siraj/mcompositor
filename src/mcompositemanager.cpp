@@ -206,6 +206,11 @@ bool MCompAtoms::statusBarOverlayed(Window w)
     return (cardValueProperty(w, atoms[_DUI_STATUSBAR_OVERLAY]) == 1);
 }
 
+int MCompAtoms::getPid(Window w)
+{
+    return cardValueProperty(w, atoms[_NET_WM_PID]);
+}
+
 bool MCompAtoms::hasState(Window w, Atom a)
 {
     QVector<Atom> states = getAtomArray(w, atoms[_NET_WM_STATE]);
