@@ -8,7 +8,8 @@ mcompositor (0.5.0-1) unstable; urgency=low
   * Fixes: NB#177932 - Notifications are not visible
   * Fixes: NB#168065 - VisibilityNotify signal received multiple times
   * Fixes: NB#176845 - Internet connection and Date Settings windows are viewed underneath the Status Indicator Menu
-  * Fixes: NB#180562 - Frozen application freezes the whole UI	
+  * Fixes: NB#180562 - Frozen application freezes the whole UI
+  * Fixes: NB#180408 - COREWEB: /usr/bin/mcompositor 'MTexturePixmapItem::cleanup ~MTexturePixmapItem qDeleteInEventHandler QObject::event'	
   * Improvements: Optimized checkStacking code	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Sun, 04 Jul 2010 21:29:17 +0300
