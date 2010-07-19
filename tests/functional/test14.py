@@ -11,6 +11,10 @@
 
 import os, re, sys, time
 
+if os.system('pidof mcompositor'):
+  print 'mcompositor is not running'
+  sys.exit(1)
+
 def get_window_size(w):
   ret = [0, 0]
   size_re = re.compile('([0-9]+)x([0-9]+)x([0-9]+)')

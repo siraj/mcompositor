@@ -106,6 +106,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
 
 MWindowPropertyCache::~MWindowPropertyCache()
 {
+    if (!is_valid)
+        // no pending XCB requests
+        return;
     if (!wmhints)
         getWMHints();
     XFree(wmhints);

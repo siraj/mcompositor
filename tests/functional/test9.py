@@ -13,6 +13,10 @@
 
 import os, re, sys, time
 
+if os.system('pidof mcompositor'):
+  print 'mcompositor is not running'
+  sys.exit(1)
+
 # create two application windows
 fd = os.popen('windowctl n')
 old_win = fd.readline().strip()

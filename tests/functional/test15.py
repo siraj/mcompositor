@@ -17,6 +17,10 @@
 
 import os, re, sys, time
 
+if os.system('pidof mcompositor'):
+  print 'mcompositor is not running'
+  sys.exit(1)
+
 ret = 0
 def check_visi(win, expect_str):
   global ret

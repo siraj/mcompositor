@@ -11,6 +11,10 @@
 
 import os, re, sys, time
 
+if os.system('pidof mcompositor'):
+  print 'mcompositor is not running'
+  sys.exit(1)
+
 # create two dialogs
 fd = os.popen('windowctl i')
 input_win = fd.readline().strip()

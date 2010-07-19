@@ -14,6 +14,10 @@
 
 import os, re, sys, time
 
+if os.system('pidof mcompositor'):
+  print 'mcompositor is not running'
+  sys.exit(1)
+
 fd = os.popen('windowstack m')
 s = fd.read(5000)
 win_re = re.compile('^0x[0-9a-f]+')

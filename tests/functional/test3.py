@@ -10,6 +10,10 @@
 
 import os, re, sys, time
 
+if os.system('pidof mcompositor'):
+  print 'mcompositor is not running'
+  sys.exit(1)
+
 fd = os.popen('windowctl kn')
 app_win = fd.readline().strip()
 time.sleep(2)

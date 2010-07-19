@@ -12,6 +12,10 @@
 
 import os, re, sys, time
 
+if os.system('pidof mcompositor'):
+  print 'mcompositor is not running'
+  sys.exit(1)
+
 def rotate_screen(top_edge):
   print 'rotate_screen:', top_edge
   os.popen("windowctl R %s" % top_edge)
@@ -35,7 +39,7 @@ old_win = fd.readline().strip()
 time.sleep(1)
 fd = os.popen('windowctl d')
 new_win = fd.readline().strip()
-time.sleep(1)
+time.sleep(2)
 
 orig_stack = []
 fd = os.popen('windowstack m')

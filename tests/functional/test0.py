@@ -10,6 +10,17 @@
 
 import os, re, sys, time
 
+if os.system('/sbin/mcetool --unblank-screen --set-inhibit-mode=stay-on'):
+  print 'mcetool is missing!'
+
+if os.system('pidof mcompositor'):
+  print 'mcompositor is not running'
+  sys.exit(1)
+
+if os.system('windowstack m | grep mdecorator'):
+  print 'mdecorator is not mapped!'
+  sys.exit(1)
+
 fd = os.popen('windowctl kn')
 testapp_win = fd.readline().strip()
 time.sleep(2)
