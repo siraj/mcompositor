@@ -261,7 +261,9 @@ void MTexturePixmapItem::initCustomTfp()
 
 void MTexturePixmapItem::cleanup()
 {    
-    eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
+    EGLImageKHR egl_image =  d->egl_image;
+    EGLDisplay dpy = d->eglresource->dpy;
+    eglDestroyImageKHR(dpy, egl_image);
     d->egl_image = EGL_NO_IMAGE_KHR;
 
     if (!d->custom_tfp)
