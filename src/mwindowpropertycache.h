@@ -23,7 +23,10 @@
 #include <X11/Xutil.h>
 #include <X11/Xlib-xcb.h>
 #include <xcb/render.h>
+#include <xcb/shape.h>
+#include <X11/extensions/shape.h>
 #include "mcompatoms_p.h"
+#include <QRegion>
 
 /*!
  * This is a class for caching window property values for a window.
@@ -51,21 +54,43 @@ public:
         return req_geom;
     }
 
+    // this is called on ConfigureNotify
     void setRealGeometry(const QRect &rect) {
+        if (!xcb_real_geom)
+            xcb_real_geom = xcb_get_geometry_reply(xcb_conn,
+                                                   xcb_real_geom_cookie, 0);
+        real_geom_valid = true;
         real_geom = rect;
+
+        // shape needs to be refreshed in case it was the default value
+        // (i.e. the same as geometry), because there is no ShapeNotify
+        if ((shape_rects_valid && QRegion(real_geom) != shape_region)
+            || !shape_rects_valid)
+            shapeRefresh();
     }
     const QRect realGeometry() {
         if (!xcb_real_geom) {
             xcb_real_geom = xcb_get_geometry_reply(xcb_conn,
                                                    xcb_real_geom_cookie, 0);
-            if (!xcb_real_geom)
-                is_valid = false;
-            else
+            if (xcb_real_geom && !real_geom_valid) {
                 real_geom = QRect(xcb_real_geom->x, xcb_real_geom->y,
                                   xcb_real_geom->width, xcb_real_geom->height);
+                real_geom_valid = true;
+            }
         }
         return real_geom;
     }
+    const QRegion shapeRegion();
+    void shapeRefresh() {
+        if (!shape_rects_valid)
+            shapeRegion();
+        shape_rects_valid = false;
+        xcb_shape_rects_cookie = xcb_shape_get_rectangles(xcb_conn, window,
+                                                          ShapeBounding);
+    }
+
+    Window parentWindow() const { return parent_window; }
+    void setParentWindow(Window w) { parent_window = w; }
 
     /*!
      * Returns value of TRANSIENT_FOR property.
@@ -167,6 +192,8 @@ private:
     bool wm_protocols_valid;
     bool icon_geometry_valid;
     bool decor_buttons_valid;
+    bool shape_rects_valid;
+    bool real_geom_valid;
     bool wm_state_query;
     QRectF icon_geometry;
     int has_alpha;
@@ -179,8 +206,10 @@ private:
     xcb_get_window_attributes_reply_t *attrs;
     int meego_layer, window_state;
     MCompAtoms::Type window_type;
-    Window window;
+    Window window, parent_window;
     bool being_mapped;
+    // geometry is requested only once in the beginning, after that, we
+    // use ConfigureNotifys to update the size through setRealGeometry()
     xcb_get_geometry_reply_t *xcb_real_geom;
     xcb_get_geometry_cookie_t xcb_real_geom_cookie;
     xcb_get_property_cookie_t xcb_transient_for_cookie;
@@ -194,6 +223,8 @@ private:
     xcb_get_property_cookie_t xcb_icon_geom_cookie;
     xcb_get_property_cookie_t xcb_global_alpha_cookie;
     xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
+    xcb_shape_get_rectangles_cookie_t xcb_shape_rects_cookie;
+    QRegion shape_region;
 
     static xcb_connection_t *xcb_conn;
 };

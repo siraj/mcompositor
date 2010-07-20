@@ -14,6 +14,9 @@
 
 import os, re, sys, time
 
+if os.system('/sbin/mcetool --unblank-screen --set-inhibit-mode=stay-on'):
+  print 'mcetool is missing!'
+
 if os.system('pidof mcompositor'):
   print 'mcompositor is not running'
   sys.exit(1)

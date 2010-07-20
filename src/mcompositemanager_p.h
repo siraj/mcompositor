@@ -119,7 +119,7 @@ public:
     int transiencyRelation(MCompositeWindow *cw_a, MCompositeWindow *cw_b);
 
     MCompositeScene *watch;
-    Window localwin;
+    Window localwin, localwin_parent;
     Window xoverlay;
     Window prev_focus;
 

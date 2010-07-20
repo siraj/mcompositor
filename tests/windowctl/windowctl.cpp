@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <X11/extensions/Xrender.h>
 #include <X11/extensions/Xdamage.h>
+#include <X11/extensions/shape.h>
 #include <signal.h>
 #include <sys/prctl.h>
 
@@ -169,6 +170,14 @@ static void set_decorator_buttons (Display *dpy, Window w)
   XSync(dpy, False);
 }
 
+static void set_shaped (Display *dpy, Window w)
+{
+  XRectangle rect = {250, 120, 300, 200};
+  XShapeCombineRectangles(dpy, w, ShapeBounding, 0, 0, &rect, 1,
+                          ShapeSet, Unsorted);
+  XSync(dpy, False);
+}
+
 static void activate_window (Display *dpy, Window window)
 {
       XClientMessageEvent xclient;
@@ -299,19 +308,20 @@ static void wait_for_mapnotify(Display *dpy, Window w)
 static void print_usage_and_exit(QString& stdOut)
 {
 #define PROG "windowctl"
-  stdOut = "Usage 1: " PROG " [afoemk](n|d|i|b) [transient for <XID>]\n"
+  stdOut = "Usage 1: " PROG " [afoemks](n|d|i|b) [transient for <XID>]\n"
 	 "a - ARGB (32-bit) window, otherwise 16-bit is used\n"
 	 "f - fullscreen window\n"
 	 "o - override-redirect window\n"
 	 "e - do not exit on unmapping of the window\n"
 	 "m - set _NET_WM_STATE_MODAL (makes sense for dialogs only)\n"
 	 "k - set _KDE_NET_WM_WINDOW_TYPE_OVERRIDE\n"
+	 "s - make the window shaped\n"
          "h - set _MEEGOTOUCH_DECORATOR_BUTTONS for home and close buttons\n"
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
 	 "b - WM_TYPE_NOTIFICATION window ('b' is for banner)\n\n"
-	 "Usage 2: " PROG " N|U|F|C|M|T|A|W|H <XID>\n"
+	 "Usage 2: " PROG " N|U|F|C|M|T|A|W|H|S <XID>\n"
 	 "N - unfullscreen the window with <XID>\n"
 	 "U - unmap the window with <XID>\n"
 	 "F - fullscreen the window with <XID>\n"
@@ -320,7 +330,8 @@ static void print_usage_and_exit(QString& stdOut)
 	 "T - make the window with <XID> non-transient\n"
 	 "A - activate (_NET_ACTIVE_WINDOW) the window with <XID>\n"
 	 "W - wait for mapping of the window with <XID>\n"
-	 "H - set _MEEGOTOUCH_DECORATOR_BUTTONS to the window with <XID>\n\n"
+	 "H - set _MEEGOTOUCH_DECORATOR_BUTTONS to the window with <XID>\n"
+	 "S - make the window with <XID> a shaped window\n\n"
 	 "Usage 3: " PROG " t|L|V|G <XID> (<XID>|'None')\n"
 	 "t - make the first window transient for the second one\n"
 	 "L - configure the first window beLow the second one\n"
@@ -404,6 +415,9 @@ static void do_command (Display *dpy, char command, Window window,
 			break;
 		case 'H':
 			set_decorator_buttons(dpy, window);
+			break;
+		case 'S':
+			set_shaped(dpy, window);
 			break;
 		case 't':
 			XSetTransientForHint(dpy, window, target);
@@ -531,7 +545,8 @@ static bool old_main(QStringList& args, QString& stdOut)
         char green[] = "#00ff00";
         time_t last_time;
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
-            exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1;
+            exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
+            shaped = 0;
 	WindowType windowtype = TYPE_INVALID;
 
 	if (args.count() < 1 || args.count() > 4) {
@@ -573,6 +588,10 @@ static bool old_main(QStringList& args, QString& stdOut)
                 }
 		if (*p == 'k') {
 			kde_override = 1;
+                        continue;
+                }
+		if (*p == 's') {
+			shaped = 1;
                         continue;
                 }
 		if (*p == 'h') {
@@ -667,7 +686,7 @@ static bool old_main(QStringList& args, QString& stdOut)
 				return false;
                         }
                 }
-		if ((command = strchr("NUFCMTAWH", *p))) {
+		if ((command = strchr("NUFCMTAWHS", *p))) {
 			if (args.count() != 2) {
 	  			print_usage_and_exit(stdOut);
 				return false;
@@ -704,6 +723,7 @@ static bool old_main(QStringList& args, QString& stdOut)
                 set_meego_layer(dpy, w, meego_layer);
 
         if (decor_buttons) set_decorator_buttons(dpy, w);
+        if (shaped) set_shaped(dpy, w);
 
         green_gc = XCreateGC (dpy, w, 0, NULL);
         XParseColor (dpy, colormap, green, &green_col);

@@ -285,8 +285,3 @@ void MTexturePixmapPrivate::resize(int w, int h)
     brect.setWidth(w);
     brect.setHeight(h);
 }
-
-void MTexturePixmapPrivate::setValid(bool valid)
-{    
-    item->is_valid = valid;
-}

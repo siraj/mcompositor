@@ -238,7 +238,10 @@ void MCompositeWindow::fadeIn()
     if (!isAppWindow())
         return;
     
-    ++window_transitioning;
+    if (!is_transitioning) {
+        ++window_transitioning;
+        is_transitioning = true;
+    }
     if (newly_mapped) 
         QTimer::singleShot(700, this, SLOT(q_fadeIn()));
     else
@@ -247,7 +250,10 @@ void MCompositeWindow::fadeIn()
 
 void MCompositeWindow::q_fadeIn()
 {   
-    --window_transitioning;
+    if (is_transitioning) {
+        --window_transitioning;
+        is_transitioning = false;
+    }
     newly_mapped = false;
     setVisible(true);
     setOpacity(0.0);
@@ -528,8 +534,12 @@ bool MCompositeWindow::isAppWindow(bool include_transients)
 }
 
 QPainterPath MCompositeWindow::shape() const
-{
+{    
     QPainterPath path;
-    path.addRect(boundingRect());
+    const QRegion &shape = propertyCache()->shapeRegion();
+    if (QRegion(boundingRect().toRect()).subtracted(shape).isEmpty())
+        path.addRect(boundingRect());
+    else
+        path.addRegion(shape);
     return path;
 }

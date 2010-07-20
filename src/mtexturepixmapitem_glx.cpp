@@ -88,7 +88,6 @@ void MTexturePixmapItem::init()
     if (isValid() && !pc->isMapped()) {
         qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
                  __func__);
-        d->setValid(false);
         return;
     } else if (!isValid()) 
         return;
@@ -322,7 +321,43 @@ void MTexturePixmapItem::paint(QPainter *painter,
 
     glBindTexture(GL_TEXTURE_2D, d->custom_tfp ? d->ctextureId : d->textureId);
 
-    d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
+    const QRegion &shape = propertyCache()->shapeRegion();
+    bool shape_on = !QRegion(boundingRect().toRect()).subtracted(shape).isEmpty();
+    bool scissor_on = d->damageRegion.numRects() > 1 || shape_on;
+    
+    if (scissor_on)
+        glEnable(GL_SCISSOR_TEST);
+    
+    // Damage regions taking precedence over shape rects 
+    if (d->damageRegion.numRects() > 1) {
+        for (int i = 0; i < d->damageRegion.numRects(); ++i) {
+            glScissor(d->damageRegion.rects().at(i).x(),
+                      d->brect.height() -
+                      (d->damageRegion.rects().at(i).y() +
+                       d->damageRegion.rects().at(i).height()),
+                      d->damageRegion.rects().at(i).width(),
+                      d->damageRegion.rects().at(i).height());
+            d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());        
+        }
+    } else if (shape_on) {
+        // draw a shaped window using glScissor
+        for (int i = 0; i < shape.numRects(); ++i) {
+            glScissor(shape.rects().at(i).x(),
+                      d->brect.height() -
+                      (shape.rects().at(i).y() +
+                       shape.rects().at(i).height()),
+                      shape.rects().at(i).width(),
+                      shape.rects().at(i).height());
+            d->drawTexture(painter->combinedTransform(),
+                           boundingRect(), opacity());
+        }
+    } else
+        d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
+    
+    if (scissor_on)
+        glDisable(GL_SCISSOR_TEST);
+
+    glDisable(GL_BLEND);
 
 #if (QT_VERSION >= 0x040600)
     painter->endNativePainting();

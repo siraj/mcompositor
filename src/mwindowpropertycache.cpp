@@ -23,6 +23,7 @@
 #include <QDebug>
 #include <X11/Xatom.h>
 #include <X11/extensions/Xrender.h>
+#include <X11/extensions/shape.h>
 #include <X11/Xmd.h>
 #include "mwindowpropertycache.h"
 
@@ -37,6 +38,8 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       wm_protocols_valid(false),
       icon_geometry_valid(false),
       decor_buttons_valid(false),
+      shape_rects_valid(false),
+      real_geom_valid(false),
       wm_state_query(true),
       has_alpha(-1),
       global_alpha(-1),
@@ -47,6 +50,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       window_state(-1),
       window_type(MCompAtoms::INVALID),
       window(w),
+      parent_window(RootWindow(QX11Info::display(), 0)),
       being_mapped(false),
       xcb_real_geom(0)
 {
@@ -102,6 +106,8 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     xcb_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
                                                ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
                                                XCB_ATOM_CARDINAL, 0, 1);
+    xcb_shape_rects_cookie = xcb_shape_get_rectangles(xcb_conn, window,
+                                                      ShapeBounding);
 }
 
 MWindowPropertyCache::~MWindowPropertyCache()
@@ -160,6 +166,8 @@ MWindowPropertyCache::~MWindowPropertyCache()
         iconGeometry();
     if (global_alpha < 0)
         globalAlpha();
+    if (!shape_rects_valid)
+        shapeRegion();
 }
 
 bool MWindowPropertyCache::hasAlpha()
@@ -208,6 +216,31 @@ bool MWindowPropertyCache::hasAlpha()
         }
     }
     return has_alpha ? true : false;
+}
+
+const QRegion MWindowPropertyCache::shapeRegion()
+{
+    if (shape_rects_valid) {
+        if (shape_region.isEmpty())
+            return QRegion(realGeometry());
+        else
+            return shape_region;
+    }
+    xcb_shape_get_rectangles_reply_t *r;
+    r = xcb_shape_get_rectangles_reply(xcb_conn, xcb_shape_rects_cookie, 0);
+    if (!r) {
+        shape_rects_valid = true;
+        return QRegion(realGeometry());
+    }
+    xcb_rectangle_iterator_t i;
+    i = xcb_shape_get_rectangles_rectangles_iterator(r);
+    shape_region = QRegion(0, 0, 0, 0);
+    for (; i.rem; xcb_rectangle_next(&i))
+        shape_region += QRect(i.data->x, i.data->y, i.data->width,
+                              i.data->height);
+    free(r);
+    shape_rects_valid = true;
+    return shape_region;
 }
 
 Window MWindowPropertyCache::transientFor()

@@ -122,11 +122,9 @@ EGLDisplay EglResourceManager::dpy = 0;
 
 void MTexturePixmapItem::init()
 {
-    if (isValid() &&
-        propertyCache()->windowAttributes()->map_state != IsViewable) {
+    if (isValid() && !propertyCache()->isMapped()) {
         qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
                  __func__);
-        d->setValid(false);
         return;
     } else if (!isValid()) 
         return;
@@ -145,9 +143,11 @@ void MTexturePixmapItem::init()
                                      EGL_NATIVE_PIXMAP_KHR,
                                      (EGLClientBuffer)d->windowp,
                                      attribs);
-    if (d->egl_image == EGL_NO_IMAGE_KHR)
+    if (d->egl_image == EGL_NO_IMAGE_KHR) {
         qWarning("MTexturePixmapItem::%s(): Cannot create EGL image: 0x%x",
                  __func__, eglGetError());
+        return;
+    }
     
     d->textureId = d->eglresource->texman->getTexture();
     glEnable(GL_TEXTURE_2D);
@@ -335,12 +335,18 @@ void MTexturePixmapItem::paint(QPainter *painter,
     }
     glBindTexture(GL_TEXTURE_2D, d->custom_tfp ? d->ctextureId : d->textureId);
 
+    const QRegion &shape = propertyCache()->shapeRegion();
     // FIXME: not optimal. probably would be better to replace with 
     // eglSwapBuffersRegionNOK()
-    /*
-    if (d->damageRegion.numRects() > 1) {
-        d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
+
+    bool shape_on = !QRegion(boundingRect().toRect()).subtracted(shape).isEmpty();
+    bool scissor_on = d->damageRegion.numRects() > 1 || shape_on;
+    
+    if (scissor_on)
         glEnable(GL_SCISSOR_TEST);
+    
+    // Damage regions taking precedence over shape rects 
+    if (d->damageRegion.numRects() > 1) {
         for (int i = 0; i < d->damageRegion.numRects(); ++i) {
             glScissor(d->damageRegion.rects().at(i).x(),
                       d->brect.height() -
@@ -348,11 +354,25 @@ void MTexturePixmapItem::paint(QPainter *painter,
                        d->damageRegion.rects().at(i).height()),
                       d->damageRegion.rects().at(i).width(),
                       d->damageRegion.rects().at(i).height());
-            d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());        }
-        glDisable(GL_SCISSOR_TEST);
+            d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());        
+        }
+    } else if (shape_on) {
+        // draw a shaped window using glScissor
+        for (int i = 0; i < shape.numRects(); ++i) {
+            glScissor(shape.rects().at(i).x(),
+                      d->brect.height() -
+                      (shape.rects().at(i).y() +
+                       shape.rects().at(i).height()),
+                      shape.rects().at(i).width(),
+                      shape.rects().at(i).height());
+            d->drawTexture(painter->combinedTransform(),
+                           boundingRect(), opacity());
+        }
     } else
-    */
-    d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
+        d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
+    
+    if (scissor_on)
+        glDisable(GL_SCISSOR_TEST);
 
     // Explicitly disable blending. for some reason, the latest drivers
     // still has blending left-over even if we call glDisable(GL_BLEND)

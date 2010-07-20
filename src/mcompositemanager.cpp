@@ -34,6 +34,7 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xfixes.h>
+#include <X11/extensions/shape.h>
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
 #include <X11/XKBlib.h>
@@ -640,6 +641,7 @@ void MCompositeManagerPrivate::prepare()
                                           RootWindow(QX11Info::display(), 0));
     overlay_mapped = false; // make sure we try to map it in startup
     XReparentWindow(QX11Info::display(), localwin, xoverlay, 0, 0);
+    localwin_parent = xoverlay;
     enableInput();
 
     XDamageQueryExtension(QX11Info::display(), &damage_event, &damage_error);
@@ -1001,7 +1003,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 
 void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
 {
-    if (e->window == xoverlay)
+    if (e->window == xoverlay || e->window == localwin)
         return;
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
@@ -1218,6 +1220,9 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         prop_caches[e->window] = pc;
         // required to get property changes happening before mapping
         XSelectInput(dpy, e->window, PropertyChangeMask);
+        XShapeSelectInput(dpy, e->window, ShapeNotifyMask);
+        // we know the parent due to SubstructureRedirectMask on root window
+        pc->setParentWindow(RootWindow(dpy, 0));
     }
 
     MCompAtoms::Type wtype = pc->windowType();
@@ -1654,11 +1659,12 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         checkInputFocus(timestamp);
     }
     if (order_changed || force_visibility_check) {
-        int xres = ScreenOfDisplay(QX11Info::display(),
+        static int xres = ScreenOfDisplay(QX11Info::display(),
                                    DefaultScreen(QX11Info::display()))->width;
-        int yres = ScreenOfDisplay(QX11Info::display(),
+        static int yres = ScreenOfDisplay(QX11Info::display(),
                                    DefaultScreen(QX11Info::display()))->height;
         int covering_i = 0;
+        static const QRegion fs_r(0, 0, xres, yres);
         for (int i = stacking_list.size() - 1; i >= 0; --i) {
              Window w = stacking_list.at(i);
              if (w == stack[DESKTOP_LAYER]) {
@@ -1666,14 +1672,14 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                  break;
              }
              MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-             QRect r;
-             if (cw)
-                 r = cw->propertyCache()->realGeometry();
-             if (cw && cw->isMapped() && !cw->propertyCache()->hasAlpha() &&
+             MWindowPropertyCache *pc;
+             if (cw && cw->isMapped())
+                 pc = cw->propertyCache();
+             if (cw && cw->isMapped() && !pc->hasAlpha() &&
+                 !pc->isDecorator() && !cw->hasTransitioningWindow() &&
                  /* FIXME: decorated window is assumed to be fullscreen */
-                 !cw->hasTransitioningWindow() && (cw->needDecoration() ||
-                 (r.x() <= 0 && r.y() <= 0 && r.height() >= yres
-                  && r.width() >= xres))) {
+                 (cw->needDecoration() ||
+                  fs_r.subtracted(pc->shapeRegion()).isEmpty())) {
                  covering_i = i;
                  break;
              }
@@ -1722,6 +1728,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         enableRedirection();
         return;
     }
+    if (win == localwin || win == localwin_parent)
+        return;
 
     MWindowPropertyCache *wpc;
     if (prop_caches.contains(win))
@@ -1762,7 +1770,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     } else {
         if ((wtype == MCompAtoms::FRAMELESS || wtype == MCompAtoms::NORMAL)
                 && !wpc->isDecorator()
-                && (parentWindow(win) == RootWindow(QX11Info::display(), 0))
+                && (wpc->parentWindow() == RootWindow(QX11Info::display(), 0))
                 && (e->event == QX11Info::appRootWindow())) {
             hideLaunchIndicator();
 
@@ -1814,13 +1822,10 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         goto stack_and_return;
     }
 
-    if (win == localwin || win == parentWindow(localwin))
-        return;
-
     grab_pointer_keyboard(win);
 
     // only composite top-level windows
-    if ((parentWindow(win) == RootWindow(QX11Info::display(), 0))
+    if ((wpc->parentWindow() == RootWindow(QX11Info::display(), 0))
             && (e->event == QX11Info::appRootWindow())) {
         item = bindWindow(win);
         if (!item)
@@ -2291,10 +2296,26 @@ void MCompositeManagerPrivate::setWindowDebugProperties(Window w)
 bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
 {
     static const int damage_ev = damage_event + XDamageNotify;
+    static int shape_event_base = 0;
+    if (!shape_event_base) {
+        int i;
+        if (!XShapeQueryExtension(QX11Info::display(), &shape_event_base, &i))
+            qWarning("%s: no Shape extension!", __func__);
+    }
 
     if (event->type == damage_ev) {
         XDamageNotifyEvent *e = reinterpret_cast<XDamageNotifyEvent *>(event);
         damageEvent(e);
+        return true;
+    }
+    if (event->type == shape_event_base + ShapeNotify) {
+        XShapeEvent *ev = (XShapeEvent*)event;
+        if (ev->kind == ShapeBounding && prop_caches.contains(ev->window)) {
+            MWindowPropertyCache *pc = prop_caches.value(ev->window);
+            pc->shapeRefresh();
+            glwidget->update();
+            checkStacking(true); // re-check visibility
+        }
         return true;
     }
     switch (event->type) {
@@ -2325,8 +2346,15 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
         XAllowEvents(QX11Info::display(), ReplayKeyboard, event->xkey.time);
         keyEvent(&event->xkey); break;
     case ReparentNotify: 
+        // TODO: handle if one of our top-levels is reparented away
         // Prevent this event from internally cascading inside Qt. Causing some
         // random crashes in XCheckTypedWindowEvent
+        if (prop_caches.contains(((XReparentEvent*)event)->window)) {
+            MWindowPropertyCache *pc =
+                    prop_caches.value(((XReparentEvent*)event)->window);
+            if (((XReparentEvent*)event)->parent != pc->parentWindow())
+                pc->setParentWindow(((XReparentEvent*)event)->parent);
+        }
         break;
     default:
         return false;
@@ -2403,7 +2431,7 @@ void MCompositeManagerPrivate::redirectWindows()
             if (window) {
                 window->setNewlyMapped(false);
                 window->setVisible(true);
-                if (kids[i] == localwin || kids[i] == parentWindow(localwin))
+                if (kids[i] == localwin || kids[i] == localwin_parent)
                     continue;
                 grab_pointer_keyboard(kids[i]);
             }
@@ -2544,6 +2572,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     // no need for StructureNotifyMask because of root's SubstructureNotifyMask
     XSelectInput(display, window, PropertyChangeMask | ButtonPressMask | 
                  KeyPressMask | KeyReleaseMask);
+    XShapeSelectInput(display, window, ShapeNotifyMask);
     XCompositeRedirectWindow(display, window, CompositeRedirectManual);
 
     MWindowPropertyCache *wpc;

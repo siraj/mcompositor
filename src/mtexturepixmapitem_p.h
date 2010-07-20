@@ -58,7 +58,6 @@ public:
     void windowRaised();
     void drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
     void damageTracking(bool enabled);
-    void setValid(bool valid);
                 
     QGLContext *ctx;
     QGLWidget *glwidget;

@@ -35,11 +35,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
 #include <X11/extensions/Xfixes.h>
-#ifdef HAVE_SHAPECONST
-#include <X11/extensions/shapeconst.h>
-#else
 #include <X11/extensions/shape.h>
-#endif
 
 #include <mabstractdecorator.h>
 
@@ -115,7 +111,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
                                     "_MDECORATOR_ONLY_STATUSBAR", False);
     managedWindowAtom = XInternAtom(QX11Info::display(),
                                     "_MDECORATOR_MANAGED_WINDOW", False);
-    setTranslucentBackground(true);
 
     // default setting is not to rotate automatically
     setOrientationAngle(M::Angle0);
@@ -253,6 +248,7 @@ XRectangle MDecoratorWindow::itemRectToScreenRect(const QRect& r)
 
 void MDecoratorWindow::setInputRegion()
 {
+    static XRectangle prev_rect = {0, 0, 0, 0};
     QRegion region;
     QRect r = statusBar->boundingRect().toRect();
     region += r;
@@ -270,15 +266,16 @@ void MDecoratorWindow::setInputRegion()
     decoratorRect = region.boundingRect();
 
     XRectangle rect = itemRectToScreenRect(decoratorRect);
-
-    Display *dpy = QX11Info::display();
-    XserverRegion shapeRegion = XFixesCreateRegion(dpy, &rect, 1);
-    XFixesSetWindowShapeRegion(dpy, winId(), ShapeBounding, 0, 0, 0);
-    XFixesSetWindowShapeRegion(dpy, winId(), ShapeInput, 0, 0, shapeRegion);
-
-    XFixesDestroyRegion(dpy, shapeRegion);
-
-    XSync(dpy, False);
+    if (memcmp(&prev_rect, &rect, sizeof(XRectangle))) {
+        Display *dpy = QX11Info::display();
+        XserverRegion shapeRegion = XFixesCreateRegion(dpy, &rect, 1);
+        XShapeCombineRectangles(dpy, winId(), ShapeBounding, 0, 0, &rect, 1,
+                            ShapeSet, Unsorted);
+        XFixesSetWindowShapeRegion(dpy, winId(), ShapeInput, 0, 0, shapeRegion);
+        XFixesDestroyRegion(dpy, shapeRegion);
+        XSync(dpy, False);
+        prev_rect = rect;
+    }
 
     // selective compositing
     if (isVisible() && region.isEmpty()) {
