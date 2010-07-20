@@ -521,6 +521,7 @@ static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
 static void grab_pointer_keyboard(Window window)
 {
     Display* dpy = QX11Info::display();
+    static bool ignored_mod = false;
     static KeyCode key = 0;
     if (!key)
         key = XKeysymToKeycode(dpy, XStringToKeysym("BackSpace"));
@@ -531,15 +532,18 @@ static void grab_pointer_keyboard(Window window)
     XGrabKey(dpy, key, Mod5Mask, window, True,
              GrabModeSync, GrabModeSync);
     
-    XkbDescPtr xkb_t;
-    
-    if ((xkb_t = XkbAllocKeyboard()) == NULL)
-        return;
-    
-    if (XkbGetControls(dpy, XkbAllControlsMask, xkb_t) == Success) 
-        XkbSetIgnoreLockMods(dpy, xkb_t->device_spec, Mod5Mask, Mod5Mask, 
-                             0, 0);    
-    XkbFreeControls(xkb_t, 0, True);
+    if (!ignored_mod) {
+        XkbDescPtr xkb_t;
+        
+        if ((xkb_t = XkbAllocKeyboard()) == NULL)
+            return;
+        
+        if (XkbGetControls(dpy, XkbAllControlsMask, xkb_t) == Success) 
+            XkbSetIgnoreLockMods(dpy, xkb_t->device_spec, Mod5Mask, Mod5Mask, 
+                                 0, 0);    
+        XkbFreeControls(xkb_t, 0, True);
+        ignored_mod = true;
+    }
 }
 
 static void kill_window(Window window)
