@@ -380,13 +380,6 @@ QRectF MTexturePixmapItem::boundingRect() const
     return d->brect;
 }
 
-QPainterPath MTexturePixmapItem::shape() const
-{
-    QPainterPath path;
-    path.addRect(boundingRect());
-    return path;
-}
-
 void MTexturePixmapItem::clearTexture()
 {
     glBindTexture(GL_TEXTURE_2D, d->custom_tfp ? d->ctextureId : d->textureId);

@@ -97,7 +97,6 @@ protected:
 
     QSizeF sizeHint(Qt::SizeHint, const QSizeF &) const;
     QRectF boundingRect() const;
-    QPainterPath shape() const;
     virtual void windowRaised();
 
 private:

@@ -526,3 +526,10 @@ bool MCompositeWindow::isAppWindow(bool include_transients)
         return true;
     return false;
 }
+
+QPainterPath MCompositeWindow::shape() const
+{
+    QPainterPath path;
+    path.addRect(boundingRect());
+    return path;
+}

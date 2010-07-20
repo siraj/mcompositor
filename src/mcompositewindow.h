@@ -320,7 +320,9 @@ protected:
     virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *);
     virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *);
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
-    virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);
+    virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);    
+    virtual QPainterPath shape() const;
+    
 private:
     MWindowPropertyCache *pc;
     bool thumb_mode;
