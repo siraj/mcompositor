@@ -10,5 +10,10 @@ isEqual(TESTABILITY,"on") {
     DEFINES += WINDOW_DEBUG
 }
 
+# Check for Intel Meego
+exists(/usr/include/X11/extensions/shapeconst.h) {
+     DEFINES += HAVE_SHAPECONST
+}
+
 # Compositor components only
-VERSION = 0.5.0
+VERSION = 0.5.1

@@ -24,7 +24,12 @@
 #include <X11/Xlib-xcb.h>
 #include <xcb/render.h>
 #include <xcb/shape.h>
+
+#ifdef HAVE_SHAPECONST
+#include <X11/extensions/shapeconst.h>
+#else
 #include <X11/extensions/shape.h>
+#endif
 #include "mcompatoms_p.h"
 #include <QRegion>
 

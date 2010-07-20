@@ -35,7 +35,11 @@
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
 #include <X11/extensions/Xfixes.h>
+#ifdef HAVE_SHAPECONST
+#include <X11/extensions/shapeconst.h>
+#else
 #include <X11/extensions/shape.h>
+#endif
 
 #include <mabstractdecorator.h>
 
