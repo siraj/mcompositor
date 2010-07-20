@@ -100,11 +100,19 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
 {
     for (int i = 0; i < numItems; ++i) {
         MCompositeWindow *window = (MCompositeWindow *) items[i];
-        if (window->windowVisible() && !window->isIconified()) {
-            painter->save();
-            painter->setMatrix(items[i]->sceneMatrix(), true);
-            items[i]->paint(painter, &options[i], widget);
-            painter->restore();
-        }
+        
+        // Redraw only textures which don't have opaque textures above it
+        if (((i < numItems - 1) 
+             && (items[i+1]->sceneMatrix().mapRect(items[i]->boundingRect()) ==
+                 items[i]->boundingRect())
+             && (!((MCompositeWindow *)items[i+1])->propertyCache()->hasAlpha())
+             && (((MCompositeWindow *)items[i+1])->opacity() == 1.0))
+            || window->isIconified()) 
+            continue;
+        
+        painter->save();
+        painter->setMatrix(items[i]->sceneMatrix(), true);
+        items[i]->paint(painter, &options[i], widget);
+        painter->restore();
     }
 }
