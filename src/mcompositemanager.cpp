@@ -36,6 +36,7 @@
 #include <X11/extensions/Xfixes.h>
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
+#include <X11/XKBlib.h>
 #include "mcompatoms_p.h"
 
 #include <sys/types.h>
@@ -529,6 +530,16 @@ static void grab_pointer_keyboard(Window window)
                 GrabModeSync, GrabModeSync, None, None);
     XGrabKey(dpy, key, Mod5Mask, window, True,
              GrabModeSync, GrabModeSync);
+    
+    XkbDescPtr xkb_t;
+    
+    if ((xkb_t = XkbAllocKeyboard()) == NULL)
+        return;
+    
+    if (XkbGetControls(dpy, XkbAllControlsMask, xkb_t) == Success) 
+        XkbSetIgnoreLockMods(dpy, xkb_t->device_spec, Mod5Mask, Mod5Mask, 
+                             0, 0);    
+    XkbFreeControls(xkb_t, 0, True);
 }
 
 static void kill_window(Window window)
