@@ -218,19 +218,19 @@ bool MWindowPropertyCache::hasAlpha()
     return has_alpha ? true : false;
 }
 
-const QRegion MWindowPropertyCache::shapeRegion()
+const QRegion &MWindowPropertyCache::shapeRegion()
 {
     if (shape_rects_valid) {
         if (shape_region.isEmpty())
-            return QRegion(realGeometry());
-        else
-            return shape_region;
+            shape_region = QRegion(realGeometry());
+        return shape_region;
     }
     xcb_shape_get_rectangles_reply_t *r;
     r = xcb_shape_get_rectangles_reply(xcb_conn, xcb_shape_rects_cookie, 0);
     if (!r) {
         shape_rects_valid = true;
-        return QRegion(realGeometry());
+        shape_region = QRegion(realGeometry());
+        return shape_region;
     }
     xcb_rectangle_iterator_t i;
     i = xcb_shape_get_rectangles_rectangles_iterator(r);

@@ -1818,7 +1818,12 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         else
             item->saveBackingStore(true);
         item->setVisible(true);
-        item->fadeIn();
+        // TODO: don't show the animation if the window is not stacked on top
+        const XWMHints &h = pc->getWMHints();
+        if (!(h.flags & StateHint) || h.initial_state != IconicState)
+            item->fadeIn();
+        else
+            item->setNewlyMapped(false);
         goto stack_and_return;
     }
 
@@ -1836,10 +1841,14 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             qDebug() << "Composition overhead (new pixmap):"
                      << overhead_measure.elapsed();
 #endif
-        if (item->isAppWindow())
+        const XWMHints &h = pc->getWMHints();
+        if ((!(h.flags & StateHint) || h.initial_state != IconicState)
+            && item->isAppWindow())
             item->fadeIn();
-        else
+        else {
             item->setVisible(true);
+            item->setNewlyMapped(false);
+        }
         
         // the current decorated window got mapped
         if (e->window == MDecoratorFrame::instance()->managedWindow() &&

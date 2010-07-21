@@ -80,7 +80,7 @@ public:
         }
         return real_geom;
     }
-    const QRegion shapeRegion();
+    const QRegion &shapeRegion();
     void shapeRefresh() {
         if (!shape_rects_valid)
             shapeRegion();

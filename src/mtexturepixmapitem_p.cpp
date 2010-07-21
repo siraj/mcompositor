@@ -255,12 +255,7 @@ void MTexturePixmapPrivate::damageTracking(bool enabled)
 
 void MTexturePixmapPrivate::saveBackingStore(bool renew)
 {
-    XWindowAttributes a;
-    if (!XGetWindowAttributes(QX11Info::display(), item->window(), &a)) {
-        qWarning("%s: invalid window 0x%lx", __func__, item->window());
-        return;
-    }
-    if (a.map_state != IsViewable)
+    if (item->propertyCache()->is_valid && !item->propertyCache()->isMapped())
         return;
 
     if (windowp)

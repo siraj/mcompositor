@@ -308,7 +308,7 @@ static void wait_for_mapnotify(Display *dpy, Window w)
 static void print_usage_and_exit(QString& stdOut)
 {
 #define PROG "windowctl"
-  stdOut = "Usage 1: " PROG " [afoemks](n|d|i|b) [transient for <XID>]\n"
+  stdOut = "Usage 1: " PROG " [afoemksI](n|d|i|b) [transient for <XID>]\n"
 	 "a - ARGB (32-bit) window, otherwise 16-bit is used\n"
 	 "f - fullscreen window\n"
 	 "o - override-redirect window\n"
@@ -316,6 +316,7 @@ static void print_usage_and_exit(QString& stdOut)
 	 "m - set _NET_WM_STATE_MODAL (makes sense for dialogs only)\n"
 	 "k - set _KDE_NET_WM_WINDOW_TYPE_OVERRIDE\n"
 	 "s - make the window shaped\n"
+	 "I - use initial_state = IconicState in WM_HINTS\n"
          "h - set _MEEGOTOUCH_DECORATOR_BUTTONS for home and close buttons\n"
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
@@ -374,6 +375,17 @@ static void set_group (Display *dpy, char *first, char *second)
 
 	h.flags = WindowGroupHint;
 	h.window_group = group;
+	XSetWMHints(dpy, w, &h);
+	XSync(dpy, False);
+}
+
+static void set_initial_state_iconic (Display *dpy, Window w)
+{
+	XWMHints h;
+	memset(&h, 0, sizeof(h));
+
+	h.flags = StateHint;
+	h.initial_state = IconicState;
 	XSetWMHints(dpy, w, &h);
 	XSync(dpy, False);
 }
@@ -546,7 +558,7 @@ static bool old_main(QStringList& args, QString& stdOut)
         time_t last_time;
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
-            shaped = 0;
+            shaped = 0, initial_iconic = 0;
 	WindowType windowtype = TYPE_INVALID;
 
 	if (args.count() < 1 || args.count() > 4) {
@@ -592,6 +604,10 @@ static bool old_main(QStringList& args, QString& stdOut)
                 }
 		if (*p == 's') {
 			shaped = 1;
+                        continue;
+                }
+		if (*p == 'I') {
+			initial_iconic = 1;
                         continue;
                 }
 		if (*p == 'h') {
@@ -724,6 +740,7 @@ static bool old_main(QStringList& args, QString& stdOut)
 
         if (decor_buttons) set_decorator_buttons(dpy, w);
         if (shaped) set_shaped(dpy, w);
+        if (initial_iconic) set_initial_state_iconic(dpy, w);
 
         green_gc = XCreateGC (dpy, w, 0, NULL);
         XParseColor (dpy, colormap, green, &green_col);

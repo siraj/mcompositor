@@ -98,21 +98,41 @@ void MCompositeScene::setupOverlay(Window window, const QRect &geom,
 
 void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *items[], const QStyleOptionGraphicsItem options[], QWidget *widget)
 {
-    for (int i = 0; i < numItems; ++i) {
-        MCompositeWindow *window = (MCompositeWindow *) items[i];
+    QRegion visible(sceneRect().toRect());
+    QList<QGraphicsItem*> to_paint;
+    QList<QStyleOptionGraphicsItem> paint_opts;
+    // visibility is determined from top to bottom
+    for (int i = numItems - 1; i >= 0; --i) {
+        MCompositeWindow *cw = (MCompositeWindow *) items[i];
         
-        // Redraw only textures which don't have opaque textures above it
-        if (((i < numItems - 1) 
-             && (items[i+1]->sceneMatrix().mapRect(items[i]->boundingRect()) ==
-                 items[i]->boundingRect())
-             && (!((MCompositeWindow *)items[i+1])->propertyCache()->hasAlpha())
-             && (((MCompositeWindow *)items[i+1])->opacity() == 1.0))
-            || window->isIconified()) 
-            continue;
+        if (visible.isEmpty())
+            // nothing below is visible anymore
+            break;
+
+        // FIXME: this region is always the same as the window's shape,
+        // some transformations would be needed...
+        QRegion r(cw->sceneMatrix().map(cw->propertyCache()->shapeRegion()));
         
+        // transitioning window can be smaller than shapeRegion(), so paint
+        // all transitioning windows
+        if (cw->isWindowTransitioning() || visible.intersects(r)) {
+            to_paint.prepend(cw);
+            paint_opts.prepend(options[i]);
+        }
+
+        // subtract opaque regions
+        if (!cw->isWindowTransitioning()
+            && !cw->propertyCache()->hasAlpha() && cw->opacity() == 1.0)
+            visible -= r;
+    }
+    // paint from bottom to top so that blending works
+    while (!to_paint.isEmpty()) {
+        // TODO: paint only the intersected region (glScissor?)
+        MCompositeWindow *cw = (MCompositeWindow*)to_paint.takeFirst();
         painter->save();
-        painter->setMatrix(items[i]->sceneMatrix(), true);
-        items[i]->paint(painter, &options[i], widget);
+        painter->setMatrix(cw->sceneMatrix(), true);
+        QStyleOptionGraphicsItem opts = paint_opts.takeFirst();
+        cw->paint(painter, &opts, widget);
         painter->restore();
     }
 }

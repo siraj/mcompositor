@@ -1,0 +1,9 @@
+CaseName="initial_state_iconic_is_respected"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that initial_state=IconicState is respected in WM_HINTS.\n
+\n
+- Test steps\n
+\t- show an application window with initial_state=IconicState\n
+- Post-conditions\n
+\t- application is stacked under the desktop window\n"
