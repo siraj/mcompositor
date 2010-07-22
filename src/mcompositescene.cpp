@@ -118,8 +118,11 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         
         // transitioning window can be smaller than shapeRegion(), so paint
         // all transitioning windows
-        if (cw->isWindowTransitioning() || visible.intersects(r))
-            to_paint.insert(size++, i);
+        if (cw->isWindowTransitioning() || visible.intersects(r)) {
+            if (size >= 9)
+                to_paint.resize(to_paint.size()+1);
+            to_paint[size++] = i;
+        }
 
         // subtract opaque regions
         if (!cw->isWindowTransitioning()
