@@ -124,14 +124,14 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
             visible -= r;
     }
     if (size > 0) {
-        painter->save();
         // paint from bottom to top so that blending works
         for (int i = size - 1; i >= 0; --i) {
             int item_i = to_paint[i];
+            painter->save();
             // TODO: paint only the intersected region (glScissor?)
             painter->setMatrix(items[item_i]->sceneMatrix(), true);
             items[item_i]->paint(painter, &options[item_i], widget);
+            painter->restore();
         }
-        painter->restore();
     }
 }
