@@ -99,8 +99,8 @@ void MCompositeScene::setupOverlay(Window window, const QRect &geom,
 void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *items[], const QStyleOptionGraphicsItem options[], QWidget *widget)
 {
     QRegion visible(sceneRect().toRect());
-    QList<QGraphicsItem*> to_paint;
-    QList<QStyleOptionGraphicsItem> paint_opts;
+    QVector<int> to_paint(10);
+    int size = 0;
     // visibility is determined from top to bottom
     for (int i = numItems - 1; i >= 0; --i) {
         MCompositeWindow *cw = (MCompositeWindow *) items[i];
@@ -115,24 +115,23 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         
         // transitioning window can be smaller than shapeRegion(), so paint
         // all transitioning windows
-        if (cw->isWindowTransitioning() || visible.intersects(r)) {
-            to_paint.prepend(cw);
-            paint_opts.prepend(options[i]);
-        }
+        if (cw->isWindowTransitioning() || visible.intersects(r))
+            to_paint.insert(size++, i);
 
         // subtract opaque regions
         if (!cw->isWindowTransitioning()
             && !cw->propertyCache()->hasAlpha() && cw->opacity() == 1.0)
             visible -= r;
     }
-    // paint from bottom to top so that blending works
-    while (!to_paint.isEmpty()) {
-        // TODO: paint only the intersected region (glScissor?)
-        MCompositeWindow *cw = (MCompositeWindow*)to_paint.takeFirst();
+    if (size > 0) {
         painter->save();
-        painter->setMatrix(cw->sceneMatrix(), true);
-        QStyleOptionGraphicsItem opts = paint_opts.takeFirst();
-        cw->paint(painter, &opts, widget);
+        // paint from bottom to top so that blending works
+        for (int i = size - 1; i >= 0; --i) {
+            int item_i = to_paint[i];
+            // TODO: paint only the intersected region (glScissor?)
+            painter->setMatrix(items[item_i]->sceneMatrix(), true);
+            items[item_i]->paint(painter, &options[item_i], widget);
+        }
         painter->restore();
     }
 }
