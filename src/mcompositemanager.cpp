@@ -2502,13 +2502,16 @@ static int cmp_windows(const void *a, const void *b)
     Window w_b = *((Window*)b);
     MCompositeWindow *cw_a = comp_man_priv->windows.value(w_a, 0),
                      *cw_b = comp_man_priv->windows.value(w_b, 0);
+    MDecoratorFrame *deco = MDecoratorFrame::instance();
     // a is unused decorator?
     if (cw_a->propertyCache()->isDecorator() &&
-        !MDecoratorFrame::instance()->managedWindow())
+        (!deco->managedClient() ||
+         deco->managedClient()->propertyCache()->windowState() != NormalState))
         return -1;
     // b is unused decorator?
     if (cw_b->propertyCache()->isDecorator() &&
-        !MDecoratorFrame::instance()->managedWindow())
+        (!deco->managedClient() ||
+         deco->managedClient()->propertyCache()->windowState() != NormalState))
         return 1;
     // a iconified, or a is desktop and b not iconified?
     if (cw_a->propertyCache()->windowState() == IconicState ||

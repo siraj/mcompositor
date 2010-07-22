@@ -46,6 +46,7 @@ public:
      * Retuns the window id of the managed window.
      */
     Qt::HANDLE managedWindow() const;
+    MCompositeWindow *managedClient() const { return client; }
 
     /*!
      * Returns the window id of the decorator window.
