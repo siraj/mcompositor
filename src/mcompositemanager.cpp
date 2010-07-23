@@ -782,7 +782,10 @@ Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
     Window last = 0, parent;
     while (pc && (parent = pc->transientFor())) {
        MCompositeWindow *cw = COMPOSITE_WINDOW(parent);
-       if (cw) pc = cw->propertyCache();
+       if (cw)
+           pc = cw->propertyCache();
+       else
+           break; // no-good parent
        if (pc && pc->isMapped())
            last = parent;
        else // no-good parent, bail out
