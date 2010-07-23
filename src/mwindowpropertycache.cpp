@@ -40,6 +40,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       decor_buttons_valid(false),
       shape_rects_valid(false),
       real_geom_valid(false),
+      net_wm_state_valid(false),
       wm_state_query(true),
       has_alpha(-1),
       global_alpha(-1),
@@ -108,6 +109,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                                                XCB_ATOM_CARDINAL, 0, 1);
     xcb_shape_rects_cookie = xcb_shape_get_rectangles(xcb_conn, window,
                                                       ShapeBounding);
+    xcb_net_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
+                                               ATOM(_NET_WM_STATE),
+                                               XCB_ATOM_ATOM, 0, 100);
 }
 
 MWindowPropertyCache::~MWindowPropertyCache()
@@ -390,6 +394,14 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         xcb_wm_protocols_cookie = xcb_get_property(xcb_conn, 0, window,
                                                    ATOM(WM_PROTOCOLS),
                                                    XCB_ATOM_ATOM, 0, 100);
+    } else if (e->atom == ATOM(_NET_WM_STATE)) {
+        if (!net_wm_state_valid)
+            // collect the old reply
+            netWmState();
+        net_wm_state_valid = false;
+        xcb_net_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
+                                                   ATOM(_NET_WM_STATE),
+                                                   XCB_ATOM_ATOM, 0, 100);
     } else if (e->atom == ATOM(WM_STATE)) {
         if (wm_state_query)
             // collect the old reply
@@ -493,6 +505,26 @@ const QList<Atom>& MWindowPropertyCache::supportedProtocols()
     free(r);
     wm_protocols_valid = true;
     return wm_protocols;
+}
+
+const QList<Atom> &MWindowPropertyCache::netWmState()
+{
+    if (net_wm_state_valid)
+        return net_wm_state;
+    xcb_get_property_reply_t *r;
+    r = xcb_get_property_reply(xcb_conn, xcb_net_wm_state_cookie, 0);
+    if (!r) {
+        net_wm_state_valid = true;
+        net_wm_state.clear();
+        return net_wm_state;
+    }
+    int n_atoms = xcb_get_property_value_length(r) / sizeof(Atom);
+    net_wm_state.clear();
+    for (int i = 0; i < n_atoms; ++i)
+        net_wm_state.append(((Atom*)xcb_get_property_value(r))[i]);
+    free(r);
+    net_wm_state_valid = true;
+    return net_wm_state;
 }
 
 const QRectF &MWindowPropertyCache::iconGeometry()
