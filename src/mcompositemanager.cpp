@@ -798,8 +798,11 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
                                                Window ignore_window)
 {
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
-        Window w = stacking_list.at(i);
-        if (w == ignore_window) continue;
+        
+        // return default value in case window got internally removed
+        Window w = stacking_list.value(i, 0);
+        
+        if (w == ignore_window || !w) continue;
         if (w == stack[DESKTOP_LAYER])
             /* desktop is above all applications */
             return 0;
@@ -2058,19 +2061,26 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 // the desktop
                 int wi, lower_i = -1;
                 for (wi = stacking_list.size() - 1; wi >= 0; --wi) {
-                     Window w = stacking_list.at(wi);
-                     if (w == lower) {
-                         lower_i = wi;
-                         continue;
-                     }
-                     if (w == stack[DESKTOP_LAYER])
-                         break;
-                     MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-                     if (cw && cw->isMapped() && cw->isAppWindow(true) &&
-                         // skip devicelock and screenlock windows
-                         (cw->propertyCache()->meegoStackingLayer() > 2 ||
-                          cw->propertyCache()->meegoStackingLayer() == 0))
-                         setWindowState(cw->window(), IconicState);
+                    
+                    // return default value in case window got internally
+                    // removed
+                    Window w = stacking_list.value(wi, 0);
+                    
+                    if (!w)
+                        continue;
+                    
+                    if (w == lower) {
+                        lower_i = wi;
+                        continue;
+                    }
+                    if (w == stack[DESKTOP_LAYER])
+                        break;
+                    MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+                    if (cw && cw->isMapped() && cw->isAppWindow(true) &&
+                        // skip devicelock and screenlock windows
+                        (cw->propertyCache()->meegoStackingLayer() > 2 ||
+                         cw->propertyCache()->meegoStackingLayer() == 0))
+                        setWindowState(cw->window(), IconicState);
                 }
                 Q_ASSERT(lower_i > 0);
                 stacking_list.move(stacking_list.indexOf(stack[DESKTOP_LAYER]),
