@@ -1702,8 +1702,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             if (!cw || !cw->isMapped()) continue;
             if (device_state->displayOff()) {
                 cw->setWindowObscured(true);
-                if (cw->window() != duihome)
-                    cw->setVisible(false);
+                // setVisible(false) is not needed because updates are frozen
+                // and for avoiding NB#174346
                 if (!duihome || (duihome && i >= home_i))
                     setWindowState(cw->window(), NormalState);
                 continue;
@@ -2242,6 +2242,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
     if (display_off) {
         // keep compositing to have synthetic events to obscure all windows
         enableCompositing(true);
+        scene()->views()[0]->setUpdatesEnabled(false);
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
@@ -2249,6 +2250,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
              i->stopPing();
         }
     } else {
+        scene()->views()[0]->setUpdatesEnabled(true);
         if (!possiblyUnredirectTopmostWindow())
             enableCompositing(false);
         /* start pinging again */
