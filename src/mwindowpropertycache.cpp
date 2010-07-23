@@ -172,6 +172,8 @@ MWindowPropertyCache::~MWindowPropertyCache()
         globalAlpha();
     if (!shape_rects_valid)
         shapeRegion();
+    if (!net_wm_state_valid)
+        netWmState();
 }
 
 bool MWindowPropertyCache::hasAlpha()
