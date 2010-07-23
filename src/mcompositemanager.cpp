@@ -550,7 +550,8 @@ static void grab_pointer_keyboard(Window window)
 static void kill_window(Window window)
 {
     int pid = MCompAtoms::instance()->getPid(window);
-    ::kill(pid, SIGKILL);
+    // negative PID to kill the whole process group
+    if (pid != 0) ::kill(-pid, SIGKILL);
     XKillClient(QX11Info::display(), window);
 }
 
@@ -1958,32 +1959,35 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             activateWindow(event->window, CurrentTime, false);
     } else if (event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
         Window close_window = event->window;
-        
-        MCompositeWindow* w = COMPOSITE_WINDOW(close_window);
-        if (w) {
-            w->setClosing(true);
-            w->fadeOut();
+        if (i) {
+            i->setClosing(true);
+            i->fadeOut();
         }
-        // send WM_DELETE_WINDOW message to actual window that needs to close
-        // FIXME/TODO: if the window does not support delete, we need to kill
-        XEvent ev;
-        memset(&ev, 0, sizeof(ev));
+        bool delete_sent = false;
+        if (i && i->propertyCache()->supportedProtocols().indexOf(
+                                        ATOM(WM_DELETE_WINDOW)) != -1) {
+            // send WM_DELETE_WINDOW message to the window that needs to close
+            XEvent ev;
+            memset(&ev, 0, sizeof(ev));
 
-        ev.xclient.type = ClientMessage;
-        ev.xclient.window = close_window;
-        ev.xclient.message_type = ATOM(WM_PROTOCOLS);
-        ev.xclient.format = 32;
-        ev.xclient.data.l[0] = ATOM(WM_DELETE_WINDOW);
-        ev.xclient.data.l[1] = CurrentTime;
+            ev.xclient.type = ClientMessage;
+            ev.xclient.window = close_window;
+            ev.xclient.message_type = ATOM(WM_PROTOCOLS);
+            ev.xclient.format = 32;
+            ev.xclient.data.l[0] = ATOM(WM_DELETE_WINDOW);
+            ev.xclient.data.l[1] = CurrentTime;
 
-        XSendEvent(QX11Info::display(), close_window, False, NoEventMask, &ev);
-        setExposeDesktop(true);
-
-        MCompositeWindow *check_hung = w;
+            XSendEvent(QX11Info::display(), close_window, False,
+                       NoEventMask, &ev);
+            // FIXME: we should check if desktop is exposed or not
+            setExposeDesktop(true);
+            delete_sent = true;
+        }
+        MCompositeWindow *check_hung = i;
         if (check_hung) {
-            if (check_hung->status() == MCompositeWindow::HUNG) {
+            if (!delete_sent ||
+                check_hung->status() == MCompositeWindow::HUNG) {
                 kill_window(close_window);
-                delete check_hung;
                 MDecoratorFrame::instance()->lower();
                 removeWindow(close_window);
                 return;
@@ -2188,8 +2192,12 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         if (cw == getHighestDecorated() || cw->status() == MCompositeWindow::HUNG) {
             if (FULLSCREEN_WINDOW(cw)) {
                 // fullscreen window has decorator above it during ongoing call
+                // and when it's jammed
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
-                MDecoratorFrame::instance()->setOnlyStatusbar(true);
+                if (cw->status() == MCompositeWindow::HUNG)
+                    MDecoratorFrame::instance()->setOnlyStatusbar(false);
+                else
+                    MDecoratorFrame::instance()->setOnlyStatusbar(true);
             } else if (cw->status() == MCompositeWindow::HUNG) {
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
                 MDecoratorFrame::instance()->setOnlyStatusbar(false);
@@ -2480,6 +2488,10 @@ bool MCompositeManagerPrivate::isRedirected(Window w)
 
 bool MCompositeManagerPrivate::removeWindow(Window w)
 {
+    // remove it from MCompositeScene or we may try to paint it and crash
+    MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+    if (cw)
+        watch->removeItem(cw);
     bool ret = true;
     windows_as_mapped.removeAll(w);
     if (windows.remove(w) == 0)
