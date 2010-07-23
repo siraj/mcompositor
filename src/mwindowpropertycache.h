@@ -115,10 +115,15 @@ public:
     /*!
      * Returns list of _NET_WM_STATE of the window.
      */
-    const QList<Atom>& netWmState() const { return net_wm_state; }
+    const QList<Atom>& netWmState();
 
+    // used to set the atom list now, for immediate effect in e.g. stacking
     void setNetWmState(const QList<Atom>& s) {
-            net_wm_state = s;
+        if (!net_wm_state_valid)
+            // receive the obsolete query
+            netWmState();
+        net_wm_state_valid = true;
+        net_wm_state = s;
     }
 
     /*!
@@ -194,6 +199,7 @@ private:
     bool decor_buttons_valid;
     bool shape_rects_valid;
     bool real_geom_valid;
+    bool net_wm_state_valid;
     bool wm_state_query;
     QRectF icon_geometry;
     int has_alpha;
@@ -222,6 +228,7 @@ private:
     xcb_get_property_cookie_t xcb_wm_hints_cookie;
     xcb_get_property_cookie_t xcb_icon_geom_cookie;
     xcb_get_property_cookie_t xcb_global_alpha_cookie;
+    xcb_get_property_cookie_t xcb_net_wm_state_cookie;
     xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
     xcb_shape_get_rectangles_cookie_t xcb_shape_rects_cookie;
     QRegion shape_region;

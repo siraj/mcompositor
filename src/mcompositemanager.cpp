@@ -1279,11 +1279,11 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     overhead_measure.start();
 #endif
 
-    // set _NET_WM_STATE for MWindowPropertyCache
-    QVector<Atom> states = atom->getAtomArray(e->window, ATOM(_NET_WM_STATE));
-    pc->setNetWmState(states.toList());
-    if (pc->netWmState().indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1)
-        fullscreen_wm_state(this, 1, e->window, &states);
+    const QList<Atom> &states = pc->netWmState();
+    if (states.indexOf(ATOM(_NET_WM_STATE_FULLSCREEN)) != -1) {
+        QVector<Atom> v = states.toVector();
+        fullscreen_wm_state(this, 1, e->window, &v);
+    }
 
     pc->setBeingMapped(true);
     if (needDecoration(e->window, pc)) {
@@ -1343,7 +1343,11 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             XSync(QX11Info::display(), False);
         }
     } else {
-        setWindowState(e->window, NormalState);
+        const XWMHints &h = pc->getWMHints();
+        if ((h.flags & StateHint) && (h.initial_state == IconicState))
+            setWindowState(e->window, IconicState);
+        else
+            setWindowState(e->window, NormalState);
         XMapWindow(QX11Info::display(), e->window);
     }
 }
