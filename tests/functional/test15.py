@@ -17,7 +17,7 @@
 
 import os, re, sys, time
 
-if os.system('/sbin/mcetool --unblank-screen --set-inhibit-mode=stay-on'):
+if os.system('/sbin/mcetool --unblank-screen --set-tklock-mode=unlocked --set-inhibit-mode=stay-on'):
   print 'mcetool is missing!'
 
 if os.system('pidof mcompositor'):
