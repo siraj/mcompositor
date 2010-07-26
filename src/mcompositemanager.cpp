@@ -886,16 +886,20 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         !MCompositeWindow::hasTransitioningWindow()) {
         // unredirect the chosen window and any docks and OR windows above it
         // TODO: what else should be unredirected?
-        ((MTexturePixmapItem *)cw)->enableDirectFbRendering();
-        setWindowDebugProperties(top);
+        if (!((MTexturePixmapItem *)cw)->isDirectRendered()) {
+            ((MTexturePixmapItem *)cw)->enableDirectFbRendering();
+            setWindowDebugProperties(top);
+        }
         for (int i = win_i + 1; i < stacking_list.size(); ++i) {
             Window w = stacking_list.at(i);
             if ((cw = COMPOSITE_WINDOW(w)) && cw->isMapped() &&
                 (cw->propertyCache()->windowTypeAtom()
                                    == ATOM(_NET_WM_WINDOW_TYPE_DOCK)
                  || cw->propertyCache()->isOverrideRedirect())) {
-                ((MTexturePixmapItem *)cw)->enableDirectFbRendering();
-                setWindowDebugProperties(w);
+                if (!((MTexturePixmapItem *)cw)->isDirectRendered()) {
+                    ((MTexturePixmapItem *)cw)->enableDirectFbRendering();
+                    setWindowDebugProperties(w);
+                }
             }
         }
         if (compositing) {
@@ -1456,6 +1460,10 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
     } else
 #endif
         XSetInputFocus(QX11Info::display(), w, RevertToPointerRoot, timestamp);
+
+    XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
+                    ATOM(_NET_ACTIVE_WINDOW),
+                    XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
 }
 
 void MCompositeManagerPrivate::dirtyStacking(bool force_visibility_check)
