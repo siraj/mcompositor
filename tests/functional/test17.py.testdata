@@ -1,0 +1,20 @@
+CaseName="input_focus_is_assigned_correctly"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that input focus is assigned correctly.\n
+\n
+- Test steps\n
+\t- check that the desktop window has input focus\n
+\t- show a decorated application window\n
+\t- check that the window has input focus\n
+\t- show a non-decorated application window\n
+\t- check that the window has input focus\n
+\t- show a non-decorated dialog window\n
+\t- check that the dialog has input focus\n
+\t- show a non-decorated application window that does not want focus\n
+\t- check that the dialog has input focus\n
+\t- unmap the dialog window\n
+\t- check that the application window has the input focus\n
+\t- unmap the application windows\n
+- Post-conditions\n
+\t- check that the desktop window has input focus\n"

@@ -308,7 +308,7 @@ static void wait_for_mapnotify(Display *dpy, Window w)
 static void print_usage_and_exit(QString& stdOut)
 {
 #define PROG "windowctl"
-  stdOut = "Usage 1: " PROG " [afoemksI](n|d|i|b) [transient for <XID>]\n"
+  stdOut = "Usage 1: " PROG " [afoemksIc](n|d|i|b) [transient for <XID>]\n"
 	 "a - ARGB (32-bit) window, otherwise 16-bit is used\n"
 	 "f - fullscreen window\n"
 	 "o - override-redirect window\n"
@@ -317,6 +317,7 @@ static void print_usage_and_exit(QString& stdOut)
 	 "k - set _KDE_NET_WM_WINDOW_TYPE_OVERRIDE\n"
 	 "s - make the window shaped\n"
 	 "I - use initial_state = IconicState in WM_HINTS\n"
+	 "c - set InputHint=False in WM_HINTS\n"
          "h - set _MEEGOTOUCH_DECORATOR_BUTTONS for home and close buttons\n"
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
@@ -375,6 +376,17 @@ static void set_group (Display *dpy, char *first, char *second)
 
 	h.flags = WindowGroupHint;
 	h.window_group = group;
+	XSetWMHints(dpy, w, &h);
+	XSync(dpy, False);
+}
+
+static void set_no_focus (Display *dpy, Window w)
+{
+	XWMHints h;
+	memset(&h, 0, sizeof(h));
+
+	h.flags = InputHint;
+	h.input = False;
 	XSetWMHints(dpy, w, &h);
 	XSync(dpy, False);
 }
@@ -558,7 +570,7 @@ static bool old_main(QStringList& args, QString& stdOut)
         time_t last_time;
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
-            shaped = 0, initial_iconic = 0;
+            shaped = 0, initial_iconic = 0, no_focus = 0;
 	WindowType windowtype = TYPE_INVALID;
 
 	if (args.count() < 1 || args.count() > 4) {
@@ -608,6 +620,10 @@ static bool old_main(QStringList& args, QString& stdOut)
                 }
 		if (*p == 'I') {
 			initial_iconic = 1;
+                        continue;
+                }
+		if (*p == 'c') {
+			no_focus = 1;
                         continue;
                 }
 		if (*p == 'h') {
@@ -734,6 +750,7 @@ static bool old_main(QStringList& args, QString& stdOut)
 					    NULL, 16));
 
         if (modal) set_modal(dpy, w);
+        if (no_focus) set_no_focus(dpy, w);
 
         if (meego_layer >= 0)
                 set_meego_layer(dpy, w, meego_layer);
