@@ -892,16 +892,20 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         !MCompositeWindow::hasTransitioningWindow()) {
         // unredirect the chosen window and any docks and OR windows above it
         // TODO: what else should be unredirected?
-        ((MTexturePixmapItem *)cw)->enableDirectFbRendering();
-        setWindowDebugProperties(top);
+        if (!((MTexturePixmapItem *)cw)->isDirectRendered()) {
+            ((MTexturePixmapItem *)cw)->enableDirectFbRendering();
+            setWindowDebugProperties(top);
+        }
         for (int i = win_i + 1; i < stacking_list.size(); ++i) {
             Window w = stacking_list.at(i);
             if ((cw = COMPOSITE_WINDOW(w)) && cw->isMapped() &&
                 (cw->propertyCache()->windowTypeAtom()
                                    == ATOM(_NET_WM_WINDOW_TYPE_DOCK)
                  || cw->propertyCache()->isOverrideRedirect())) {
-                ((MTexturePixmapItem *)cw)->enableDirectFbRendering();
-                setWindowDebugProperties(w);
+                if (!((MTexturePixmapItem *)cw)->isDirectRendered()) {
+                    ((MTexturePixmapItem *)cw)->enableDirectFbRendering();
+                    setWindowDebugProperties(w);
+                }
             }
         }
         if (compositing) {
@@ -1231,9 +1235,6 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             return;
         }
         prop_caches[e->window] = pc;
-        // required to get property changes happening before mapping
-        XSelectInput(dpy, e->window, PropertyChangeMask);
-        XShapeSelectInput(dpy, e->window, ShapeNotifyMask);
         // we know the parent due to SubstructureRedirectMask on root window
         pc->setParentWindow(RootWindow(dpy, 0));
     }
@@ -1461,6 +1462,10 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
     } else
 #endif
         XSetInputFocus(QX11Info::display(), w, RevertToPointerRoot, timestamp);
+
+    XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
+                    ATOM(_NET_ACTIVE_WINDOW),
+                    XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
 }
 
 void MCompositeManagerPrivate::dirtyStacking(bool force_visibility_check)
@@ -1706,8 +1711,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             if (!cw || !cw->isMapped()) continue;
             if (device_state->displayOff()) {
                 cw->setWindowObscured(true);
-                if (cw->window() != duihome)
-                    cw->setVisible(false);
+                // setVisible(false) is not needed because updates are frozen
+                // and for avoiding NB#174346
                 if (!duihome || (duihome && i >= home_i))
                     setWindowState(cw->window(), NormalState);
                 continue;
@@ -1751,6 +1756,10 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         wpc = prop_caches.value(win);
     else {
         wpc = new MWindowPropertyCache(win);
+        if (!wpc->is_valid) {
+            delete wpc;
+            return;
+        }
         prop_caches[win] = wpc;
     }
     wpc->setBeingMapped(false);
@@ -2242,6 +2251,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
     if (display_off) {
         // keep compositing to have synthetic events to obscure all windows
         enableCompositing(true);
+        scene()->views()[0]->setUpdatesEnabled(false);
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
@@ -2249,6 +2259,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
              i->stopPing();
         }
     } else {
+        scene()->views()[0]->setUpdatesEnabled(true);
         if (!possiblyUnredirectTopmostWindow())
             enableCompositing(false);
         /* start pinging again */
@@ -2445,7 +2456,10 @@ void MCompositeManagerPrivate::redirectWindows()
         qCritical("XQueryTree failed");
         return;
     }
-    
+    int xres = ScreenOfDisplay(QX11Info::display(),
+                               DefaultScreen(QX11Info::display()))->width;
+    int yres = ScreenOfDisplay(QX11Info::display(),
+                               DefaultScreen(QX11Info::display()))->height;
     for (i = 0; i < children; ++i)  {
         xcb_get_window_attributes_reply_t *attr;
         attr = xcb_get_window_attributes_reply(xcb_conn,
@@ -2457,11 +2471,27 @@ void MCompositeManagerPrivate::redirectWindows()
                         xcb_get_geometry(xcb_conn, kids[i]), 0);
         if (!geom)
             continue;
+        // Pre-create MWindowPropertyCache for likely application windows
+        if (localwin != kids[i] && (attr->map_state == XCB_MAP_STATE_VIEWABLE
+            || (geom->width == xres && geom->height == yres))
+            && !prop_caches.contains(kids[i])) {
+            // attr and geom are freed later
+            MWindowPropertyCache *p = new MWindowPropertyCache(kids[i],
+                                                               attr, geom);
+            if (!p->is_valid) {
+                delete p;
+                continue;
+            }
+            prop_caches[kids[i]] = p;
+            p->setParentWindow(RootWindow(QX11Info::display(), 0));
+        } else {
+            free(attr);
+            free(geom);
+        }
         if (attr->map_state == XCB_MAP_STATE_VIEWABLE &&
             localwin != kids[i] &&
             (geom->width > 1 && geom->height > 1)) {
-            // attr and geom are freed later
-            MCompositeWindow* window = bindWindow(kids[i], attr, geom);
+            MCompositeWindow* window = bindWindow(kids[i]);
             if (window) {
                 window->setNewlyMapped(false);
                 window->setVisible(true);
@@ -2469,9 +2499,6 @@ void MCompositeManagerPrivate::redirectWindows()
                     continue;
                 grab_pointer_keyboard(kids[i]);
             }
-        } else {
-            free(attr);
-            free(geom);
         }
     }
     if (kids)
@@ -2599,9 +2626,7 @@ void MCompositeManagerPrivate::roughSort()
     qSort(stacking_list.begin(), stacking_list.end(), compareWindows);
 }
 
-MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
-                                        xcb_get_window_attributes_reply_t *wa,
-                                        xcb_get_geometry_reply_t *geom)
+MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
 {
     Display *display = QX11Info::display();
 
@@ -2614,11 +2639,12 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     MWindowPropertyCache *wpc;
     if (prop_caches.contains(window)) {
         wpc = prop_caches.value(window);
-        if (wa) free(wa);
-        if (geom) free(geom);
     } else {
-        // MWindowPropertyCache frees wa
-        wpc = new MWindowPropertyCache(window, wa, geom);
+        wpc = new MWindowPropertyCache(window);
+        if (!wpc->is_valid) {
+            delete wpc;
+            return 0;
+        }
         prop_caches[window] = wpc;
     }
     wpc->setIsMapped(true);
