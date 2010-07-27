@@ -270,6 +270,16 @@ public:
     bool isClosing() const { return is_closing; }
 
     MWindowPropertyCache *propertyCache() const { return pc; }
+    
+    /*!
+     * Convenience function returns last visible parent of this window
+     */
+    Window lastVisibleParent() const;
+    
+    /*!
+     * Returns the index of this window in the stacking list
+     */
+    int indexInStack() const;
 
 public slots:
 

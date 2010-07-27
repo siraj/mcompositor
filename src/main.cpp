@@ -30,11 +30,8 @@ int main(int argc, char *argv[])
 
     QGraphicsScene *scene = app.scene();
     QGraphicsView view(scene);
-
-    // TODO: Which property is valid now?
-    view.setProperty("NoDuiStyle", true);
+    
     view.setProperty("NoMStyle", true);
-
     view.setUpdatesEnabled(false);
     view.setAutoFillBackground(false);
     view.setBackgroundBrush(Qt::NoBrush);

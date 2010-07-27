@@ -543,3 +543,15 @@ QPainterPath MCompositeWindow::shape() const
         path.addRegion(shape);
     return path;
 }
+
+Window MCompositeWindow::lastVisibleParent() const
+{
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    return p->d->getLastVisibleParent(propertyCache());
+}
+
+int MCompositeWindow::indexInStack() const
+{
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    return p->d->stacking_list.indexOf(window());
+}

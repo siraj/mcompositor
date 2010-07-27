@@ -115,8 +115,9 @@ public:
     bool removeWindow(Window w);
     bool needDecoration(Window w, MWindowPropertyCache *pc = 0);
     MCompositeWindow *getHighestDecorated();
+    
+    static bool compareWindows(Window w_a, Window w_b);
     void roughSort();
-    int transiencyRelation(MCompositeWindow *cw_a, MCompositeWindow *cw_b);
 
     MCompositeScene *watch;
     Window localwin, localwin_parent;
