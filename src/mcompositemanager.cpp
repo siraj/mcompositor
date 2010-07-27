@@ -1229,9 +1229,6 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             return;
         }
         prop_caches[e->window] = pc;
-        // required to get property changes happening before mapping
-        XSelectInput(dpy, e->window, PropertyChangeMask);
-        XShapeSelectInput(dpy, e->window, ShapeNotifyMask);
         // we know the parent due to SubstructureRedirectMask on root window
         pc->setParentWindow(RootWindow(dpy, 0));
     }
@@ -2455,7 +2452,10 @@ void MCompositeManagerPrivate::redirectWindows()
         qCritical("XQueryTree failed");
         return;
     }
-    
+    int xres = ScreenOfDisplay(QX11Info::display(),
+                               DefaultScreen(QX11Info::display()))->width;
+    int yres = ScreenOfDisplay(QX11Info::display(),
+                               DefaultScreen(QX11Info::display()))->height;
     for (i = 0; i < children; ++i)  {
         xcb_get_window_attributes_reply_t *attr;
         attr = xcb_get_window_attributes_reply(xcb_conn,
@@ -2467,11 +2467,23 @@ void MCompositeManagerPrivate::redirectWindows()
                         xcb_get_geometry(xcb_conn, kids[i]), 0);
         if (!geom)
             continue;
+        // Pre-create MWindowPropertyCache for likely application windows
+        if (localwin != kids[i] && (attr->map_state == XCB_MAP_STATE_VIEWABLE
+            || (geom->width == xres && geom->height == yres))
+            && !prop_caches.contains(kids[i])) {
+            // attr and geom are freed later
+            MWindowPropertyCache *p = new MWindowPropertyCache(kids[i],
+                                                               attr, geom);
+            prop_caches[kids[i]] = p;
+            p->setParentWindow(RootWindow(QX11Info::display(), 0));
+        } else {
+            free(attr);
+            free(geom);
+        }
         if (attr->map_state == XCB_MAP_STATE_VIEWABLE &&
             localwin != kids[i] &&
             (geom->width > 1 && geom->height > 1)) {
-            // attr and geom are freed later
-            MCompositeWindow* window = bindWindow(kids[i], attr, geom);
+            MCompositeWindow* window = bindWindow(kids[i]);
             if (window) {
                 window->setNewlyMapped(false);
                 window->setVisible(true);
@@ -2479,9 +2491,6 @@ void MCompositeManagerPrivate::redirectWindows()
                     continue;
                 grab_pointer_keyboard(kids[i]);
             }
-        } else {
-            free(attr);
-            free(geom);
         }
     }
     if (kids)
@@ -2614,9 +2623,7 @@ void MCompositeManagerPrivate::roughSort()
     stacking_list = QList<Window>::fromVector(v);
 }
 
-MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
-                                        xcb_get_window_attributes_reply_t *wa,
-                                        xcb_get_geometry_reply_t *geom)
+MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
 {
     Display *display = QX11Info::display();
 
@@ -2629,11 +2636,8 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window,
     MWindowPropertyCache *wpc;
     if (prop_caches.contains(window)) {
         wpc = prop_caches.value(window);
-        if (wa) free(wa);
-        if (geom) free(geom);
     } else {
-        // MWindowPropertyCache frees wa
-        wpc = new MWindowPropertyCache(window, wa, geom);
+        wpc = new MWindowPropertyCache(window);
         prop_caches[window] = wpc;
     }
     wpc->setIsMapped(true);

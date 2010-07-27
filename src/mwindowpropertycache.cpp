@@ -78,6 +78,13 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     }
     is_valid = true;
 
+    if (!isMapped()) {
+        // required to get property changes happening before mapping
+        // (after mapping, MCompositeManager sets the window's input mask)
+        XSelectInput(QX11Info::display(), window, PropertyChangeMask);
+        XShapeSelectInput(QX11Info::display(), window, ShapeNotifyMask);
+    }
+
     xcb_is_decorator_cookie = xcb_get_property(xcb_conn, 0, window,
                                         ATOM(_MEEGOTOUCH_DECORATOR_WINDOW),
                                         XCB_ATOM_CARDINAL, 0, 1);
@@ -370,7 +377,13 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
                                   XCB_ATOM_WM_HINTS, XCB_ATOM_WM_HINTS, 0, 10);
         return true;
     } else if (e->atom == ATOM(_NET_WM_WINDOW_TYPE)) {
-        qWarning("_NET_WM_WINDOW_TYPE for 0x%lx changed", window);
+        if (window_type == MCompAtoms::INVALID)
+            // collect the old reply
+            windowType();
+        window_type = MCompAtoms::INVALID;
+        xcb_window_type_cookie = xcb_get_property(xcb_conn, 0, window,
+                                                  ATOM(_NET_WM_WINDOW_TYPE),
+                                                  XCB_ATOM_ATOM, 0, MAX_TYPES);
     } else if (e->atom == ATOM(_NET_WM_ICON_GEOMETRY)) {
         if (!icon_geometry_valid)
             // collect the old reply

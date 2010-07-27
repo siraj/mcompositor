@@ -70,9 +70,7 @@ public:
     ~MCompositeManagerPrivate();
 
     static Window parentWindow(Window child);
-    MCompositeWindow *bindWindow(Window w,
-                    xcb_get_window_attributes_reply_t *attr = 0,
-                    xcb_get_geometry_reply_t *geom = 0);
+    MCompositeWindow *bindWindow(Window w);
     QGraphicsScene *scene();
 
     void prepare();
