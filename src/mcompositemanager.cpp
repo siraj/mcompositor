@@ -1752,6 +1752,10 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         wpc = prop_caches.value(win);
     else {
         wpc = new MWindowPropertyCache(win);
+        if (!wpc->is_valid) {
+            delete wpc;
+            return;
+        }
         prop_caches[win] = wpc;
     }
     wpc->setBeingMapped(false);
@@ -2474,6 +2478,10 @@ void MCompositeManagerPrivate::redirectWindows()
             // attr and geom are freed later
             MWindowPropertyCache *p = new MWindowPropertyCache(kids[i],
                                                                attr, geom);
+            if (!p->is_valid) {
+                delete p;
+                continue;
+            }
             prop_caches[kids[i]] = p;
             p->setParentWindow(RootWindow(QX11Info::display(), 0));
         } else {
@@ -2638,6 +2646,10 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
         wpc = prop_caches.value(window);
     } else {
         wpc = new MWindowPropertyCache(window);
+        if (!wpc->is_valid) {
+            delete wpc;
+            return 0;
+        }
         prop_caches[window] = wpc;
     }
     wpc->setIsMapped(true);
