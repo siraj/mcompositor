@@ -56,6 +56,8 @@ public:
 
     // this is called on ConfigureNotify
     void setRealGeometry(const QRect &rect) {
+        if (!is_valid)
+            return;
         if (!xcb_real_geom)
             xcb_real_geom = xcb_get_geometry_reply(xcb_conn,
                                                    xcb_real_geom_cookie, 0);
@@ -69,7 +71,7 @@ public:
             shapeRefresh();
     }
     const QRect realGeometry() {
-        if (!xcb_real_geom) {
+        if (is_valid && !xcb_real_geom) {
             xcb_real_geom = xcb_get_geometry_reply(xcb_conn,
                                                    xcb_real_geom_cookie, 0);
             if (xcb_real_geom && !real_geom_valid) {
@@ -82,6 +84,8 @@ public:
     }
     const QRegion &shapeRegion();
     void shapeRefresh() {
+        if (!is_valid)
+            return;
         if (!shape_rects_valid)
             shapeRegion();
         shape_rects_valid = false;
@@ -119,6 +123,8 @@ public:
 
     // used to set the atom list now, for immediate effect in e.g. stacking
     void setNetWmState(const QList<Atom>& s) {
+        if (!is_valid)
+            return;
         if (!net_wm_state_valid)
             // receive the obsolete query
             netWmState();
@@ -133,9 +139,15 @@ public:
     bool beingMapped() const { return being_mapped; }
     void setBeingMapped(bool s) { being_mapped = s; }
 
-    bool isMapped() const { return attrs->map_state == XCB_MAP_STATE_VIEWABLE; }
+    bool isMapped() const {
+        if (!is_valid || !attrs)
+            return false;
+        return attrs->map_state == XCB_MAP_STATE_VIEWABLE;
+    }
 
     void setIsMapped(bool s) {
+        if (!is_valid || !attrs)
+            return;
         // a bit ugly but avoids a round trip to X...
         if (s)
             attrs->map_state = XCB_MAP_STATE_VIEWABLE;
@@ -154,7 +166,11 @@ public:
      * Returns whether override_redirect flag was in XWindowAttributes at
      * object creation time.
      */
-    bool isOverrideRedirect() const { return attrs->override_redirect; }
+    bool isOverrideRedirect() const {
+        if (!is_valid || !attrs)
+            return false;
+        return attrs->override_redirect;
+    }
 
     const XWMHints &getWMHints();
 

@@ -116,9 +116,12 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
 
 MWindowPropertyCache::~MWindowPropertyCache()
 {
-    if (!is_valid)
+    if (!is_valid) {
         // no pending XCB requests
+        if (wmhints)
+            XFree(wmhints);
         return;
+    }
     if (!wmhints)
         getWMHints();
     XFree(wmhints);
@@ -178,7 +181,7 @@ MWindowPropertyCache::~MWindowPropertyCache()
 
 bool MWindowPropertyCache::hasAlpha()
 {
-    if (has_alpha >= 0)
+    if (!is_valid || has_alpha >= 0)
         return has_alpha ? true : false;
 
     // the following code is replacing a XRenderFindVisualFormat() call...
@@ -226,7 +229,7 @@ bool MWindowPropertyCache::hasAlpha()
 
 const QRegion &MWindowPropertyCache::shapeRegion()
 {
-    if (shape_rects_valid) {
+    if (!is_valid || shape_rects_valid) {
         if (shape_region.isEmpty())
             shape_region = QRegion(realGeometry());
         return shape_region;
@@ -251,7 +254,7 @@ const QRegion &MWindowPropertyCache::shapeRegion()
 
 Window MWindowPropertyCache::transientFor()
 {
-    if (transient_for == (Window)-1) {
+    if (is_valid && transient_for == (Window)-1) {
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, xcb_transient_for_cookie, 0);
         if (r) {
@@ -269,7 +272,7 @@ Window MWindowPropertyCache::transientFor()
 
 bool MWindowPropertyCache::isDecorator()
 {
-    if (is_decorator < 0) {
+    if (is_valid && is_decorator < 0) {
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, xcb_is_decorator_cookie, 0);
         if (r) {
@@ -285,7 +288,7 @@ bool MWindowPropertyCache::isDecorator()
 
 unsigned int MWindowPropertyCache::meegoStackingLayer()
 {
-    if (meego_layer < 0) {
+    if (is_valid && meego_layer < 0) {
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, xcb_meego_layer_cookie, 0);
         if (r) {
@@ -320,6 +323,8 @@ XID MWindowPropertyCache::windowGroup()
 
 const XWMHints &MWindowPropertyCache::getWMHints()
 {
+    if (!is_valid)
+        goto empty_value;
     if (!wmhints) {
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, xcb_wm_hints_cookie, 0);
@@ -344,6 +349,8 @@ empty_value:
 
 bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
 {
+    if (!is_valid)
+        return false;
     if (e->atom == ATOM(WM_TRANSIENT_FOR)) {
         if (transient_for == (Window)-1)
             // collect the old reply
@@ -427,7 +434,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
 
 int MWindowPropertyCache::windowState()
 {
-    if (wm_state_query) {
+    if (is_valid && wm_state_query) {
         xcb_get_property_reply_t *r;
         r = xcb_get_property_reply(xcb_conn, xcb_wm_state_cookie, 0);
         if (r && (unsigned)xcb_get_property_value_length(r) >= sizeof(CARD32))
@@ -474,7 +481,7 @@ go_out:
 
 const QRect &MWindowPropertyCache::homeButtonGeometry()
 {
-    if (decor_buttons_valid)
+    if (!is_valid || decor_buttons_valid)
         return home_button_geom;
     buttonGeometryHelper();
     return home_button_geom;
@@ -482,7 +489,7 @@ const QRect &MWindowPropertyCache::homeButtonGeometry()
 
 const QRect &MWindowPropertyCache::closeButtonGeometry()
 {
-    if (decor_buttons_valid)
+    if (!is_valid || decor_buttons_valid)
         return close_button_geom;
     buttonGeometryHelper();
     return close_button_geom;
@@ -490,7 +497,7 @@ const QRect &MWindowPropertyCache::closeButtonGeometry()
 
 const QList<Atom>& MWindowPropertyCache::supportedProtocols()
 {
-    if (wm_protocols_valid)
+    if (!is_valid || wm_protocols_valid)
         return wm_protocols;
 
     xcb_get_property_reply_t *r;
@@ -511,7 +518,7 @@ const QList<Atom>& MWindowPropertyCache::supportedProtocols()
 
 const QList<Atom> &MWindowPropertyCache::netWmState()
 {
-    if (net_wm_state_valid)
+    if (!is_valid || net_wm_state_valid)
         return net_wm_state;
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, xcb_net_wm_state_cookie, 0);
@@ -531,7 +538,7 @@ const QList<Atom> &MWindowPropertyCache::netWmState()
 
 const QRectF &MWindowPropertyCache::iconGeometry()
 {
-    if (icon_geometry_valid)
+    if (!is_valid || icon_geometry_valid)
         return icon_geometry;
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, xcb_icon_geom_cookie, 0);
@@ -559,7 +566,7 @@ empty_geom:
 #define OPAQUE 0xffffffff
 int MWindowPropertyCache::globalAlpha()
 {
-    if (global_alpha != -1)
+    if (!is_valid || global_alpha != -1)
         return global_alpha;
     xcb_get_property_reply_t *r;
     r = xcb_get_property_reply(xcb_conn, xcb_global_alpha_cookie, 0);
@@ -581,7 +588,7 @@ int MWindowPropertyCache::globalAlpha()
 
 MCompAtoms::Type MWindowPropertyCache::windowType()
 {
-    if (window_type != MCompAtoms::INVALID)
+    if (!is_valid || window_type != MCompAtoms::INVALID)
         return window_type;
 
     QVector<Atom> a(MAX_TYPES);
