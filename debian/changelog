@@ -1,3 +1,9 @@
+mcompositor (0.5.2-1) unstable; urgency=low
+
+  * Fixes: NB#181396 - Homescreen does not come up
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Tue, 27 Jul 2010 11:28:39 +0300
+
 mcompositor (0.5.1-1) unstable; urgency=low
 
   * Fixes: NB#180870 - COREWEB: /usr/bin/mcompositor 'MCompositeManagerPrivate::getTopmostApp MCompositeManagerPrivate::checkStacking MCompositeManagerPrivate::enableRedirection MCompositeManagerPrivate::mapEvent MCompositeManagerPrivate::x11EventFilter'
