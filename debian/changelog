@@ -1,6 +1,7 @@
-mcompositor (0.5.3~1) unstable; urgency=low
+mcompositor (0.5.3-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#181926 - Repetitively minimizing/maximizing an app causes mcompositor to crash
+  * Fixes: NB#174346 - application grid briefly visible when opening the tklock	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 27 Jul 2010 16:28:53 +0300
 
