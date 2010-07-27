@@ -1,3 +1,9 @@
+mcompositor (0.5.3~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 27 Jul 2010 16:28:53 +0300
+
 mcompositor (0.5.2-1) unstable; urgency=low
 
   * Fixes: NB#181396 - Homescreen does not come up
