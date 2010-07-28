@@ -1,3 +1,9 @@
+mcompositor (0.5.4~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Wed, 28 Jul 2010 13:04:16 +0300
+
 mcompositor (0.5.3-1) unstable; urgency=low
 
   * Fixes: NB#181926 - Repetitively minimizing/maximizing an app causes mcompositor to crash
