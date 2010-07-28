@@ -1987,8 +1987,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             i->fadeOut();
         }
         bool delete_sent = false;
-        if (i && i->propertyCache()->supportedProtocols().indexOf(
-                                        ATOM(WM_DELETE_WINDOW)) != -1) {
+        if (i && (i->propertyCache()->supportedProtocols().indexOf(
+                                                                   ATOM(WM_DELETE_WINDOW)) != -1) && i->status() == MCompositeWindow::NORMAL) {
             // send WM_DELETE_WINDOW message to the window that needs to close
             XEvent ev;
             memset(&ev, 0, sizeof(ev));
@@ -2006,15 +2006,11 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             setExposeDesktop(true);
             delete_sent = true;
         }
-        MCompositeWindow *check_hung = i;
-        if (check_hung) {
-            if (!delete_sent ||
-                check_hung->status() == MCompositeWindow::HUNG) {
-                kill_window(close_window);
-                MDecoratorFrame::instance()->lower();
-                removeWindow(close_window);
-                return;
-            }
+        if (i && (!delete_sent || i->status() == MCompositeWindow::HUNG)) {
+            kill_window(close_window);
+            MDecoratorFrame::instance()->lower();
+            removeWindow(close_window);
+            return;
         }
     } else if (event->message_type == ATOM(WM_PROTOCOLS)) {
         if (event->data.l[0] == (long) ATOM(_NET_WM_PING)) {
