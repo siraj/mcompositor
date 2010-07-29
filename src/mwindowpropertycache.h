@@ -198,6 +198,7 @@ public:
     bool hasAlpha();
     bool isDecorator();
     int globalAlpha();
+    int videoGlobalAlpha();
     bool is_valid;
 
     static void set_xcb_connection(xcb_connection_t *c) {
@@ -205,6 +206,7 @@ public:
     }
 
 private:
+    int alphaValue(xcb_get_property_cookie_t c);
     void buttonGeometryHelper();
 
     Atom window_type_atom;
@@ -220,6 +222,7 @@ private:
     QRectF icon_geometry;
     int has_alpha;
     int global_alpha;
+    int video_global_alpha;
     int is_decorator;
     QList<Atom> net_wm_state;
     QRect req_geom, real_geom;
@@ -244,6 +247,7 @@ private:
     xcb_get_property_cookie_t xcb_wm_hints_cookie;
     xcb_get_property_cookie_t xcb_icon_geom_cookie;
     xcb_get_property_cookie_t xcb_global_alpha_cookie;
+    xcb_get_property_cookie_t xcb_video_global_alpha_cookie;
     xcb_get_property_cookie_t xcb_net_wm_state_cookie;
     xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
     xcb_shape_get_rectangles_cookie_t xcb_shape_rects_cookie;

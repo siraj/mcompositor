@@ -24,6 +24,9 @@
 
 int main(int argc, char *argv[])
 {
+    // We don't need meego graphics system
+    setenv("QT_GRAPHICSSYSTEM", "raster", 1);
+    
     // Don't load any Qt plugins
     QCoreApplication::setLibraryPaths(QStringList());
     MCompositeManager app(argc, argv);

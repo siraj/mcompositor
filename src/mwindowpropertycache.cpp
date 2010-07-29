@@ -44,6 +44,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       wm_state_query(true),
       has_alpha(-1),
       global_alpha(-1),
+      video_global_alpha(-1),
       is_decorator(-1),
       wmhints(0),
       attrs(0),
@@ -114,6 +115,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     xcb_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
                                                ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
                                                XCB_ATOM_CARDINAL, 0, 1);
+    xcb_video_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
+                                               ATOM(_MEEGOTOUCH_VIDEO_ALPHA),
+                                               XCB_ATOM_CARDINAL, 0, 1);
     xcb_shape_rects_cookie = xcb_shape_get_rectangles(xcb_conn, window,
                                                       ShapeBounding);
     xcb_net_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
@@ -180,6 +184,8 @@ MWindowPropertyCache::~MWindowPropertyCache()
         iconGeometry();
     if (global_alpha < 0)
         globalAlpha();
+    if (video_global_alpha < 0)
+        videoGlobalAlpha();
     if (!shape_rects_valid)
         shapeRegion();
     if (!net_wm_state_valid)
@@ -400,6 +406,14 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         xcb_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
                                        ATOM(_MEEGOTOUCH_GLOBAL_ALPHA),
                                        XCB_ATOM_CARDINAL, 0, 1);
+    } else if (e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA)) {
+        if (video_global_alpha < 0)
+            // collect the old reply
+            videoGlobalAlpha();
+        video_global_alpha = -1;
+        xcb_video_global_alpha_cookie = xcb_get_property(xcb_conn, 0, window,
+                                       ATOM(_MEEGOTOUCH_VIDEO_ALPHA),
+                                       XCB_ATOM_CARDINAL, 0, 1);
     } else if (e->atom == ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS)) {
         if (!decor_buttons_valid)
             // collect the old reply
@@ -577,26 +591,40 @@ empty_geom:
 }
 
 #define OPAQUE 0xffffffff
+int MWindowPropertyCache::alphaValue(xcb_get_property_cookie_t c)
+{
+    xcb_get_property_reply_t *r;
+    r = xcb_get_property_reply(xcb_conn, c, 0);
+    if (!r) 
+        return 255;
+    
+    int len = xcb_get_property_value_length(r);
+    if ((unsigned)len < sizeof(CARD32)) {
+        free(r);
+        return 255;
+    }
+    CARD32 i = *((CARD32*)xcb_get_property_value(r));
+    double opacity = i * 1.0 / OPAQUE;
+    return opacity * 255;
+}
+
 int MWindowPropertyCache::globalAlpha()
 {
     if (!is_valid || global_alpha != -1)
         return global_alpha;
-    xcb_get_property_reply_t *r;
-    r = xcb_get_property_reply(xcb_conn, xcb_global_alpha_cookie, 0);
-    if (!r) {
-        global_alpha = 255;
-        return global_alpha;
-    }
-    int len = xcb_get_property_value_length(r);
-    if ((unsigned)len < sizeof(CARD32)) {
-        free(r);
-        global_alpha = 255;
-        return global_alpha;
-    }
-    CARD32 i = *((CARD32*)xcb_get_property_value(r));
-    double opacity = i * 1.0 / OPAQUE;
-    global_alpha = opacity * 255;
+    
+    global_alpha = alphaValue(xcb_global_alpha_cookie);
+
     return global_alpha;
+}
+
+int MWindowPropertyCache::videoGlobalAlpha()
+{    
+    if (!is_valid || video_global_alpha != -1)
+        return video_global_alpha;
+    
+    video_global_alpha = alphaValue(xcb_video_global_alpha_cookie);
+    return video_global_alpha;
 }
 
 MCompAtoms::Type MWindowPropertyCache::windowType()

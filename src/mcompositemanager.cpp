@@ -140,6 +140,7 @@ MCompAtoms::MCompAtoms()
         // TODO: remove this when statusbar in-scene approach is done
         "_DUI_STATUSBAR_OVERLAY",
         "_MEEGOTOUCH_GLOBAL_ALPHA",
+        "_MEEGOTOUCH_VIDEO_ALPHA",
         "_MEEGO_STACKING_LAYER",
         "_MEEGOTOUCH_DECORATOR_BUTTONS",
 
@@ -508,6 +509,16 @@ static void set_global_alpha(unsigned int plane, unsigned int level)
         fprintf(out, "%d", level);
         fclose(out);
     }
+}
+
+static void set_alpha_onplane(int plane, int value)
+{
+    if (value == 255)
+        toggle_global_alpha_blend(0, plane);
+    else if (value < 255)
+        toggle_global_alpha_blend(1, plane);
+    
+    set_global_alpha(plane, value);
 }
 #endif
 
@@ -943,20 +954,6 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         return;
     }
 
-#ifdef GLES2_VERSION
-    Window topmost_win = 0;
-    for (int i = stacking_list.size() - 1; i >= 0; --i) {
-        Window w = stacking_list.at(i);
-        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-        if (cw && cw->isMapped() && !cw->propertyCache()->isDecorator() &&
-            cw->propertyCache()->windowTypeAtom()
-                                        != ATOM(_NET_WM_WINDOW_TYPE_DOCK)) {
-            topmost_win = w;
-            break;
-        }
-    }
-#endif
-
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
         item->setIsMapped(false);
@@ -1009,13 +1006,20 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     for (int i = 0; i < TOTAL_LAYERS; ++i)
         if (stack[i] == e->window) stack[i] = 0;
 
-#ifdef GLES2_VERSION
-    if (topmost_win == e->window) {
-        toggle_global_alpha_blend(0);
-        set_global_alpha(0, 255);
-    }
-#endif
     dirtyStacking(false);
+
+#ifdef GLES2_VERSION
+    // Set the global alpha if the window beneath this window has one
+    Window newtop = getTopmostApp(0, e->window);
+    MCompositeWindow *c_newtop = MCompositeWindow::compositeWindow(newtop);
+    if(c_newtop) {
+        set_alpha_onplane(0, c_newtop->propertyCache()->globalAlpha());
+        set_alpha_onplane(1, c_newtop->propertyCache()->videoGlobalAlpha());
+    } else {
+        set_alpha_onplane(0, 255);
+        set_alpha_onplane(1, 255);
+    }    
+#endif        
 }
 
 void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
@@ -1803,15 +1807,10 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     }
 
 #ifdef GLES2_VERSION
-    // TODO: this should probably be done on the focus level. Rewrite this
-    // once new stacking code from Kimmo is done
-    // FIXME: this works only if this window is on top
     int g_alpha = wpc->globalAlpha();
-    if (g_alpha == 255)
-        toggle_global_alpha_blend(0);
-    else if (g_alpha < 255)
-        toggle_global_alpha_blend(1);
-    set_global_alpha(0, g_alpha);
+    int v_alpha = wpc->videoGlobalAlpha();
+    set_alpha_onplane(0, g_alpha);
+    set_alpha_onplane(1, v_alpha);
 #endif
 
     MWindowPropertyCache *pc = 0;
