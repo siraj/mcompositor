@@ -73,6 +73,7 @@ Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
 MCompAtoms *MCompAtoms::d = 0;
 static bool hasDock  = false;
 static QRect availScreenRect = QRect();
+static KeyCode key = 0;
 
 // temporary launch indicator. will get replaced later
 static QGraphicsTextItem *launchIndicator = 0;
@@ -523,7 +524,6 @@ static void grab_pointer_keyboard(Window window)
 {
     Display* dpy = QX11Info::display();
     static bool ignored_mod = false;
-    static KeyCode key = 0;
     if (!key)
         key = XKeysymToKeycode(dpy, XStringToKeysym("BackSpace"));
     
@@ -2405,7 +2405,7 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
 
 void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
 {    
-    if(e->state & Mod5Mask)
+    if (e->state & Mod5Mask && e->keycode == key)
         exposeSwitcher();
 }
 
