@@ -2601,19 +2601,15 @@ bool MCompositeManagerPrivate::compareWindows(Window w_a, Window w_b)
                                  == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
         return true;
     // transiency relation?
-    int trans_rel = transiencyRelation(cw_a, cw_b);
-    if (trans_rel)
-        return false;
+    return (transiencyRelation(cw_a, cw_b) == 1)? false : true;
+
     // the last resort: keep the old order
-    int a_i = cw_a->indexInStack();
-    int b_i = cw_b->indexInStack();
-    if (a_i < b_i)
-        return true;
-    if (a_i > b_i)
-        return false;
+    // everything is ordered already. so no need to re-arrange list (return
+    // true by default)
+    
     // TODO: before this can replace checkStacking(), we need to handle at least
     // the decorator, possibly also window groups and dock windows.
-    return false;
+    return true;
 }
 
 void MCompositeManagerPrivate::roughSort()
