@@ -1,3 +1,9 @@
+mcompositor (0.5.5~1ubuntu1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 03 Aug 2010 11:49:05 +0300
+
 mcompositor (0.5.4-1) unstable; urgency=low
 
   * Fixes: NB#171592 - setGlobalAlpha does not work
