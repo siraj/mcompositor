@@ -314,4 +314,10 @@ const QRect MDecoratorWindow::availableClientRect() const
     return decoratorRect;
 }
 
+void MDecoratorWindow::closeEvent(QCloseEvent * event )
+{
+    // never close the decorator!
+    return event->ignore();
+}
+
 #include "mdecoratorwindow.moc"

@@ -57,6 +57,9 @@ public:
      */
     void setInputRegion();
 
+protected:
+    virtual void closeEvent(QCloseEvent * event );
+
 private slots:
 
     void screenRotated(const M::Orientation &orientation);
