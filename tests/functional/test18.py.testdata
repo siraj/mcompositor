@@ -1,0 +1,15 @@
+CaseName="verify_stacking_of_sibling_transient_dialogs"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that two transient dialogs on the same level maintain their order.\n
+(Written for NB#177840)\n
+\n
+- Test steps\n
+\t- show an application window\n
+\t- create and show a dialog window that is transient for the application\n
+\t- create and show a dialog window that is transient for the application\n
+\t- check that the transient dialogs have the right order\n
+\t- activate the duihome window\n
+\t- activate the application window\n
+- Post-conditions\n
+\t- the transient dialogs have maintained their mutual order\n"

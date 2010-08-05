@@ -2545,7 +2545,11 @@ bool MCompositeManagerPrivate::removeWindow(Window w)
     return ret;
 }
 
+static QList<Window> orig_list;
+
 // internal qSort comparator
+// TODO: before this can replace checkStacking(), we need to handle at least
+// the decorator, possibly also window groups and dock windows.
 bool MCompositeManagerPrivate::compareWindows(Window w_a, Window w_b)
 {
     MCompositeWindow *cw_a = MCompositeWindow::compositeWindow(w_a);
@@ -2601,19 +2605,22 @@ bool MCompositeManagerPrivate::compareWindows(Window w_a, Window w_b)
                                  == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
         return true;
     // transiency relation?
-    return (transiencyRelation(cw_a, cw_b) == 1)? false : true;
+    int trans_rel = transiencyRelation(cw_a, cw_b);
+    // don't do any conclusions when trans_rel == 0
+    if (trans_rel)
+        return (trans_rel == 1) ? false : true;
 
     // the last resort: keep the old order
-    // everything is ordered already. so no need to re-arrange list (return
-    // true by default)
-    
-    // TODO: before this can replace checkStacking(), we need to handle at least
-    // the decorator, possibly also window groups and dock windows.
-    return true;
+    // NOTE: this is required because w_a and w_b are not necessary in
+    // the same order as in the stacking_list
+    if (orig_list.indexOf(w_a) < orig_list.indexOf(w_b))
+        return true;
+    return false;
 }
 
 void MCompositeManagerPrivate::roughSort()
 {
+    orig_list = stacking_list;
     qSort(stacking_list.begin(), stacking_list.end(), compareWindows);
 }
 
@@ -2782,6 +2789,7 @@ MCompositeManagerPrivate::positionWindow(Window w,
     }
     case STACK_TOP: {
         //qDebug() << __func__ << "to top:" << w;
+        setWindowState(w, NormalState);
         safe_move(stacking_list, wp, stacking_list.size() - 1);
         // needed so that checkStacking() finds the current application
         roughSort();
