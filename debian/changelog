@@ -1,3 +1,9 @@
+mcompositor (0.5.6~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Thu, 05 Aug 2010 16:57:28 +0300
+
 mcompositor (0.5.5-1) unstable; urgency=low
 
   * Fixes: NB#182237 - Closing a hung application with the decorator doesn't kill the process
