@@ -2264,6 +2264,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
              if (should_be_pinged(i))
                  i->startPing();
         }
+        dirtyStacking(true);  // VisibilityNotify generation
     }
 }
 
