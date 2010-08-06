@@ -830,7 +830,6 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
             /* non-transient TYPE_MENU is on the same stacking layer */
             (!getLastVisibleParent(pc) &&
             pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU))) &&
-            cw->iconifyState() == MCompositeWindow::NoIconifyState &&
             pc->windowState() == NormalState && !cw->isWindowTransitioning()) {
             if (index_in_stacking_list)
                 *index_in_stacking_list = i;
@@ -1562,6 +1561,9 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
     }
     /* Meego layers 1-3: lock screen, ongoing call etc. */
+    /* FIXME: we should check windowState() instead of iconifyState(), which
+       is for animation purposes but that could lead to regressions with
+       initial_state==IconicState windows */
     for (unsigned int level = 1; level < 4; ++level)
          RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
                         cw->iconifyState() == MCompositeWindow::NoIconifyState

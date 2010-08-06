@@ -6,10 +6,13 @@
 #* Test steps
 #  * show an application window
 #  * create and show a dialog window that is transient for the application
-#  * activate the duihome window
+#  * iconify the application window
 #  * activate the application window
+#  * check that the transient is above the application window
+#  * iconify the application window
+#  * activate the transient window
 #* Post-conditions
-#  * dialog is above the application window
+#  * check that the transient is above the application window
 
 import os, re, sys, time
 
@@ -33,16 +36,16 @@ if home_win == 0:
   sys.exit(1)
 
 # create application and transient dialog windows
-fd = os.popen('windowctl n')
+fd = os.popen('windowctl kn')
 old_win = fd.readline().strip()
 time.sleep(1)
-fd = os.popen("windowctl d %s" % old_win)
+fd = os.popen("windowctl kd %s" % old_win)
 new_win = fd.readline().strip()
 time.sleep(1)
 
-# activate duihome
-os.popen("windowctl A %s" % home_win)
-time.sleep(1)
+# iconify the application
+os.popen("windowctl O %s" % old_win)
+time.sleep(2)
 
 # activate the application (this should raise the dialog too)
 os.popen("windowctl A %s" % old_win)
@@ -52,13 +55,42 @@ ret = new_win_found = 0
 fd = os.popen('windowstack m')
 s = fd.read(5000)
 for l in s.splitlines():
-  if re.search("%s DIALOG" % new_win, l.strip()):
+  if re.search("%s " % new_win, l.strip()):
     print new_win, 'found'
     new_win_found = 1
-  elif re.search("%s NORMAL" % old_win, l.strip()) and new_win_found:
+  elif re.search("%s " % old_win, l.strip()) and new_win_found:
     print old_win, 'found'
     break
-  elif re.search("%s NORMAL" % old_win, l.strip()):
+  elif re.search("%s " % old_win, l.strip()):
+    print 'FAIL: app is stacked before dialog'
+    print 'Failed stack:\n', s
+    ret = 1
+    break
+  elif re.search("%s " % home_win, l.strip()):
+    print 'FAIL: home is stacked before app'
+    print 'Failed stack:\n', s
+    ret = 1
+    break
+
+# iconify the application
+os.popen("windowctl O %s" % old_win)
+time.sleep(2)
+
+# activate the transient
+os.popen("windowctl A %s" % new_win)
+time.sleep(1)
+
+new_win_found = 0
+fd = os.popen('windowstack m')
+s = fd.read(5000)
+for l in s.splitlines():
+  if re.search("%s " % new_win, l.strip()):
+    print new_win, 'found'
+    new_win_found = 1
+  elif re.search("%s " % old_win, l.strip()) and new_win_found:
+    print old_win, 'found'
+    break
+  elif re.search("%s " % old_win, l.strip()):
     print 'FAIL: app is stacked before dialog'
     print 'Failed stack:\n', s
     ret = 1

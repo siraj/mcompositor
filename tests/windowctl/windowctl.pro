@@ -7,7 +7,6 @@ QMAKE_CXXFLAGS+= -Wall
 QMAKE_CFLAGS+= -Wall
 
 LIBS+=-lX11 -lXrender -lXdamage
-CONFIG += meegotouch
 
 DEPENDPATH += .
 INCLUDEPATH += .  

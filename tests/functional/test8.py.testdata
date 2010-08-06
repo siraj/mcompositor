@@ -7,7 +7,10 @@ transient for.\n
 - Test steps\n
 \t- show an application window\n
 \t- create and show a dialog window that is transient for the application\n
-\t- activate the duihome window\n
+\t- iconify the application window\n
 \t- activate the application window\n
+\t- check that the transient is above the application window\n
+\t- iconify the application window\n
+\t- activate the transient window\n
 - Post-conditions\n
-\t- dialog is above the application window\n"
+\t- check that the transient is above the application window\n"

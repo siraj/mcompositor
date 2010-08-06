@@ -6,10 +6,13 @@ CaseDescription="Check that two transient dialogs on the same level maintain the
 \n
 - Test steps\n
 \t- show an application window\n
-\t- create and show a dialog window that is transient for the application\n
-\t- create and show a dialog window that is transient for the application\n
-\t- check that the transient dialogs have the right order\n
-\t- activate the duihome window\n
+\t- create and show a window that is transient for the application\n
+\t- create and show a window that is transient for the application\n
+\t- check that the transients have the right order\n
+\t- iconify the application window\n
 \t- activate the application window\n
+\t- the transients have raised and maintained their mutual order\n
+\t- iconify the application window\n
+\t- activate the topmost transient window\n
 - Post-conditions\n
-\t- the transient dialogs have maintained their mutual order\n"
+\t- the transients have raised and maintained their mutual order\n"

@@ -2,7 +2,6 @@ TEMPLATE = app
 TARGET = windowstack
 
 target.path=/usr/bin
-CONFIG += meegotouch
 
 DEPENDPATH += .
 INCLUDEPATH += . 

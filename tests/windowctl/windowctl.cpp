@@ -198,6 +198,22 @@ static void activate_window (Display *dpy, Window window)
                   (XEvent *)&xclient);
 }
 
+static void set_iconic (Display *dpy, Window window)
+{
+      XClientMessageEvent xclient;
+
+      memset (&xclient, 0, sizeof (xclient));
+      xclient.type = ClientMessage;
+      xclient.window = window;
+      xclient.message_type = XInternAtom (dpy, "WM_CHANGE_STATE", False);
+      xclient.format = 32;
+      xclient.data.l[0] = IconicState;
+      
+      XSendEvent (dpy, DefaultRootWindow (dpy), False,
+                  SubstructureRedirectMask | SubstructureNotifyMask,
+                  (XEvent *)&xclient);
+}
+
 static Visual*
 get_argb32_visual (Display *dpy)
 {
@@ -323,7 +339,7 @@ static void print_usage_and_exit(QString& stdOut)
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
 	 "b - WM_TYPE_NOTIFICATION window ('b' is for banner)\n\n"
-	 "Usage 2: " PROG " N|U|F|C|M|T|A|W|H|S <XID>\n"
+	 "Usage 2: " PROG " N|U|F|C|M|T|A|W|H|S|O <XID>\n"
 	 "N - unfullscreen the window with <XID>\n"
 	 "U - unmap the window with <XID>\n"
 	 "F - fullscreen the window with <XID>\n"
@@ -333,7 +349,8 @@ static void print_usage_and_exit(QString& stdOut)
 	 "A - activate (_NET_ACTIVE_WINDOW) the window with <XID>\n"
 	 "W - wait for mapping of the window with <XID>\n"
 	 "H - set _MEEGOTOUCH_DECORATOR_BUTTONS to the window with <XID>\n"
-	 "S - make the window with <XID> a shaped window\n\n"
+	 "S - make the window with <XID> a shaped window\n"
+	 "O - icOnify the window with <XID>\n\n"
 	 "Usage 3: " PROG " t|L|V|G <XID> (<XID>|'None')\n"
 	 "t - make the first window transient for the second one\n"
 	 "L - configure the first window beLow the second one\n"
@@ -442,6 +459,9 @@ static void do_command (Display *dpy, char command, Window window,
 			break;
 		case 'S':
 			set_shaped(dpy, window);
+			break;
+		case 'O':
+			set_iconic(dpy, window);
 			break;
 		case 't':
 			XSetTransientForHint(dpy, window, target);
@@ -718,7 +738,7 @@ static bool old_main(QStringList& args, QString& stdOut)
 				return false;
                         }
                 }
-		if ((command = strchr("NUFCMTAWHS", *p))) {
+		if ((command = strchr("NUFCMTAWHSO", *p))) {
 			if (args.count() != 2) {
 	  			print_usage_and_exit(stdOut);
 				return false;
