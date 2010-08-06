@@ -597,7 +597,7 @@ static bool old_main(QStringList& args, QString& stdOut)
 
 	/*printf ("argc == %d, argv[1] = '%s'\n", argc, argv[1]);*/
 	for (char *p = args.at(0).toAscii().data(); *p; ++p) {
-		char *command;
+		const char *command;
 		if (*p == 'a') {
 			argb = 1;
 			continue;
