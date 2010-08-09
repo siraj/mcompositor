@@ -829,7 +829,7 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         MWindowPropertyCache *pc;
         if (cw && cw->isMapped() && (pc = cw->propertyCache()) &&
-            (cw->isAppWindow() ||
+            (cw->isAppWindow(true) ||
             /* non-transient TYPE_MENU is on the same stacking layer */
             (!getLastVisibleParent(pc) &&
             pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU))) &&
@@ -1521,6 +1521,14 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         desktop_up = true;
     else {
         aw = COMPOSITE_WINDOW(active_app);
+        if (aw) {
+            // getTopmostApp() can return a transient now
+            Window parent = getLastVisibleParent(aw->propertyCache());
+            if (parent) {
+                active_app = parent;
+                aw = COMPOSITE_WINDOW(parent);
+            }
+        }
         fs_app = FULLSCREEN_WINDOW(aw);
     }
 
@@ -1730,6 +1738,12 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 cw->setWindowObscured(false);
                 cw->setVisible(true);
             } else {
+                if (i < home_i &&
+                    ((MTexturePixmapItem *)cw)->isDirectRendered()) {
+                    // make sure window below duihome is redirected
+                    ((MTexturePixmapItem *)cw)->enableRedirectedRendering();
+                    setWindowDebugProperties(cw->window());
+                }
                 cw->setWindowObscured(true);
                 if (cw->window() != duihome)
                     cw->setVisible(false);
@@ -1841,9 +1855,10 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         qDebug() << "Composition overhead (existing pixmap):" 
                  << overhead_measure.elapsed();
 #endif
-        if (((MTexturePixmapItem *)item)->isDirectRendered())
+        if (((MTexturePixmapItem *)item)->isDirectRendered()) {
             ((MTexturePixmapItem *)item)->enableRedirectedRendering();
-        else
+            setWindowDebugProperties(item->window());
+        } else
             item->saveBackingStore(true);
         item->setVisible(true);
         // TODO: don't show the animation if the window is not stacked on top
@@ -2063,7 +2078,11 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
             if (d_item && i) {
                 d_item->setZValue(i->zValue() - 1);
 
-                Window lower = event->window;
+                Window lower, topmost = getTopmostApp();
+                if (topmost)
+                    lower = topmost;
+                else
+                    lower = event->window;
                 setExposeDesktop(false);
 
                 bool needComp = false;
