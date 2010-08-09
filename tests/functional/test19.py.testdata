@@ -1,0 +1,14 @@
+CaseName="initially_iconic_can_be_raised_and_activated"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that initial_state==IconicState windows can be raised/activated.\n
+\n
+- Test steps\n
+\t- show an initial_state==IconicState application window\n
+\t- activate it\n
+\t- check that it's on top\n
+\t- close it\n
+\t- show an initial_state==IconicState application window\n
+\t- raise it\n
+- Post-conditions\n
+\t- check that it's on top\n"
