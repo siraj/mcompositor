@@ -561,8 +561,11 @@ static void grab_pointer_keyboard(Window window)
 static void kill_window(Window window)
 {
     int pid = MCompAtoms::instance()->getPid(window);
-    // negative PID to kill the whole process group
-    if (pid != 0) ::kill(-pid, SIGKILL);
+    if (pid != 0) {
+        // negative PID to kill the whole process group
+        ::kill(-pid, SIGKILL);
+        ::kill(pid, SIGKILL);
+    }
     XKillClient(QX11Info::display(), window);
 }
 
