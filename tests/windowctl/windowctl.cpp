@@ -40,6 +40,15 @@ static void set_fullscreen (Display *dpy, Window w)
                    (unsigned char *) &state_fs, 1);
 }
 
+static void set_support_wm_ping (Display *dpy, Window w)
+{
+  Atom ping_atom = XInternAtom (dpy, "_NET_WM_PING", False);
+  Atom wm_protocols_atom = XInternAtom (dpy, "WM_PROTOCOLS", False);
+  XChangeProperty (dpy, w, wm_protocols_atom,
+                   XA_ATOM, 32, PropModeReplace,
+                   (unsigned char *) &ping_atom, 1);
+}
+
 static void set_modal (Display *dpy, Window w)
 {
   Atom wm_state, state_modal;
@@ -324,7 +333,7 @@ static void wait_for_mapnotify(Display *dpy, Window w)
 static void print_usage_and_exit(QString& stdOut)
 {
 #define PROG "windowctl"
-  stdOut = "Usage 1: " PROG " [afoemksIc](n|d|i|b) [transient for <XID>]\n"
+  stdOut = "Usage 1: " PROG " [afoemksIchp](n|d|i|b) [transient for <XID>]\n"
 	 "a - ARGB (32-bit) window, otherwise 16-bit is used\n"
 	 "f - fullscreen window\n"
 	 "o - override-redirect window\n"
@@ -335,6 +344,7 @@ static void print_usage_and_exit(QString& stdOut)
 	 "I - use initial_state = IconicState in WM_HINTS\n"
 	 "c - set InputHint=False in WM_HINTS\n"
          "h - set _MEEGOTOUCH_DECORATOR_BUTTONS for home and close buttons\n"
+         "p - claim to support the _NET_WM_PING protocol (but don't)\n"
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
@@ -356,8 +366,10 @@ static void print_usage_and_exit(QString& stdOut)
 	 "L - configure the first window beLow the second one\n"
 	 "V - configure the first window aboVe the second one\n"
 	 "G - set the window to window group of the second XID\n"
-	 "Usage 4: " PROG " R t|b|l|r\n"
+	 "Usage 4: " PROG " (R t|b|l|r)|P\n"
 	 "R - rotate Screen.TopEdge to top, bottom, left, or right\n"
+	 "    (requires context-provide)\n"
+	 "P - set the Phone.Call context property to \"active\"\n"
 	 "    (requires context-provide)\n"
 	 "Usage 5: " PROG " K <name>\n"
 	 "K - run 'pkill <name>'\n"
@@ -590,7 +602,7 @@ static bool old_main(QStringList& args, QString& stdOut)
         time_t last_time;
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
-            shaped = 0, initial_iconic = 0, no_focus = 0;
+            shaped = 0, initial_iconic = 0, no_focus = 0, support_ping = 0;
 	WindowType windowtype = TYPE_INVALID;
 
 	if (args.count() < 1 || args.count() > 4) {
@@ -648,6 +660,10 @@ static bool old_main(QStringList& args, QString& stdOut)
                 }
 		if (*p == 'h') {
                         decor_buttons = 1;
+                        continue;
+                }
+		if (*p == 'p') {
+                        support_ping = 1;
                         continue;
                 }
 		if (*p == 'd') {
@@ -724,6 +740,17 @@ static bool old_main(QStringList& args, QString& stdOut)
 			rotate_screen(args.at(1).toAscii().data(), stdOut);
 			return true;
 		}
+		if (*p == 'P') {
+	            if (fork())
+	                return true;
+		    char *args[] = {(char*)"/usr/bin/context-provide",
+			        (char*)"org.freedesktop.ContextKit.Commander",
+				(char*)"string", (char*)"Phone.Call",
+				(char*)"active", NULL};
+		    execve(args[0], args, environ);
+		    stdOut.append("execve() failed!");
+                    return false;
+                }
 		if (*p == 'E') {
 			if (args.count() == 3) {
                                 set_meego_layer(dpy,
@@ -778,6 +805,7 @@ static bool old_main(QStringList& args, QString& stdOut)
         if (decor_buttons) set_decorator_buttons(dpy, w);
         if (shaped) set_shaped(dpy, w);
         if (initial_iconic) set_initial_state_iconic(dpy, w);
+        if (support_ping) set_support_wm_ping(dpy, w);
 
         green_gc = XCreateGC (dpy, w, 0, NULL);
         XParseColor (dpy, colormap, green, &green_col);

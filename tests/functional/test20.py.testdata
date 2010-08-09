@@ -1,0 +1,14 @@
+CaseName="jammed_and_fullscreen_app_during_call_are_decorated"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Check that jammed and (during call) fullscreen apps are decorated.\n
+\n
+- Test steps\n
+\t- show an application window that does not respond to pings\n
+\t- wait for few seconds to make compositor notice it jammed\n
+\t- check that the decorator is on top of it\n
+\t- close it\n
+\t- simulate an ongoing call\n
+\t- show a fullscreen application window\n
+- Post-conditions\n
+\t- check that the decorator is on top of it\n"
