@@ -2383,8 +2383,11 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
     case ClientMessage:
         clientMessageEvent(&event->xclient); break;
     case ButtonRelease:
-    case ButtonPress:
         buttonEvent(&event->xbutton);
+        return false;
+    case ButtonPress:
+        XAllowEvents(QX11Info::display(), ReplayPointer, event->xbutton.time);
+        activateWindow(event->xbutton.window, event->xbutton.time);
         // Qt needs to handle this event for the window frame buttons
         return false;
     case KeyPress:
@@ -2436,7 +2439,6 @@ void MCompositeManagerPrivate::buttonEvent(XButtonEvent* e)
         }
     }
     XAllowEvents(QX11Info::display(), ReplayPointer, e->time);
-    activateWindow(e->window, e->time);
 }
 
 QGraphicsScene *MCompositeManagerPrivate::scene()
