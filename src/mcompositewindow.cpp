@@ -51,6 +51,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       window_obscured(true), // true to synthesize initial visibility event
       is_closing(false),
       is_transitioning(false),
+      pinging_enabled(false),
       win_id(window)
 {
     thumb_mode = false;
@@ -59,8 +60,8 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         pc = 0;
         anim = 0;
         newly_mapped = false;
-        ping_client_timestamp = 0;
-        ping_server_timestamp = 0;
+        sent_ping_timestamp = 0;
+        received_ping_timestamp = 0;
         t_ping = 0;
         window_visible = false;
         return;
@@ -72,7 +73,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     setAcceptHoverEvents(true);
 
     t_ping = new QTimer(this);
-    connect(t_ping, SIGNAL(timeout()), SLOT(pingWindow()));
+    connect(t_ping, SIGNAL(timeout()), SLOT(pingTimeout()));
     
     MCompAtoms* atoms = MCompAtoms::instance(); 
     if (pc->windowType() == MCompAtoms::NORMAL)
@@ -102,12 +103,15 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 
 MCompositeWindow::~MCompositeWindow()
 {
+    if (t_ping) {
+        stopPing();
+        t_ping = 0;
+    }
     if (is_transitioning) {
         // we got destroyed during animation
         --window_transitioning;
         is_transitioning = false;
     }
-    t_ping = 0;
     anim = 0;
     pc = 0;
 }
@@ -415,21 +419,30 @@ void MCompositeWindow::setVisible(bool visible)
 
 void MCompositeWindow::startPing()
 {
+    if (pinging_enabled || !t_ping)
+        // this function can be called repeatedly without extending the timeout
+        return;
+    // startup: send ping now, otherwise it is sent after timeout
+    pinging_enabled = true;
+    pingWindow();
     if (t_ping->isActive())
         t_ping->stop();
     // this could be configurable. But will do for now. Most WMs use 5s delay
-    t_ping->start(5000);
+    t_ping->setSingleShot(false);
+    t_ping->setInterval(5000);
+    t_ping->start();
 }
 
 void MCompositeWindow::stopPing()
 {
-    t_ping->stop();
+    pinging_enabled = false;
+    if (t_ping)
+        t_ping->stop();
 }
 
 void MCompositeWindow::receivedPing(ulong serverTimeStamp)
 {
-    ping_server_timestamp = serverTimeStamp;
-    startPing();
+    received_ping_timestamp = serverTimeStamp;
     process_status = NORMAL;
     if (blurred())
         setBlurred(false);
@@ -437,22 +450,34 @@ void MCompositeWindow::receivedPing(ulong serverTimeStamp)
 
 void MCompositeWindow::pingTimeout()
 {
-    if (ping_server_timestamp != ping_client_timestamp && process_status != HUNG) {
+    if (pinging_enabled && received_ping_timestamp < sent_ping_timestamp
+        && process_status != HUNG) {
         setBlurred(true);
         process_status = HUNG;
         emit windowHung(this);
     }
-}
-
-void MCompositeWindow::setClientTimeStamp(ulong timeStamp)
-{
-    ping_client_timestamp = timeStamp;
+    if (pinging_enabled)
+        // interval timer is still active
+        pingWindow();
 }
 
 void MCompositeWindow::pingWindow()
 {
-    QTimer::singleShot(5000, this, SLOT(pingTimeout()));
-    emit pingTriggered(this);
+    ulong t = QDateTime::currentDateTime().toTime_t();
+    sent_ping_timestamp = t;
+    Window w = window();
+
+    XEvent ev;
+    memset(&ev, 0, sizeof(ev));
+    ev.xclient.type = ClientMessage;
+    ev.xclient.window = w;
+    ev.xclient.message_type = ATOM(WM_PROTOCOLS);
+    ev.xclient.format = 32;
+    ev.xclient.data.l[0] = ATOM(_NET_WM_PING);
+    ev.xclient.data.l[1] = t;
+    ev.xclient.data.l[2] = w;
+
+    XSendEvent(QX11Info::display(), w, False, NoEventMask, &ev);
 }
 
 MCompositeWindow::ProcessStatus MCompositeWindow::status() const

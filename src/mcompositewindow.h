@@ -212,7 +212,6 @@ public:
     void startPing();
     void stopPing();
     void receivedPing(ulong timeStamp);
-    void setClientTimeStamp(ulong timeStamp);
 
     static MCompositeWindow *compositeWindow(Qt::HANDLE window);
 
@@ -310,11 +309,6 @@ signals:
      */
     void windowHung(MCompositeWindow *window);
 
-    /*!
-     * Emitted for every ping signal sent to the window
-     */
-    void pingTriggered(MCompositeWindow *window);
-
     void acceptingInput();
     void visualized(bool);
 
@@ -341,8 +335,8 @@ private:
     qreal scaleto;
     bool scaled;
     int zval;
-    ulong ping_client_timestamp;
-    ulong ping_server_timestamp;
+    ulong sent_ping_timestamp;
+    ulong received_ping_timestamp;
     bool blur;
     bool iconified;
     bool iconified_final;
@@ -356,6 +350,7 @@ private:
     bool newly_mapped;
     bool is_closing;
     bool is_transitioning;
+    bool pinging_enabled;
 
     static int window_transitioning;
 
