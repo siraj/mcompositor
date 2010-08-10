@@ -1,3 +1,9 @@
+mcompositor (0.5.7~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 10 Aug 2010 21:26:27 +0300
+
 mcompositor (0.5.6-1) unstable; urgency=low
 
   * Fixes: NB#183088 - mcompositor is not buildable with cs2009q3 (hardfp) toolchain
