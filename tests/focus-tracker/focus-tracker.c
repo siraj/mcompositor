@@ -110,9 +110,11 @@ get_window_name (Display *dpy, Window w)
 
   wmname = get_utf8_prop(dpy, w, name_atom);
   if (wmname && wmname[0]) return wmname;
+  if (wmname) free(wmname);
 
   wmname = get_str_prop(dpy, w, name_atom2);
   if (wmname && wmname[0]) return wmname;
+  if (wmname) free(wmname);
 
   return NULL;
 }
@@ -122,7 +124,7 @@ dump_window (Display *dpy, Window root, Window w)
 {
   Window parent = get_win_prop(dpy, w, trans_atom);
   char *type = get_atom_prop(dpy, w, win_type_atom);
-  char *wmclass, *name, *s;
+  char *wmclass, *name;
   int free_type = 1;
 
   if (!type || strlen(type) < 2) {
@@ -137,7 +139,7 @@ dump_window (Display *dpy, Window root, Window w)
         wmclass = get_str_prop(dpy, w, class_atom);
 
   name = get_window_name (dpy, w);
-  if ((s = strstr(type, "_NET_WM_WINDOW_")))
+  if (strstr(type, "_NET_WM_WINDOW_"))
     printf ("%07lx %s %-7s %s",
 	  w,
           wmclass,

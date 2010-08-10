@@ -53,16 +53,22 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       is_transitioning(false),
       win_id(window)
 {
+    thumb_mode = false;
     if (!mpc->is_valid) {
         is_valid = false;
         pc = 0;
+        anim = 0;
+        newly_mapped = false;
+        ping_client_timestamp = 0;
+        ping_server_timestamp = 0;
+        t_ping = 0;
+        window_visible = false;
         return;
     } else
         is_valid = true;
     anim = new MCompWindowAnimator(this);
     connect(anim, SIGNAL(transitionDone()),  SLOT(finalizeState()));
     connect(anim, SIGNAL(transitionStart()), SLOT(windowTransitioning()));
-    thumb_mode = false;
     setAcceptHoverEvents(true);
 
     t_ping = new QTimer(this);

@@ -1528,8 +1528,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 active_app = parent;
                 aw = COMPOSITE_WINDOW(parent);
             }
+            fs_app = FULLSCREEN_WINDOW(aw);
         }
-        fs_app = FULLSCREEN_WINDOW(aw);
     }
 
     /* raise active app with its transients, or duihome if
@@ -1839,6 +1839,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         if (windows_as_mapped.indexOf(win) == -1)
             windows_as_mapped.append(win);
         pc = item->propertyCache();
+        if (!pc) return;
     }
     // Compositing is assumed to be enabled at this point if a window
     // has alpha channels
@@ -1846,7 +1847,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         qWarning("mapEvent(): compositing not enabled!");
         return;
     }
-    if (item) {
+    if (item && pc) {
         if (wtype == MCompAtoms::NORMAL)
             pc->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
         else
@@ -1907,7 +1908,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     }
 
 stack_and_return:
-    if ((e->event != QX11Info::appRootWindow()) || !item)
+    if (!pc || (e->event != QX11Info::appRootWindow()) || !item)
         // only handle the MapNotify sent for the root window
         return;
 
@@ -2507,11 +2508,11 @@ void MCompositeManagerPrivate::redirectWindows()
             prop_caches[kids[i]] = p;
             p->setParentWindow(RootWindow(QX11Info::display(), 0));
         } else {
-            free(attr);
-            free(geom);
+            free(attr); attr = 0;
+            free(geom); geom = 0;
         }
-        if (attr->map_state == XCB_MAP_STATE_VIEWABLE &&
-            localwin != kids[i] &&
+        if (attr && attr->map_state == XCB_MAP_STATE_VIEWABLE &&
+            localwin != kids[i] && geom &&
             (geom->width > 1 && geom->height > 1)) {
             MCompositeWindow* window = bindWindow(kids[i]);
             if (window) {

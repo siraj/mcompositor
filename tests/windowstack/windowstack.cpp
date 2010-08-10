@@ -221,8 +221,14 @@ static void print_children(Display *dpy, Window w, int level, QString& stdOut)
 	wmtype = get_atom_prop(dpy, w, win_type_atom);
 	wmstate = get_atom_prop(dpy, w, wm_state_atom);
 	trans_for = get_win_prop(dpy, w, trans_atom);
-	if (!XGetWindowAttributes(dpy, w, &attrs))
+	if (!XGetWindowAttributes(dpy, w, &attrs)) {
+                if (wmname2) free(wmname2);
+                if (wmname) free(wmname);
+                if (wmclass) free(wmclass);
+                if (wmstate) free(wmstate);
+                if (wmtype) free(wmtype);
         	return;
+        }
 
 	if (trans_for)
 		snprintf(buf, 100, "TR_FOR:0x%lx", trans_for);
@@ -256,7 +262,7 @@ static void print_children(Display *dpy, Window w, int level, QString& stdOut)
 	       	    type_i = sizeof ("_NET_WM_WINDOW_TYPE");
 		const int state_i = sizeof ("_NET_WM_STATE");
 		for (i = 1; i < level; ++i)
-			strcat(indent, " ");
+			strncat(indent, " ", 1);
                 long visibility = get_card_prop(dpy, w, visi_atom);
 		if (verbose) {
                   int x2, y2;
@@ -314,6 +320,7 @@ static void print_children(Display *dpy, Window w, int level, QString& stdOut)
 
 	free(wmclass);
 	free(wmname);
+	if (wmname2) free(wmname2);
 	free(wmtype);
 	free(wmstate);
 }

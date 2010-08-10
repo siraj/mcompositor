@@ -80,7 +80,6 @@ void MDecoratorFrame::raise()
 
 void MDecoratorFrame::updateManagedWindowGeometry()
 {
-    this->top_offset = top_offset;
     if (client && client->needDecoration()) {
 #if 0
         Display *dpy = QX11Info::display();

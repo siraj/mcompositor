@@ -59,6 +59,8 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     memset(&req_geom, 0, sizeof(req_geom));
     memset(&home_button_geom, 0, sizeof(home_button_geom));
     memset(&close_button_geom, 0, sizeof(close_button_geom));
+    window_type_atom = 0;
+    memset(&xcb_real_geom_cookie, 0, sizeof(xcb_real_geom_cookie));
 
     if (!wa) {
         attrs = xcb_get_window_attributes_reply(xcb_conn,
@@ -66,6 +68,22 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
         if (!attrs) {
             qWarning("%s: invalid window 0x%lx", __func__, window);
             is_valid = false;
+            memset(&xcb_transient_for_cookie, 0,
+                   sizeof(xcb_transient_for_cookie));
+            memset(&xcb_meego_layer_cookie, 0, sizeof(xcb_meego_layer_cookie));
+            memset(&xcb_is_decorator_cookie, 0, sizeof(xcb_is_decorator_cookie));
+            memset(&xcb_window_type_cookie, 0, sizeof(xcb_window_type_cookie));
+            memset(&xcb_decor_buttons_cookie, 0, sizeof(xcb_decor_buttons_cookie));
+            memset(&xcb_wm_protocols_cookie, 0, sizeof(xcb_wm_protocols_cookie));
+            memset(&xcb_wm_state_cookie, 0, sizeof(xcb_wm_state_cookie));
+            memset(&xcb_wm_hints_cookie, 0, sizeof(xcb_wm_hints_cookie));
+            memset(&xcb_icon_geom_cookie, 0, sizeof(xcb_icon_geom_cookie));
+            memset(&xcb_global_alpha_cookie, 0, sizeof(xcb_global_alpha_cookie));
+            memset(&xcb_video_global_alpha_cookie, 0,
+                   sizeof(xcb_video_global_alpha_cookie));
+            memset(&xcb_net_wm_state_cookie, 0, sizeof(xcb_net_wm_state_cookie));
+            memset(&xcb_pict_formats_cookie, 0, sizeof(xcb_pict_formats_cookie));
+            memset(&xcb_shape_rects_cookie, 0, sizeof(xcb_shape_rects_cookie));
             return;
         }
     } else
