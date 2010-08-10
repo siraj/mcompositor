@@ -155,6 +155,7 @@ public:
     QTimer stacking_timer;
     bool stacking_timeout_check_visibility;
     void dirtyStacking(bool force_visibility_check);
+    void pingTopmost();
 
 signals:
     void inputEnabled();
@@ -163,7 +164,6 @@ signals:
 public slots:
 
     void gotHungWindow(MCompositeWindow *window);
-    void sendPing(MCompositeWindow *window);
     void enableInput();
     void disableInput();
     void enableCompositing(bool forced = false);

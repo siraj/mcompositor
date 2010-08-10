@@ -79,6 +79,7 @@ static KeyCode key = 0;
 static QGraphicsTextItem *launchIndicator = 0;
 
 static Window transient_for(Window window);
+static bool should_be_pinged(MCompositeWindow *cw);
 
 #ifdef WINDOW_DEBUG
 static QTime overhead_measure;
@@ -958,6 +959,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
+        item->stopPing();
         item->setIsMapped(false);
         setWindowState(e->window, IconicState);
         if (item->isVisible() && !item->isClosing())
@@ -1482,6 +1484,28 @@ void MCompositeManagerPrivate::dirtyStacking(bool force_visibility_check)
         stacking_timer.start();
 }
 
+void MCompositeManagerPrivate::pingTopmost()
+{
+    bool found = false, saw_desktop = false;
+    // find out highest application window
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+         MCompositeWindow *cw;
+         Window w = stacking_list.at(i);
+         if (w == stack[DESKTOP_LAYER]) {
+             saw_desktop = true;
+             continue;
+         }
+         if (!(cw = COMPOSITE_WINDOW(w)))
+             continue;
+         if (!found && !saw_desktop && cw->isMapped() && should_be_pinged(cw)) {
+             cw->startPing();
+             found = true;
+             continue;
+         }
+         cw->stopPing();
+    }
+}
+
 #define RAISE_MATCHING(X) { \
     first_moved = 0; \
     for (int i = 0; i < last_i;) { \
@@ -1694,6 +1718,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         prev_only_mapped = QList<Window>(only_mapped);
 
         checkInputFocus(timestamp);
+        if (!device_state->displayOff())
+            pingTopmost();
     }
     if (order_changed || force_visibility_check) {
         static int xres = ScreenOfDisplay(QX11Info::display(),
@@ -1976,8 +2002,6 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             QRectF iconGeometry = i->propertyCache()->iconGeometry();
             i->setPos(iconGeometry.topLeft());
             i->restore(iconGeometry, needComp);
-            if (!device_state->displayOff() && should_be_pinged(i))
-                i->startPing();
         }
         if (fd.frame)
             setWindowState(fd.frame->managedWindow(), NormalState);
@@ -2030,6 +2054,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             kill_window(close_window);
             MDecoratorFrame::instance()->lower();
             removeWindow(close_window);
+            delete i; // it is already removed from hash tables
             return;
         }
     } else if (event->message_type == ATOM(WM_PROTOCOLS)) {
@@ -2283,12 +2308,7 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
         if (!possiblyUnredirectTopmostWindow())
             enableCompositing(false);
         /* start pinging again */
-        for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
-             it != windows.end(); ++it) {
-             MCompositeWindow *i  = it.value();
-             if (should_be_pinged(i))
-                 i->startPing();
-        }
+        pingTopmost();
         dirtyStacking(true);  // VisibilityNotify generation
     }
 }
@@ -2746,9 +2766,6 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
 
     dirtyStacking(false);
 
-    if (!device_state->displayOff() && should_be_pinged(item))
-        item->startPing();
-
     return item;
 }
 
@@ -2773,9 +2790,6 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
     // ping protocol
     connect(item, SIGNAL(windowHung(MCompositeWindow *)),
             SLOT(gotHungWindow(MCompositeWindow *)));
-
-    connect(item, SIGNAL(pingTriggered(MCompositeWindow *)),
-            SLOT(sendPing(MCompositeWindow *)));
 }
 
 void MCompositeManagerPrivate::updateWinList()
@@ -2910,26 +2924,6 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
         MDecoratorFrame::instance()->lower();
     
     compositing = false;
-}
-
-void MCompositeManagerPrivate::sendPing(MCompositeWindow *w)
-{
-    Window window = ((MCompositeWindow *) w)->window();
-    ulong t = QDateTime::currentDateTime().toTime_t();
-    w->setClientTimeStamp(t);
-
-    XEvent ev;
-    memset(&ev, 0, sizeof(ev));
-
-    ev.xclient.type = ClientMessage;
-    ev.xclient.window = window;
-    ev.xclient.message_type = ATOM(WM_PROTOCOLS);
-    ev.xclient.format = 32;
-    ev.xclient.data.l[0] = ATOM(_NET_WM_PING);
-    ev.xclient.data.l[1] = t;
-    ev.xclient.data.l[2] = window;
-
-    XSendEvent(QX11Info::display(), window, False, NoEventMask, &ev);
 }
 
 void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w)

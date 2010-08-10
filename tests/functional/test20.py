@@ -4,7 +4,7 @@
 
 #* Test steps
 #  * show an application window that does not respond to pings
-#  * wait for few seconds to make compositor notice it jammed
+#  * wait for 7 seconds to make compositor notice it jammed
 #  * check that the decorator is on top of it
 #  * close it
 #  * simulate an ongoing call
@@ -36,7 +36,7 @@ if deco_win == 0:
 # create application window that does not respond to pings
 fd = os.popen('windowctl pkn')
 app_win = fd.readline().strip()
-time.sleep(11)
+time.sleep(7)
 
 ret = 0
 fd = os.popen('windowstack m')
