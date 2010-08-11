@@ -440,6 +440,8 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         xcb_decor_buttons_cookie = xcb_get_property(xcb_conn, 0, window,
                                        ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
                                        XCB_ATOM_CARDINAL, 0, 8);
+        // TODO: could be based on a signal
+        return true;
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
         if (!wm_protocols_valid)
             // collect the old reply

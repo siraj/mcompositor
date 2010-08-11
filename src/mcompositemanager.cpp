@@ -73,7 +73,7 @@ Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
 MCompAtoms *MCompAtoms::d = 0;
 static bool hasDock  = false;
 static QRect availScreenRect = QRect();
-static KeyCode key = 0;
+static KeyCode switcher_key = 0;
 
 // temporary launch indicator. will get replaced later
 static QGraphicsTextItem *launchIndicator = 0;
@@ -533,33 +533,6 @@ static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
     return False;
 }
 
-static void grab_pointer_keyboard(Window window)
-{
-    Display* dpy = QX11Info::display();
-    static bool ignored_mod = false;
-    if (!key)
-        key = XKeysymToKeycode(dpy, XStringToKeysym("BackSpace"));
-    
-    XGrabButton(dpy, AnyButton, AnyModifier, window, True,
-                ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-                GrabModeSync, GrabModeSync, None, None);
-    XGrabKey(dpy, key, Mod5Mask, window, True,
-             GrabModeSync, GrabModeSync);
-    
-    if (!ignored_mod) {
-        XkbDescPtr xkb_t;
-        
-        if ((xkb_t = XkbAllocKeyboard()) == NULL)
-            return;
-        
-        if (XkbGetControls(dpy, XkbAllControlsMask, xkb_t) == Success) 
-            XkbSetIgnoreLockMods(dpy, xkb_t->device_spec, Mod5Mask, Mod5Mask, 
-                                 0, 0);    
-        XkbFreeControls(xkb_t, 0, True);
-        ignored_mod = true;
-    }
-}
-
 static void kill_window(Window window)
 {
     int pid = MCompAtoms::instance()->getPid(window);
@@ -600,6 +573,7 @@ static void safe_move(QList<Window>& winlist, int from, int to)
 MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
     : QObject(p),
       prev_focus(0),
+      buttoned_win(0),
       glwidget(0),
       compositing(true),
       stacking_timeout_check_visibility(false)
@@ -652,6 +626,31 @@ void MCompositeManagerPrivate::enableInput()
     emit inputEnabled();
 }
 
+static void setup_key_grabs()
+{
+    Display* dpy = QX11Info::display();
+    static bool ignored_mod = false;
+    if (!switcher_key) {
+        switcher_key = XKeysymToKeycode(dpy, XStringToKeysym("BackSpace"));
+        XGrabKey(dpy, switcher_key, Mod5Mask,
+                 RootWindow(QX11Info::display(), 0), True,
+                 GrabModeSync, GrabModeSync);
+    }
+    
+    if (!ignored_mod) {
+        XkbDescPtr xkb_t;
+        
+        if ((xkb_t = XkbAllocKeyboard()) == NULL)
+            return;
+        
+        if (XkbGetControls(dpy, XkbAllControlsMask, xkb_t) == Success) 
+            XkbSetIgnoreLockMods(dpy, xkb_t->device_spec, Mod5Mask, Mod5Mask, 
+                                 0, 0);    
+        XkbFreeControls(xkb_t, 0, True);
+        ignored_mod = true;
+    }
+}
+
 void MCompositeManagerPrivate::prepare()
 {
     MDecoratorFrame::instance();
@@ -672,7 +671,7 @@ void MCompositeManagerPrivate::prepare()
                     XInternAtom(QX11Info::display(), "UTF8_STRING", 0), 8,
                     PropModeReplace, (unsigned char *) wm_name.toUtf8().data(),
                     wm_name.size());
-
+    setup_key_grabs();
 
     Xutf8SetWMProperties(QX11Info::display(), w, "MCompositor",
                          "MCompositor", NULL, 0, NULL, NULL,
@@ -688,6 +687,22 @@ void MCompositeManagerPrivate::prepare()
     enableInput();
 
     XDamageQueryExtension(QX11Info::display(), &damage_event, &damage_error);
+
+    // create InputOnly windows for close and Home button handling
+    close_button_win = XCreateWindow(QX11Info::display(),
+                                     RootWindow(QX11Info::display(), 0),
+                                     -1, -1, 1, 1, 0, CopyFromParent,
+                                     InputOnly, CopyFromParent, 0, 0);
+    XSelectInput(QX11Info::display(), close_button_win,
+                 ButtonReleaseMask | ButtonPressMask);
+    XMapWindow(QX11Info::display(), close_button_win);
+    home_button_win = XCreateWindow(QX11Info::display(),
+                                    RootWindow(QX11Info::display(), 0),
+                                    -1, -1, 1, 1, 0, CopyFromParent,
+                                    InputOnly, CopyFromParent, 0, 0);
+    XSelectInput(QX11Info::display(), home_button_win,
+                 ButtonReleaseMask | ButtonPressMask);
+    XMapWindow(QX11Info::display(), home_button_win);
 }
 
 bool MCompositeManagerPrivate::needDecoration(Window window,
@@ -1029,7 +1044,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 
 void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
 {
-    if (e->window == xoverlay || e->window == localwin)
+    if (e->window == xoverlay || e->window == localwin
+        || e->window == close_button_win || e->window == home_button_win)
         return;
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
@@ -1508,6 +1524,43 @@ void MCompositeManagerPrivate::pingTopmost()
     }
 }
 
+// TODO: make this know when the property changed, to avoid X calls
+void MCompositeManagerPrivate::setupButtonWindows(MCompositeWindow *topmost)
+{
+    bool home_set = false, close_set = false;
+    if (topmost) {
+        XWindowChanges wc = {0, 0, 0, 0, 0, topmost->window(), Above};
+        int mask = CWX | CWY | CWWidth | CWHeight | CWSibling | CWStackMode;
+        const QRect &h = topmost->propertyCache()->homeButtonGeometry();
+        if (h.width() > 1 && h.height() > 1) {
+            wc.x = h.x(); wc.y = h.y();
+            wc.width = h.width(); wc.height = h.height();
+            XConfigureWindow(QX11Info::display(), home_button_win, mask, &wc);
+            home_button_geom = h;
+            home_set = true;
+        }
+        const QRect &c = topmost->propertyCache()->closeButtonGeometry();
+        if (c.width() > 1 && c.height() > 1) {
+            wc.x = c.x(); wc.y = c.y();
+            wc.width = c.width(); wc.height = c.height();
+            XConfigureWindow(QX11Info::display(), close_button_win, mask, &wc);
+            close_button_geom = c;
+            close_set = true;
+        }
+    }
+    if ((home_set || close_set) && topmost) {
+        buttoned_win = topmost->window();
+        if (!home_set)
+            XLowerWindow(QX11Info::display(), home_button_win);
+        if (!close_set)
+            XLowerWindow(QX11Info::display(), close_button_win);
+    } else if (buttoned_win) {
+        buttoned_win = 0;
+        XLowerWindow(QX11Info::display(), close_button_win);
+        XLowerWindow(QX11Info::display(), home_button_win);
+    }
+}
+
 #define RAISE_MATCHING(X) { \
     first_moved = 0; \
     for (int i = 0; i < last_i;) { \
@@ -1723,6 +1776,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         if (!device_state->displayOff())
             pingTopmost();
     }
+    // possibly set up InputOnly windows for close and home buttons
+    setupButtonWindows(topmost);
     if (order_changed || force_visibility_check) {
         static int xres = ScreenOfDisplay(QX11Info::display(),
                                    DefaultScreen(QX11Info::display()))->width;
@@ -1799,7 +1854,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         enableRedirection();
         return;
     }
-    if (win == localwin || win == localwin_parent)
+    if (win == localwin || win == localwin_parent || win == close_button_win
+        || win == home_button_win)
         return;
 
     MWindowPropertyCache *wpc;
@@ -1898,8 +1954,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             item->setNewlyMapped(false);
         goto stack_and_return;
     }
-
-    grab_pointer_keyboard(win);
 
     // only composite top-level windows
     if ((wpc->parentWindow() == RootWindow(QX11Info::display(), 0))
@@ -2452,33 +2506,35 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
 
 void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
 {    
-    if (e->state & Mod5Mask && e->keycode == key)
+    if (e->state & Mod5Mask && e->keycode == switcher_key)
         exposeSwitcher();
 }
 
 void MCompositeManagerPrivate::buttonEvent(XButtonEvent* e)
 {   
-    MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
-    if (cw) {
-        int ev_x = e->x;
-        int ev_y = e->y;
-        QRect h = cw->propertyCache()->homeButtonGeometry();
-        if (h.x() <= ev_x && h.y() <= ev_y && h.y() + h.height() >= ev_y
-            && h.x() + h.width() >= ev_x)
-            exposeSwitcher();
-        QRect c = cw->propertyCache()->closeButtonGeometry();
-        if (c.x() <= ev_x && c.y() <= ev_y && c.y() + c.height() >= ev_y
-            && c.x() + c.width() >= ev_x) {
-            XClientMessageEvent ev;
-            memset(&ev, 0, sizeof(ev));
-            ev.type = ClientMessage;
-            ev.window = cw->window();
-            ev.message_type = ATOM(_NET_CLOSE_WINDOW);
-            rootMessageEvent(&ev);
-        }
+    if (e->type == ButtonRelease && e->window == home_button_win
+        && e->x >= 0 && e->y >= 0 && e->x <= home_button_geom.width()
+        && e->y <= home_button_geom.height())
+        exposeSwitcher();
+    else if (e->type == ButtonRelease && buttoned_win
+             && e->window == close_button_win && e->x >= 0 && e->y >= 0
+             && e->x <= close_button_geom.width()
+             && e->y <= close_button_geom.height()) {
+        XClientMessageEvent ev;
+        memset(&ev, 0, sizeof(ev));
+        ev.type = ClientMessage;
+        ev.window = buttoned_win;
+        ev.message_type = ATOM(_NET_CLOSE_WINDOW);
+        rootMessageEvent(&ev);
     }
-    XAllowEvents(QX11Info::display(), ReplayPointer, e->time);
-    activateWindow(e->window, e->time);
+    if (buttoned_win) {
+        XButtonEvent ev = *e;
+        // synthetise the event to the application below
+        ev.window = buttoned_win;
+        XSendEvent(QX11Info::display(), buttoned_win, False,
+                   e->type == ButtonPress ? ButtonPressMask
+                                          : ButtonReleaseMask, (XEvent*)&ev);
+    }
 }
 
 QGraphicsScene *MCompositeManagerPrivate::scene()
@@ -2538,9 +2594,6 @@ void MCompositeManagerPrivate::redirectWindows()
             if (window) {
                 window->setNewlyMapped(false);
                 window->setVisible(true);
-                if (kids[i] == localwin || kids[i] == localwin_parent)
-                    continue;
-                grab_pointer_keyboard(kids[i]);
             }
         }
     }
@@ -2677,8 +2730,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
     Display *display = QX11Info::display();
 
     // no need for StructureNotifyMask because of root's SubstructureNotifyMask
-    XSelectInput(display, window, PropertyChangeMask | ButtonPressMask | 
-                 KeyPressMask | KeyReleaseMask);
+    XSelectInput(display, window, PropertyChangeMask);
     XShapeSelectInput(display, window, ShapeNotifyMask);
     XCompositeRedirectWindow(display, window, CompositeRedirectManual);
 
