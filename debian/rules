@@ -115,7 +115,7 @@ binary-arch: build install
 #	dh_installinfo
 #	dh_installman
 	dh_link
-	dh_strip --dbg-package=mcompositor
+	dh_strip --dbg-package=mcompositor-dbg
 	dh_compress
 	dh_fixperms
 #	dh_perl
