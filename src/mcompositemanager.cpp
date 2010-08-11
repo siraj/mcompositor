@@ -233,9 +233,10 @@ QVector<Atom> MCompAtoms::getAtomArray(Window w, Atom array_atom)
     int result = XGetWindowProperty(QX11Info::display(), w, array_atom, 0, 0,
                                     False, XA_ATOM, &actual, &format,
                                     &n, &left, &data);
-    if (result == Success && actual == XA_ATOM && format == 32) {
+    if (data && result == Success && actual == XA_ATOM && format == 32) {
         ret.resize(left / 4);
-        if (data) XFree((void *) data);
+        XFree((void *) data);
+        data = 0;
         
         if (XGetWindowProperty(QX11Info::display(), w, array_atom, 0,
                                ret.size(), False, XA_ATOM, &actual, &format,
@@ -1204,7 +1205,8 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
             XConfigureWindow(QX11Info::display(), e->window, value_mask, &wc);
         }
         // store configure request for handling it at window mapping time
-        QList<XConfigureRequestEvent*> l = configure_reqs.value(e->window);
+        QList<XConfigureRequestEvent*> def;
+        QList<XConfigureRequestEvent*> l = configure_reqs.value(e->window, def);
         XConfigureRequestEvent *e_copy =
                 (XConfigureRequestEvent*)malloc(sizeof(*e));
         memcpy(e_copy, e, sizeof(*e));
