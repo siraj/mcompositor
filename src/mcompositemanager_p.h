@@ -106,6 +106,7 @@ public:
     Window getTopmostApp(int *index_in_stacking_list = 0,
                          Window ignore_window = 0);
     Window getLastVisibleParent(MWindowPropertyCache *pc);
+    void setupButtonWindows(MCompositeWindow *topmost);
 
     bool possiblyUnredirectTopmostWindow();
     bool isRedirected(Window window);
@@ -121,6 +122,8 @@ public:
     Window localwin, localwin_parent;
     Window xoverlay;
     Window prev_focus;
+    Window close_button_win, home_button_win, buttoned_win;
+    QRect home_button_geom, close_button_geom;
 
     static Window stack[TOTAL_LAYERS];
 
