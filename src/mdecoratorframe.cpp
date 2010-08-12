@@ -173,21 +173,13 @@ void MDecoratorFrame::visualizeDecorator(bool visible)
 
 void MDecoratorFrame::setDecoratorAvailableRect(const QRect& decorect)
 {    
-    if (!client || no_resize)
+    if (!client || no_resize || !decorator_item
+        || !decorator_item->propertyCache())
         return;
     
     Display* dpy = QX11Info::display();
     
-    // cache this. we need actual positon of decorator window
-    static int actual_decor_ypos = 0;
-    if (!actual_decor_ypos) {
-        XWindowAttributes a;
-        if (!XGetWindowAttributes(dpy, decorator_window, &a)) {
-            qWarning("%s: invalid window 0x%lx", __func__, decorator_window);
-            return;
-        }
-        actual_decor_ypos = a.y;
-    }        
+    int actual_decor_ypos = decorator_item->propertyCache()->realGeometry().y();
 
     decorator_rect = decorect;    
 
