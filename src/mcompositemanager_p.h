@@ -170,8 +170,11 @@ public slots:
     void disableCompositing(ForcingLevel forced = NO_FORCED);
     void showLaunchIndicator(int timeout);
     void hideLaunchIndicator();
-    void iconifyOnLower(MCompositeWindow *window);
-    void raiseOnRestore(MCompositeWindow *window);
+
+    void lowerHandler(MCompositeWindow *window);
+    void restoreHandler(MCompositeWindow *window);
+    void closeHandler(MCompositeWindow *window);
+    
     void onDesktopActivated(MCompositeWindow*);
     void exposeDesktop();
     void enablePaintedCompositing();

@@ -22,6 +22,7 @@
 #include "mcompositemanager.h"
 #include "mcompositemanager_p.h"
 #include "mtexturepixmapitem.h"
+#include "mdecoratorframe.h"
 
 #include <QX11Info>
 #include <QGraphicsScene>
@@ -46,12 +47,12 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       iconified_final(false),
       iconify_state(NoIconifyState),
       destroyed(false),
-      process_status(NORMAL),
+      window_status(Normal),
       need_decor(false),
       window_obscured(true), // true to synthesize initial visibility event
-      is_closing(false),
       is_transitioning(false),
       pinging_enabled(false),
+      dimmed_effect(false),
       win_id(window)
 {
     thumb_mode = false;
@@ -91,6 +92,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     // or it's corresponding thumbnail rendered by the switcher
     bool is_app = isAppWindow();
     window_visible = !is_app;
+    setVisible(window_visible);
     newly_mapped = is_app;
 
     if (fadeRect.isEmpty()) {
@@ -113,7 +115,12 @@ MCompositeWindow::~MCompositeWindow()
         is_transitioning = false;
     }
     anim = 0;
-    pc = 0;
+    
+    if (pc) {
+        MCompositeManager *p = (MCompositeManager *) qApp;
+        p->d->prop_caches.remove(window());
+        pc->deleteLater();
+    }    
 }
 
 void MCompositeWindow::setBlurred(bool b)
@@ -160,6 +167,9 @@ void MCompositeWindow::setThumbMode(bool mode)
  */
 void MCompositeWindow::iconify(const QRectF &iconGeometry, bool defer)
 {
+    if (window_status != MCompositeWindow::Closing)
+        window_status = MCompositeWindow::Minimizing;
+
     this->iconGeometry = iconGeometry;
     if (!iconified)
         origPosition = pos();
@@ -241,13 +251,14 @@ void MCompositeWindow::restore(const QRectF &iconGeometry, bool defer)
     }
 }
 
-void MCompositeWindow::fadeIn()
+void MCompositeWindow::showWindow()
 {
     // defer putting this window in the _NET_CLIENT_LIST
     // only after animation is done to prevent the switcher from rendering it
     if (!isAppWindow())
         return;
     
+    findBehindWindow();
     if (!is_transitioning) {
         ++window_transitioning;
         is_transitioning = true;
@@ -274,22 +285,26 @@ void MCompositeWindow::q_fadeIn()
     newly_mapped = true;
 }
 
-void MCompositeWindow::fadeOut()
+void MCompositeWindow::closeWindow()
 {
     if (!isAppWindow()) {
         setVisible(false);
+        emit windowClosed(this);
         return;
     }
+    window_status = MCompositeWindow::Closing;
     
     MCompositeManager *p = (MCompositeManager *) qApp;
     bool defer = false;
+    setVisible(true);
     if (!p->isCompositing()) {
-        p->enableCompositing();
+        p->d->enableCompositing(true);
         defer = true;
     }
     
     updateWindowPixmap();
-    iconify(fadeRect, defer);
+    origPosition = pos();
+    iconify(iconGeometry, defer);
 }
 
 void MCompositeWindow::deleteLater()
@@ -321,12 +336,18 @@ void MCompositeWindow::finalizeState()
         hide();
         iconify_state = TransitionIconifyState;
         emit itemIconified(this);
+        if (isClosing()) {
+            emit windowClosed(this);
+            QTimer::singleShot(200, this, SLOT(deleteLater()));
+            return;
+        }
     } else {
         iconify_state = NoIconifyState;
         iconified_final = false;
         show();
         QTimer::singleShot(200, this, SLOT(q_itemRestored()));
     }
+    window_status = Normal;
 
     // item lifetime
     if (destroyed)
@@ -403,9 +424,10 @@ void MCompositeWindow::manipulationEnabled(bool isEnabled)
 
 void MCompositeWindow::setVisible(bool visible)
 {
-    if (visible && newly_mapped && isAppWindow())
+    if ((visible  && newly_mapped && isAppWindow()) ||
+        (!visible && is_transitioning)) 
         return;
-
+    
     // Set the iconification status as well
     iconified_final = !visible;
     if (visible != window_visible)
@@ -443,7 +465,9 @@ void MCompositeWindow::stopPing()
 void MCompositeWindow::receivedPing(ulong serverTimeStamp)
 {
     received_ping_timestamp = serverTimeStamp;
-    process_status = NORMAL;
+    
+    if (window_status != Minimizing || window_status != Closing)
+        window_status = Normal;
     if (blurred())
         setBlurred(false);
 }
@@ -451,9 +475,11 @@ void MCompositeWindow::receivedPing(ulong serverTimeStamp)
 void MCompositeWindow::pingTimeout()
 {
     if (pinging_enabled && received_ping_timestamp < sent_ping_timestamp
-        && process_status != HUNG) {
+        && window_status != Hung) {
         setBlurred(true);
-        process_status = HUNG;
+        
+        if (window_status != Minimizing || window_status != Closing)
+            window_status = Hung;
         emit windowHung(this);
     }
     if (pinging_enabled)
@@ -480,9 +506,9 @@ void MCompositeWindow::pingWindow()
     XSendEvent(QX11Info::display(), w, False, NoEventMask, &ev);
 }
 
-MCompositeWindow::ProcessStatus MCompositeWindow::status() const
+MCompositeWindow::WindowStatus MCompositeWindow::status() const
 {
-    return process_status;
+    return window_status;
 }
 
 bool MCompositeWindow::needDecoration() const
@@ -526,13 +552,32 @@ QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant 
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
     bool zvalChanged = (change == ItemZValueHasChanged);
-    if (zvalChanged)
+    if (zvalChanged) {
+        findBehindWindow();
         p->d->setWindowDebugProperties(window());
-
+    }
+    
     if (zvalChanged || change == ItemVisibleHasChanged || change == ItemParentHasChanged)
         p->d->glwidget->update();
 
     return QGraphicsItem::itemChange(change, value);
+}
+
+void MCompositeWindow::findBehindWindow()
+{
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    int behind_i = indexInStack() - 1;
+    if (behind_i >= 0 && behind_i < p->d->stacking_list.size()) {
+        MCompositeWindow* w = MCompositeWindow::compositeWindow(p->d->stacking_list.at(behind_i));
+        if (w->propertyCache()->windowState() == NormalState 
+            && w->propertyCache()->isMapped()
+            && !w->propertyCache()->isDecorator()) 
+            behind_window = w;
+        else if (w->propertyCache()->isDecorator() && MDecoratorFrame::instance()->managedClient())
+            behind_window = MDecoratorFrame::instance()->managedClient();
+        else
+            behind_window = MCompositeWindow::compositeWindow(p->d->stack[DESKTOP_LAYER]);
+    }
 }
 
 void MCompositeWindow::update()

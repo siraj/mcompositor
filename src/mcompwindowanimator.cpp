@@ -36,7 +36,6 @@ MCompWindowAnimator::MCompWindowAnimator(MCompositeWindow *item)
       deferred_animation(false)
 {
     this->item = item;
-    timer.setCurveShape(QTimeLine::EaseInCurve);
     timer.setFrameRange(0, 2000);
     timer.setUpdateInterval(int(1000.0 / Fps));
 
@@ -73,6 +72,9 @@ void MCompWindowAnimator::restore()
 // item transition
 void MCompWindowAnimator::advanceFrame(qreal step)
 {
+#define OPAQUE 1.0
+#define DIMMED 0.1
+
     //item->setTransform(QTransform(anim.matrixAt(step)) );
     item->setTransform(matrix);
 
@@ -80,10 +82,19 @@ void MCompWindowAnimator::advanceFrame(qreal step)
                 anim.verticalScaleAt(step));
     item->setPos(anim.posAt(step));
 
+    qreal opac_norm = interpolate(step, OPAQUE, DIMMED);
+    qreal opac_rev = interpolate(step, DIMMED, OPAQUE);
+    
     // TODO: move calculation to GPU to imrpove speed
-    item->setOpacity(!reversed ? interpolate(step, 1.0, 0.1) :
-                     interpolate(step, 0.1, 1.0));
-
+    // TODO: Use QPropertyAnimation instead
+    ((MCompositeWindow*)item)->setDimmedEffect(false);
+    item->setOpacity(!reversed ? opac_norm : opac_rev);
+    MCompositeWindow* behind = ((MCompositeWindow*)item)->behind();
+    if (behind) {
+        behind->setDimmedEffect(true);
+        behind->setOpacity(!reversed ? opac_rev : opac_norm);
+    }
+    
     MCompositeManager *p = (MCompositeManager *) qApp;
     p->d->glwidget->update();
 }
@@ -97,11 +108,15 @@ void MCompWindowAnimator::translateScale(qreal fromSx, qreal fromSy,
     reversed = reverse;
 
     if (!reverse) {
+        timer.setCurveShape(QTimeLine::EaseInCurve);
+        
         anim.setScaleAt(0, fromSx, fromSy);
         anim.setScaleAt(1.0, toSx, toSy);
         anim.setPosAt(0, item->pos());
         anim.setPosAt(1.0, newPos);
     } else {
+        timer.setCurveShape(QTimeLine::EaseOutCurve);
+        
         if (item->transform().m22() == 1.0 && item->transform().m11() == 1.0)
             item->scale(toSx, toSy);
 

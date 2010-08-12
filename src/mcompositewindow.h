@@ -22,6 +22,7 @@
 
 #include <QGraphicsItem>
 #include <QtOpenGL>
+#include <QPointer>
 #include <X11/Xutil.h>
 #include "mcompatoms_p.h"
 #include "mwindowpropertycache.h"
@@ -42,10 +43,12 @@ class MCompositeWindow: public QObject, public QGraphicsItem
 #endif
 
 public:
-
-    enum ProcessStatus {
-        NORMAL = 0,
-        HUNG
+    
+    enum WindowStatus {
+        Normal = 0,
+        Hung,
+        Minimizing,
+        Closing
     };
     enum IconifyState {
         NoIconifyState = 0,
@@ -204,9 +207,9 @@ public:
     bool wantsFocus();
 
     /*!
-     * Returns if window is hung or not.
+     * Returns a WindowStatus enum of the current state of the window
      */
-    ProcessStatus status() const;
+    WindowStatus status() const;
 
     // For _NET_WM_PING abstraction
     void startPing();
@@ -265,8 +268,7 @@ public:
      */
     bool isAppWindow(bool include_transients = false);
 
-    void setClosing(bool closing) { is_closing = closing; }
-    bool isClosing() const { return is_closing; }
+    bool isClosing() const { return window_status == Closing; }
 
     MWindowPropertyCache *propertyCache() const { return pc; }
     
@@ -279,6 +281,16 @@ public:
      * Returns the index of this window in the stacking list
      */
     int indexInStack() const;
+    
+    /*!
+     * Returns whatever window is directly behind this window. 0 if there is none.
+     */
+    MCompositeWindow* behind() const { return behind_window; }
+    
+    /*! Disabled alpha-blending for a dim-effect instead */
+    void setDimmedEffect(bool dimmed) { dimmed_effect = dimmed; }
+    
+    bool dimmedEffect() const { return dimmed_effect; }
 
 public slots:
 
@@ -286,9 +298,11 @@ public slots:
     void manipulationEnabled(bool isEnabled);
     void setUnBlurred();
     void setBlurred(bool);
-    void fadeIn();
-    void fadeOut();
-
+    
+    /* Operations with transition animations*/
+    void closeWindow();
+    void showWindow();
+    
 private slots:
 
     /*! Called internally to update how this item looks when the transitions
@@ -302,7 +316,7 @@ private slots:
     void q_delayShow();
     void q_itemRestored();
     void q_fadeIn();
-
+    
 signals:
     /*!
      * Emitted if this window is hung
@@ -318,6 +332,8 @@ signals:
     void itemIconified(MCompositeWindow *window);
     /*! Emitted when desktop is raised */
     void desktopActivated(MCompositeWindow *window);
+    /*! Emitted when this window is closed   */
+    void windowClosed(MCompositeWindow *window);
 
 protected:
 
@@ -328,7 +344,10 @@ protected:
     virtual QPainterPath shape() const;
     
 private:
-    MWindowPropertyCache *pc;
+    void findBehindWindow();
+
+    QPointer<MWindowPropertyCache> pc;
+    QPointer<MCompositeWindow> behind_window;
     bool thumb_mode;
     MCompWindowAnimator *anim;
     qreal scalefrom;
@@ -342,7 +361,7 @@ private:
     bool iconified_final;
     IconifyState iconify_state;
     bool destroyed;
-    ProcessStatus process_status;
+    WindowStatus window_status;
     bool need_decor;
     bool window_visible;
     bool window_obscured;
@@ -351,6 +370,7 @@ private:
     bool is_closing;
     bool is_transitioning;
     bool pinging_enabled;
+    bool dimmed_effect;
 
     static int window_transitioning;
 

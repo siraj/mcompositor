@@ -31,7 +31,7 @@
 /*!
  * This is a class for caching window property values for a window.
  */
-class MWindowPropertyCache
+class MWindowPropertyCache: public QObject
 {
 public:
 

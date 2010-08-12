@@ -329,10 +329,10 @@ void MTexturePixmapItem::paint(QPainter *painter,
     if (!d->ctx)
         d->ctx = const_cast<QGLContext *>(gl->context());
 
-    if (propertyCache()->hasAlpha() || opacity() < 1.0f) {
+    if (propertyCache()->hasAlpha() || (opacity() < 1.0f && !dimmedEffect()) ) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    }
+    } 
     glBindTexture(GL_TEXTURE_2D, d->custom_tfp ? d->ctextureId : d->textureId);
 
     const QRegion &shape = propertyCache()->shapeRegion();

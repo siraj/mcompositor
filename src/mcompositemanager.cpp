@@ -332,6 +332,45 @@ Atom MCompAtoms::getAtom(Window w, Atoms atomtype)
     return 0;
 }
 
+class MapRequesterPrivate: public QObject
+{
+    Q_OBJECT
+public:
+    static MapRequesterPrivate* instance(QObject* parent = 0)
+    {
+        if (!d)
+            d = new MapRequesterPrivate(parent);
+        return d;
+    }
+    
+    void requestMap(Window window)
+    {
+        if ( !((MCompositeManager *) qApp)->isCompositing() )
+            map_requests.push_back(window);
+        else
+            XMapWindow(QX11Info::display(), window);
+    }
+
+public slots:
+    void grantMapRequests()
+    {
+        while (!map_requests.isEmpty()) {
+            Window w = map_requests.takeLast();
+            XMapWindow(QX11Info::display(), w);
+        }
+    }
+    
+private:
+    QList<Window> map_requests;
+    explicit MapRequesterPrivate(QObject* parent = 0)
+        :QObject(parent)
+    {}
+    
+    static MapRequesterPrivate *d;
+};
+
+MapRequesterPrivate* MapRequesterPrivate::d = 0;
+
 static Window transient_for(Window window)
 {
     Window transient_for = 0;
@@ -617,6 +656,9 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
             this, SLOT(callOngoing(bool)));
     stacking_timer.setSingleShot(true);
     connect(&stacking_timer, SIGNAL(timeout()), this, SLOT(stackingTimeout()));
+    connect(this, SIGNAL(compositingEnabled()), MapRequesterPrivate::instance(this),
+            SLOT(grantMapRequests()));
+
 }
 
 MCompositeManagerPrivate::~MCompositeManagerPrivate()
@@ -767,7 +809,8 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
-        item->deleteLater();
+        if (!item->isClosing())
+            item->deleteLater();
         if (!removeWindow(e->window))
             qWarning("destroyEvent(): Error removing window");
     } else {
@@ -779,7 +822,8 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
             delete fd.frame;
         }
     }
-    if (prop_caches.contains(e->window)) {
+    
+    if (prop_caches.contains(e->window) && (!item || (item && !item->isClosing()))) {
         delete prop_caches.value(e->window);
         prop_caches.remove(e->window);
     }
@@ -854,7 +898,7 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated()
         MWindowPropertyCache *pc;
         if (cw && cw->isMapped() && (pc = cw->propertyCache()) &&
             !pc->isOverrideRedirect() &&
-            (cw->needDecoration() || cw->status() == MCompositeWindow::HUNG
+            (cw->needDecoration() || cw->status() == MCompositeWindow::Hung
              || (FULLSCREEN_WINDOW(cw) &&
                  pc->windowTypeAtom() != ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE)
                  && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
@@ -892,19 +936,11 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
             break;
         }
     }
-    // check if we have a window that is about to map, because that should
-    // affect the decision
-    bool being_mapped = false;
-    for (QHash<Window, MWindowPropertyCache*>::iterator it = prop_caches.begin();
-            it != prop_caches.end(); ++it) {
-        MWindowPropertyCache *pc = it.value();
-        if (pc->beingMapped()) {
-            being_mapped = true;
-            break;
-        }
-    }
-    if (!being_mapped && top && cw &&
-        !MCompositeWindow::hasTransitioningWindow()) {
+    
+    // compositing is always assumed when a window gets mapped because of our
+    // MapRequester class
+    
+    if (top && cw && !MCompositeWindow::hasTransitioningWindow()) {
         // unredirect the chosen window and any docks and OR windows above it
         // TODO: what else should be unredirected?
         if (!((MTexturePixmapItem *)cw)->isDirectRendered()) {
@@ -979,7 +1015,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
                 positionWindow(MDecoratorFrame::instance()->winId(),
                                STACK_BOTTOM);
             } else {
-                if (cw->status() == MCompositeWindow::HUNG) {
+                if (cw->status() == MCompositeWindow::Hung) {
                     MDecoratorFrame::instance()->setManagedWindow(cw, true);
                     MDecoratorFrame::instance()->setOnlyStatusbar(false);
                 } else if (FULLSCREEN_WINDOW(cw) && device_state->ongoingCall()) {
@@ -1056,7 +1092,7 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
                 MDecoratorFrame::instance()->decoratorItem() &&
                 MDecoratorFrame::instance()->managedWindow() == e->window) {
                 if (FULLSCREEN_WINDOW(item) &&
-                    item->status() != MCompositeWindow::HUNG) {
+                    item->status() != MCompositeWindow::Hung) {
                     // ongoing call case
                     MDecoratorFrame::instance()->setManagedWindow(item, true);
                     MDecoratorFrame::instance()->setOnlyStatusbar(true);
@@ -1281,7 +1317,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         MDecoratorFrame::instance()->setManagedWindow(0);
         MCompositeWindow *cw;
         if ((cw = getHighestDecorated())) {
-            if (cw->status() == MCompositeWindow::HUNG) {
+            if (cw->status() == MCompositeWindow::Hung) {
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
             } else if (FULLSCREEN_WINDOW(cw) && device_state->ongoingCall()) {
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
@@ -1308,7 +1344,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
         if (MDecoratorFrame::instance()->decoratorItem()) {
             enableCompositing();
-            XMapWindow(QX11Info::display(), e->window);
+            MapRequesterPrivate::instance()->requestMap(e->window);
             // initially visualize decorator item so selective compositing
             // checks won't disable compositing
             MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
@@ -1353,8 +1389,8 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
             XReparentWindow(QX11Info::display(), e->window,
                             frame->windowArea(), 0, 0);
-            setWindowState(e->window, NormalState);
-            XMapWindow(QX11Info::display(), e->window);
+            setWindowState(e->window, NormalState);     
+            MapRequesterPrivate::instance()->requestMap(e->window);
             frame->show();
 
             XSync(QX11Info::display(), False);
@@ -1365,7 +1401,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             setWindowState(e->window, IconicState);
         else
             setWindowState(e->window, NormalState);
-        XMapWindow(QX11Info::display(), e->window);
+        MapRequesterPrivate::instance()->requestMap(e->window);
     }
 }
 
@@ -1593,7 +1629,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                                         == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
     else if (active_app && aw && deco->decoratorItem() &&
                deco->managedWindow() == active_app &&
-               (fs_app || aw->status() == MCompositeWindow::HUNG)) {
+               (fs_app || aw->status() == MCompositeWindow::Hung)) {
         // no dock => decorator starts from (0,0)
         XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
     }
@@ -1654,7 +1690,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     if (highest_d && highest_d == topmost && deco->decoratorItem()
         && deco->managedWindow() == highest_d->window()
         && (!FULLSCREEN_WINDOW(highest_d)
-            || highest_d->status() == MCompositeWindow::HUNG
+            || highest_d->status() == MCompositeWindow::Hung
             || device_state->ongoingCall())) {
         Window deco_w = deco->decoratorItem()->window();
         int deco_i = stacking_list.indexOf(deco_w);
@@ -1681,7 +1717,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
          MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
          if (witem && witem->isMapped() &&
              !witem->propertyCache()->isOverrideRedirect()
-             && !witem->isNewlyMapped())
+             && !witem->isNewlyMapped() && !witem->isClosing())
              only_mapped.append(stacking_list.at(i));
     }
     static QList<Window> prev_only_mapped;
@@ -1786,7 +1822,7 @@ void MCompositeManagerPrivate::stackingTimeout()
 {
     checkStacking(stacking_timeout_check_visibility);
     stacking_timeout_check_visibility = false;
-    if (!device_state->displayOff() && !possiblyUnredirectTopmostWindow())
+    if (!device_state->displayOff() && !possiblyUnredirectTopmostWindow()) 
         enableCompositing(true);
 }
 
@@ -1889,13 +1925,14 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             setWindowDebugProperties(item->window());
         } else
             item->saveBackingStore(true);
-        item->setVisible(true);
         // TODO: don't show the animation if the window is not stacked on top
         const XWMHints &h = pc->getWMHints();
         if (!(h.flags & StateHint) || h.initial_state != IconicState)
-            item->fadeIn();
-        else
+            item->showWindow();
+        else {
+            item->setVisible(true);
             item->setNewlyMapped(false);
+        }
         goto stack_and_return;
     }
 
@@ -1916,7 +1953,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         const XWMHints &h = pc->getWMHints();
         if ((!(h.flags & StateHint) || h.initial_state != IconicState)
             && item->isAppWindow())
-            item->fadeIn();
+            item->showWindow();
         else {
             item->setVisible(true);
             item->setNewlyMapped(false);
@@ -2027,45 +2064,18 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             // use composition due to the transition effect
             activateWindow(event->window, CurrentTime, false);
     } else if (event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
-        Window close_window = event->window;
-        if (i) {
-            i->setClosing(true);
-            i->fadeOut();
-        }
-        bool delete_sent = false;
-        if (i && (i->propertyCache()->supportedProtocols().indexOf(
-                                                                   ATOM(WM_DELETE_WINDOW)) != -1) && i->status() == MCompositeWindow::NORMAL) {
-            // send WM_DELETE_WINDOW message to the window that needs to close
-            XEvent ev;
-            memset(&ev, 0, sizeof(ev));
-
-            ev.xclient.type = ClientMessage;
-            ev.xclient.window = close_window;
-            ev.xclient.message_type = ATOM(WM_PROTOCOLS);
-            ev.xclient.format = 32;
-            ev.xclient.data.l[0] = ATOM(WM_DELETE_WINDOW);
-            ev.xclient.data.l[1] = CurrentTime;
-
-            XSendEvent(QX11Info::display(), close_window, False,
-                       NoEventMask, &ev);
-            // FIXME: we should check if desktop is exposed or not
-            setExposeDesktop(true);
-            delete_sent = true;
-        }
-        if (i && (!delete_sent || i->status() == MCompositeWindow::HUNG)) {
-            kill_window(close_window);
-            MDecoratorFrame::instance()->lower();
-            removeWindow(close_window);
-            delete i; // it is already removed from hash tables
-            return;
-        }
+        
+        i->closeWindow();
+        // update stacking lit to remove window from switcher
+        checkStacking(false);
+        
     } else if (event->message_type == ATOM(WM_PROTOCOLS)) {
         if (event->data.l[0] == (long) ATOM(_NET_WM_PING)) {
             MCompositeWindow *ping_source = COMPOSITE_WINDOW(event->data.l[2]);
             if (ping_source) {
-                bool was_hung = ping_source->status() == MCompositeWindow::HUNG;
+                bool was_hung = ping_source->status() == MCompositeWindow::Hung;
                 ping_source->receivedPing(event->data.l[1]);
-                Q_ASSERT(ping_source->status() != MCompositeWindow::HUNG);
+                Q_ASSERT(ping_source->status() != MCompositeWindow::Hung);
                 Window managed = MDecoratorFrame::instance()->managedWindow();
                 if (was_hung && ping_source->window() == managed
                     && !ping_source->needDecoration()) {
@@ -2103,7 +2113,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
 
             MCompositeWindow *i = COMPOSITE_WINDOW(event->window);
             MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
-            if (d_item && i) {
+            if (d_item && i && i->status() != MCompositeWindow::Minimizing) {
                 d_item->setZValue(i->zValue() - 1);
 
                 Window lower, topmost = getTopmostApp();
@@ -2161,7 +2171,37 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
     rootMessageEvent(event);
 }
 
-void MCompositeManagerPrivate::iconifyOnLower(MCompositeWindow *window)
+void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
+{    
+    bool delete_sent = false;
+    if ((window->propertyCache()->supportedProtocols().indexOf(
+                                                               ATOM(WM_DELETE_WINDOW)) != -1) && window->status() == MCompositeWindow::Normal) {
+        // send WM_DELETE_WINDOW message to the window that needs to close
+        XEvent ev;
+        memset(&ev, 0, sizeof(ev));
+        
+        ev.xclient.type = ClientMessage;
+        ev.xclient.window = window->window();
+        ev.xclient.message_type = ATOM(WM_PROTOCOLS);
+        ev.xclient.format = 32;
+        ev.xclient.data.l[0] = ATOM(WM_DELETE_WINDOW);
+        ev.xclient.data.l[1] = CurrentTime;
+        
+        XSendEvent(QX11Info::display(), window->window(), False,
+                   NoEventMask, &ev);
+        // FIXME: we should check if desktop is exposed or not
+        setExposeDesktop(true);
+        delete_sent = true;
+    }
+    
+    if ((!delete_sent || window->status() == MCompositeWindow::Hung)) {
+        kill_window(window->window());
+        MDecoratorFrame::instance()->lower();
+        removeWindow(window->window());
+    }
+}
+
+void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
 {
     if (window->iconifyState() != MCompositeWindow::TransitionIconifyState)
         return;
@@ -2187,7 +2227,7 @@ void MCompositeManagerPrivate::iconifyOnLower(MCompositeWindow *window)
     }
 }
 
-void MCompositeManagerPrivate::raiseOnRestore(MCompositeWindow *window)
+void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
 {
     Window last = getLastVisibleParent(window->propertyCache());
     MCompositeWindow *to_stack;
@@ -2262,16 +2302,16 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         // move it to the correct position in the stack
         positionWindow(to_stack->window(), STACK_TOP);
         // possibly set decorator
-        if (cw == getHighestDecorated() || cw->status() == MCompositeWindow::HUNG) {
+        if (cw == getHighestDecorated() || cw->status() == MCompositeWindow::Hung) {
             if (FULLSCREEN_WINDOW(cw)) {
                 // fullscreen window has decorator above it during ongoing call
                 // and when it's jammed
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
-                if (cw->status() == MCompositeWindow::HUNG)
+                if (cw->status() == MCompositeWindow::Hung)
                     MDecoratorFrame::instance()->setOnlyStatusbar(false);
                 else
                     MDecoratorFrame::instance()->setOnlyStatusbar(true);
-            } else if (cw->status() == MCompositeWindow::HUNG) {
+            } else if (cw->status() == MCompositeWindow::Hung) {
                 MDecoratorFrame::instance()->setManagedWindow(cw, true);
                 MDecoratorFrame::instance()->setOnlyStatusbar(false);
             } else {
@@ -2575,10 +2615,8 @@ bool MCompositeManagerPrivate::isRedirected(Window w)
 
 bool MCompositeManagerPrivate::removeWindow(Window w)
 {
-    // remove it from MCompositeScene or we may try to paint it and crash
-    MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-    if (cw)
-        watch->removeItem(cw);
+    // Item is already removed from scene when it is deleted
+
     bool ret = true;
     windows_as_mapped.removeAll(w);
     if (windows.remove(w) == 0)
@@ -2784,8 +2822,10 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
 
     connect(item, SIGNAL(itemIconified(MCompositeWindow *)), SLOT(exposeDesktop()));
     connect(this, SIGNAL(compositingEnabled()), item, SLOT(startTransition()));
-    connect(item, SIGNAL(itemRestored(MCompositeWindow *)), SLOT(raiseOnRestore(MCompositeWindow *)));
-    connect(item, SIGNAL(itemIconified(MCompositeWindow *)), SLOT(iconifyOnLower(MCompositeWindow *)));
+    connect(item, SIGNAL(itemRestored(MCompositeWindow *)), SLOT(restoreHandler(MCompositeWindow *)));
+    connect(item, SIGNAL(itemIconified(MCompositeWindow *)), SLOT(lowerHandler(MCompositeWindow *)));
+    connect(item, SIGNAL(windowClosed(MCompositeWindow *)), SLOT(closeHandler(MCompositeWindow *)));
+
 
     // ping protocol
     connect(item, SIGNAL(windowHung(MCompositeWindow *)),
@@ -3072,3 +3112,5 @@ bool MCompositeManager::isCompositing()
 {
     return d->compositing;
 }
+
+#include "mcompositemanager.moc"
