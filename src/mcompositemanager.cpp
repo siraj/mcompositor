@@ -2117,7 +2117,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         } else
             // use composition due to the transition effect
             activateWindow(event->window, CurrentTime, false);
-    } else if (event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
+    } else if (i && event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
         
         i->closeWindow();
         // update stacking lit to remove window from switcher
