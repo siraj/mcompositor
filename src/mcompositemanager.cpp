@@ -3005,8 +3005,12 @@ void MCompositeManagerPrivate::exposeSwitcher()
     for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
          it != windows.end(); ++it) {
         MCompositeWindow *i  = it.value();
-        if (!i->isAppWindow() ||
+        if (!i->isAppWindow(true) ||
             i->propertyCache()->windowState() == IconicState ||
+            // skip devicelock and screenlock windows
+            i->propertyCache()->meegoStackingLayer() == 1 ||
+            i->propertyCache()->meegoStackingLayer() == 2 ||
+
             i->propertyCache()->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
             continue;
         
