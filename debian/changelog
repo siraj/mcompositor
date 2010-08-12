@@ -4,6 +4,7 @@ mcompositor (0.5.7~1) unstable; urgency=low
   * Fixes: NB#181749 - Window animations feel 'cheap' compared to Fremantle
   * Fixes: NB#184017 - Window minimizes or closes on press
   * Fixes: NB#184549 - Device lock can be bypassed by pressing Fn+Backspace
+  * Fixes: NB#184522 - Compositor is packaged with debug symbols	
   * Improvements: Avoid XGetWindowAttributes call in MDecoratorFrame by using the cache
   * Imrpovements: MapRequesterPrivate class for syncrhonized mapping in selective compositing	
 
