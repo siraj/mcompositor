@@ -21,7 +21,7 @@ Description: MeeGo Touch UI Compositing Window Manager debug symbols
 
 Package: mcompositor-functional-tests
 Architecture: any
-Depends: libmeegotouchcore0, ci-testing, meego-env-dimming, meego-env-behave, python, ${shlibs:Depends}
+Depends: libmeegotouchcore0, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils, ${shlibs:Depends}
 XB-Maemo-CI-Packages:  mcompositor
 XB-Maemo-CI-Stage: fast
 Description: mcompositor functional testcases

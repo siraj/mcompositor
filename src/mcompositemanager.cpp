@@ -345,7 +345,10 @@ public:
     
     void requestMap(Window window)
     {
-        if ( !((MCompositeManager *) qApp)->isCompositing() )
+        if (!((MCompositeManager *) qApp)->isCompositing()
+            // if something is already queueing, add to the queue, otherwise
+            // the mapping order goes wrong
+            || !map_requests.isEmpty())
             map_requests.push_back(window);
         else
             XMapWindow(QX11Info::display(), window);
@@ -355,7 +358,8 @@ public slots:
     void grantMapRequests()
     {
         while (!map_requests.isEmpty()) {
-            Window w = map_requests.takeLast();
+            // first come first served
+            Window w = map_requests.takeFirst();
             XMapWindow(QX11Info::display(), w);
         }
     }
