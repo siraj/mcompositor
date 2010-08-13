@@ -156,7 +156,7 @@ MCompAtoms::MCompAtoms()
 #endif
     };
 
-    Q_ASSERT(sizeof(atom_names) == ATOMS_TOTAL);
+    Q_ASSERT((sizeof(atom_names) / sizeof(atom_names[0])) == ATOMS_TOTAL);
 
     dpy = QX11Info::display();
 
