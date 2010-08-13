@@ -32,8 +32,9 @@ QGenericArgument unmarshall(const char*name, const void* data)
 }
 
 MRmiServerPrivate::MRmiServerPrivate(const QString& key)
-        : q_ptr(0), _key(key), _obj(0)
+        : q_ptr(0), _obj(0)
 {
+    _key = "/tmp/" + key;
 }
 
 MRmiServerPrivate::~MRmiServerPrivate()
@@ -72,11 +73,12 @@ void MRmiServerPrivateSocket::exportObject(QObject* p)
 
     q->connect(&_serv, SIGNAL(newConnection()), q, SLOT(_q_incoming()));
 
-    if (QFile::exists("/tmp/" + key()))
-        QFile::remove("/tmp/" + key());
+    if (QFile::exists(key()))
+        QFile::remove(key());
 
     if (!_serv.listen(key()))
-        qDebug() << "MRmiServerPrivateSocket" << "system error, can't listen to local socket";
+        qDebug() << "MRmiServerPrivateSocket" << "can't listen to local socket"
+                 << key();
 }
 
 void MRmiServerPrivateSocket::_q_incoming()

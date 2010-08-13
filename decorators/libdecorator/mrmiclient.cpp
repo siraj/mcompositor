@@ -22,8 +22,9 @@
 #include <QByteArray>
 
 MRmiClientPrivate:: MRmiClientPrivate(const QString& key)
-        : q_ptr(0), _key(key)
+        : q_ptr(0)
 {
+    _key = "/tmp/" + key;
 }
 
 MRmiClientPrivate::~MRmiClientPrivate()
