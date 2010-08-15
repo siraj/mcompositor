@@ -170,10 +170,10 @@ void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
     if (window_status != MCompositeWindow::Closing)
         window_status = MCompositeWindow::Minimizing;
 
-    if (iconGeometry.isEmpty())
+    if (icongeometry.isEmpty())
         this->iconGeometry = fadeRect;
     else
-        this->iconGeometry = iconGeometry;
+        this->iconGeometry = icongeometry;
     if (!iconified)
         origPosition = pos();
 
@@ -235,9 +235,12 @@ void MCompositeWindow::startTransition()
 }
 
 // TODO: have an option of disabling the animation
-void MCompositeWindow::restore(const QRectF &iconGeometry, bool defer)
+void MCompositeWindow::restore(const QRectF &icongeometry, bool defer)
 {
-    this->iconGeometry = iconGeometry;
+    if (icongeometry.isEmpty())
+        this->iconGeometry = fadeRect;
+    else
+        this->iconGeometry = icongeometry;
     // horizontal and vert. scaling factors
     qreal sx = iconGeometry.width() / boundingRect().width();
     qreal sy = iconGeometry.height() / boundingRect().height();
