@@ -165,12 +165,15 @@ void MCompositeWindow::setThumbMode(bool mode)
 /* This is a delayed animation. Actual animation is triggered
  * when startTransition() is called
  */
-void MCompositeWindow::iconify(const QRectF &iconGeometry, bool defer)
+void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
 {
     if (window_status != MCompositeWindow::Closing)
         window_status = MCompositeWindow::Minimizing;
 
-    this->iconGeometry = iconGeometry;
+    if (iconGeometry.isEmpty())
+        this->iconGeometry = fadeRect;
+    else
+        this->iconGeometry = iconGeometry;
     if (!iconified)
         origPosition = pos();
 
