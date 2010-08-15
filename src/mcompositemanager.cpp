@@ -2233,7 +2233,7 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
 {    
     bool delete_sent = false;
     if ((window->propertyCache()->supportedProtocols().indexOf(
-                                                               ATOM(WM_DELETE_WINDOW)) != -1) && window->status() == MCompositeWindow::Normal) {
+                                                               ATOM(WM_DELETE_WINDOW)) != -1) && window->status() != MCompositeWindow::Hung) {
         // send WM_DELETE_WINDOW message to the window that needs to close
         XEvent ev;
         memset(&ev, 0, sizeof(ev));

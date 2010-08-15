@@ -298,6 +298,12 @@ void MCompositeWindow::closeWindow()
         emit windowClosed(this);
         return;
     }
+    if (window_status == MCompositeWindow::Hung) {
+        hide();
+        emit windowClosed(this);
+        QTimer::singleShot(200, this, SLOT(deleteLater()));
+        return;
+    }
     window_status = MCompositeWindow::Closing;
     
     MCompositeManager *p = (MCompositeManager *) qApp;
