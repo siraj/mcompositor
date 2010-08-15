@@ -45,6 +45,7 @@ MCompWindowAnimator::MCompWindowAnimator(MCompositeWindow *item)
     //anim.setTimeLine(&timer);
     connect(&timer, SIGNAL(valueChanged(qreal)), SLOT(advanceFrame(qreal)));
     connect(&timer, SIGNAL(finished()), SIGNAL(transitionDone()));
+    connect(&timer, SIGNAL(finished()), SLOT(resetState()));
 }
 
 // restore original global state w/ animation
@@ -97,6 +98,14 @@ void MCompWindowAnimator::advanceFrame(qreal step)
     
     MCompositeManager *p = (MCompositeManager *) qApp;
     p->d->glwidget->update();
+}
+
+void MCompWindowAnimator::resetState()
+{
+    MCompositeWindow* behind = ((MCompositeWindow*)item)->behind();
+    if (behind) {
+        behind->setOpacity(1.0); 
+    }
 }
 
 // translate item + scale

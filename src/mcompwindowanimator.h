@@ -86,6 +86,9 @@ public slots:
      */
     void advanceFrame(qreal step);
 
+private slots:
+    void resetState();
+
 signals:
     void transitionDone();
     void transitionStart();
