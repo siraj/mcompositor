@@ -863,6 +863,14 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
                 enableCompositing(false);
         }
     }
+#ifdef GLES2_VERSION
+    // global alpha events here. TODO: property cache class could handle this
+    // but it is straightforward to manipulate it from here
+    if (pc && e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA))
+        set_alpha_onplane(0, pc->globalAlpha());
+    if (pc && e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA))
+        set_alpha_onplane(1, pc->videoGlobalAlpha());
+#endif
 }
 
 Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
@@ -2097,8 +2105,15 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         if (i && i->propertyCache()->windowState() == IconicState) {
             i->setZValue(windows.size() + 1);
             QRectF iconGeometry = i->propertyCache()->iconGeometry();
-            i->setPos(iconGeometry.topLeft());
             i->restore(iconGeometry, needComp);
+#ifdef GLES2_VERSION
+            int g_alpha = i->propertyCache()->globalAlpha();
+            if (g_alpha < 255)
+                set_alpha_onplane(0, g_alpha);
+            int v_alpha = i->propertyCache()->videoGlobalAlpha();
+            if (v_alpha < 255)
+                set_alpha_onplane(1, v_alpha);
+#endif
         }
         if (fd.frame)
             setWindowState(fd.frame->managedWindow(), NormalState);
@@ -2283,6 +2298,11 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
         positionWindow(stack[DESKTOP_LAYER], STACK_TOP);
         dirtyStacking(false);
     }
+#ifdef GLES2_VERSION
+    // Reset the global alpha on minimize
+    set_alpha_onplane(0, 255);
+    set_alpha_onplane(1, 255);
+#endif
 }
 
 void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)

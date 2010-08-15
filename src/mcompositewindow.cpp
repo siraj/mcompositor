@@ -241,6 +241,7 @@ void MCompositeWindow::restore(const QRectF &icongeometry, bool defer)
         this->iconGeometry = fadeRect;
     else
         this->iconGeometry = icongeometry;
+    setPos(iconGeometry.topLeft());
     // horizontal and vert. scaling factors
     qreal sx = iconGeometry.width() / boundingRect().width();
     qreal sy = iconGeometry.height() / boundingRect().height();
