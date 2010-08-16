@@ -27,8 +27,8 @@ def check_focus(w):
   fd = os.popen('focus-tracker -o')
   s = fd.read(5000)
   for l in s.splitlines():
-    m = re.search('(?<=^Focused  )[0-9a-f]+', l.strip()).group(0)
-    if m and ('0x%s' % m) == w:
+    m = re.search('(?<=^Focused )0x[0-9a-f]+', l.strip()).group(0)
+    if m == w:
       correct = 1
       break
   if correct == 0:

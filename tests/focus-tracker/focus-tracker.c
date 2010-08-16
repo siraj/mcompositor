@@ -140,13 +140,13 @@ dump_window (Display *dpy, Window root, Window w)
 
   name = get_window_name (dpy, w);
   if (strstr(type, "_NET_WM_WINDOW_"))
-    printf ("%07lx %s %-7s %s",
+    printf ("0x%lx %s %-7s %s",
 	  w,
           wmclass,
           type + strlen("_NET_WM_WINDOW_"),
 	  !name ? "(no name)" : name);
   else
-    printf ("%07lx %s %-7s %s",
+    printf ("0x%lx %s %-7s %s",
 	  w,
           wmclass,
           type,
@@ -158,7 +158,7 @@ dump_window (Display *dpy, Window root, Window w)
 
   if (parent) {
     name = get_window_name (dpy, parent);
-    printf (" (tr. to %07lx %s)",
+    printf (" (tr. to 0x%lx %s)",
 	    parent,
 	    !name ? "(no name)" : name);
     free(name);
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
 
                 XGetInputFocus(dpy, &focused, &reverted_to);
                 if (focused != old_focused) {
-                        printf("Focused  ");
+                        printf("Focused ");
                         dump_window(dpy, root, focused);
                         if (one_shot) return 0;
                 }

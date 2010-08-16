@@ -939,6 +939,11 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated()
 // stacking order sensitive logic
 bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 {
+    static const QRegion fs_r(0, 0,
+                    ScreenOfDisplay(QX11Info::display(),
+                        DefaultScreen(QX11Info::display()))->width,
+                    ScreenOfDisplay(QX11Info::display(),
+                        DefaultScreen(QX11Info::display()))->height);
     bool ret = false;
     Window top = 0;
     int win_i = -1;
@@ -954,7 +959,9 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         }
         if (cw->isMapped() && (cw->propertyCache()->hasAlpha()
                                || cw->needDecoration()
-                               || cw->propertyCache()->isDecorator()))
+                               || cw->propertyCache()->isDecorator()
+            // FIXME: implement direct rendering for shaped windows
+            || !fs_r.subtracted(cw->propertyCache()->shapeRegion()).isEmpty()))
             // this window prevents direct rendering
             return false;
         if (cw->isMapped() && cw->isAppWindow(true)) {

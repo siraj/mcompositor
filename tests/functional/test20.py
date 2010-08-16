@@ -57,7 +57,7 @@ time.sleep(1)
 
 # simulate a phone call
 fd = os.popen('windowctl P')
-time.sleep(1)
+time.sleep(3)
 
 # create a fullscreen application window
 fd = os.popen('windowctl fn')
