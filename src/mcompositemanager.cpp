@@ -2436,8 +2436,8 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
             enableCompositing(false);
         /* start pinging again */
         pingTopmost();
-        dirtyStacking(true);  // VisibilityNotify generation
     }
+    dirtyStacking(true);  // VisibilityNotify generation
 }
 
 void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
