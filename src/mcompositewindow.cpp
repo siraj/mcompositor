@@ -91,8 +91,11 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     // We initially prevent item visibility from compositor itself
     // or it's corresponding thumbnail rendered by the switcher
     bool is_app = isAppWindow();
-    window_visible = !is_app;
-    setVisible(window_visible);
+    if (!pc->isInputOnly()) {
+        // never paint InputOnly windows
+        window_visible = !is_app;
+        setVisible(window_visible);
+    }
     newly_mapped = is_app;
 
     if (fadeRect.isEmpty()) {
@@ -437,7 +440,7 @@ void MCompositeWindow::manipulationEnabled(bool isEnabled)
 
 void MCompositeWindow::setVisible(bool visible)
 {
-    if ((visible  && newly_mapped && isAppWindow()) ||
+    if (pc->isInputOnly() || (visible && newly_mapped && isAppWindow()) ||
         (!visible && is_transitioning)) 
         return;
     

@@ -126,7 +126,7 @@ void MTexturePixmapItem::init()
         qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
                  __func__);
         return;
-    } else if (!isValid()) 
+    } else if (!isValid() || propertyCache()->isInputOnly())
         return;
     
     if (!d->eglresource)
@@ -281,7 +281,8 @@ void MTexturePixmapItem::cleanup()
 
 void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
 {
-    if (hasTransitioningWindow() || d->direct_fb_render || !windowVisible())
+    if (hasTransitioningWindow() || d->direct_fb_render || !windowVisible()
+        || propertyCache()->isInputOnly())
         return;
 
     QRegion r;

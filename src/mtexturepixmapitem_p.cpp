@@ -248,14 +248,15 @@ void MTexturePixmapPrivate::damageTracking(bool enabled)
         damage_object = NULL;
     }
 
-    if (enabled && !damage_object)
+    if (enabled && !damage_object && !item->propertyCache()->isInputOnly())
         damage_object = XDamageCreate(QX11Info::display(), window,
                                       XDamageReportNonEmpty); 
 }
 
 void MTexturePixmapPrivate::saveBackingStore(bool renew)
 {
-    if (item->propertyCache()->is_valid && !item->propertyCache()->isMapped())
+    if ((item->propertyCache()->is_valid && !item->propertyCache()->isMapped())
+        || item->propertyCache()->isInputOnly())
         return;
 
     if (windowp)

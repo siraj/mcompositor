@@ -261,6 +261,9 @@ bool MWindowPropertyCache::hasAlpha()
 const QRegion &MWindowPropertyCache::shapeRegion()
 {
     if (!is_valid || shape_rects_valid) {
+        if (!shape_region.isEmpty() && isInputOnly())
+            // InputOnly window obstructs nothing
+            shape_region = QRegion(0, 0, 0, 0);
         if (shape_region.isEmpty())
             shape_region = QRegion(realGeometry());
         return shape_region;
