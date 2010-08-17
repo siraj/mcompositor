@@ -144,6 +144,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_VIDEO_ALPHA",
         "_MEEGO_STACKING_LAYER",
         "_MEEGOTOUCH_DECORATOR_BUTTONS",
+        "_MEEGOTOUCH_CURRENT_APP_WINDOW",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
@@ -1618,6 +1619,17 @@ void MCompositeManagerPrivate::setupButtonWindows(MCompositeWindow *topmost)
     }
 }
 
+void MCompositeManagerPrivate::setCurrentApp(Window w)
+{
+    static Window prev = (Window)-1;
+    if (prev == w)
+        return;
+    XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
+                    ATOM(_MEEGOTOUCH_CURRENT_APP_WINDOW),
+                    XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
+    prev = w;
+}
+
 #define RAISE_MATCHING(X) { \
     first_moved = 0; \
     for (int i = 0; i < last_i;) { \
@@ -1645,7 +1657,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         }
         stacking_timer.stop();
     }
-    Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved;
+    Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved,
+           set_as_current_app = 0;
     int last_i = stacking_list.size() - 1;    
     bool desktop_up = false, fs_app = false;
     int app_i = -1;
@@ -1653,10 +1666,13 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     MCompositeWindow *aw = 0;
 
     active_app = getTopmostApp(&app_i);
-    if (!active_app || app_i < 0)
+    if (!active_app || app_i < 0) {
         desktop_up = true;
-    else {
+        if (duihome)
+            set_as_current_app = duihome;
+    } else {
         aw = COMPOSITE_WINDOW(active_app);
+        set_as_current_app = active_app;
         if (aw) {
             // getTopmostApp() can return a transient now
             Window parent = getLastVisibleParent(aw->propertyCache());
@@ -1892,6 +1908,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 setWindowState(cw->window(), NormalState);
         }
     }
+    setCurrentApp(set_as_current_app);
 }
 
 void MCompositeManagerPrivate::stackingTimeout()
