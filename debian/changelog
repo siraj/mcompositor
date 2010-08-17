@@ -1,3 +1,9 @@
+mcompositor (0.5.8~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 17 Aug 2010 14:31:42 +0300
+
 mcompositor (0.5.7-1) unstable; urgency=low
 
   * Fixes: NB#181749 - Window animations feel 'cheap' compared to Fremantle
