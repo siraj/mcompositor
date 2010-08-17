@@ -267,13 +267,13 @@ static int error_handler (Display *dpy, XErrorEvent *err)
 
 static Window create_window(Display *dpy, int width, int height,
 		            int argb, int fullscreen, Colormap *colormap,
-			    int override)
+			    int override, int input_only)
 {
 	Window w;
         XSetWindowAttributes attrs;
 	int attr_mask = CWOverrideRedirect;
         attrs.override_redirect = override ? True : False;
-        if (argb) {
+        if (argb && !input_only) {
           /* use ARGB window */
           Visual *visual;
 
@@ -290,9 +290,13 @@ static Window create_window(Display *dpy, int width, int height,
         } else {
 	  attrs.background_pixel = BlackPixel (dpy, 0);
           w = XCreateWindow(dpy, DefaultRootWindow (dpy), 0, 0,
-                            width, height, 0, CopyFromParent, InputOutput,
+                            width, height, 0, input_only ? 0 : CopyFromParent,
+                            input_only ? InputOnly : InputOutput,
                             CopyFromParent,
-                            attr_mask | CWBackPixel, &attrs);
+                            input_only ? 0 : (attr_mask | CWBackPixel),
+                            input_only ? 0 : &attrs);
+          if (input_only && override)
+              XChangeWindowAttributes(dpy, w, CWOverrideRedirect, &attrs);
 	  *colormap = DefaultColormap (dpy, 0);
         }
 	if (fullscreen)
@@ -333,7 +337,7 @@ static void wait_for_mapnotify(Display *dpy, Window w)
 static void print_usage_and_exit(QString& stdOut)
 {
 #define PROG "windowctl"
-  stdOut = "Usage 1: " PROG " [afoemksIchp](n|d|i|b) [transient for <XID>]\n"
+  stdOut = "Usage 1: " PROG " [afoemksIchpl](n|d|i|b) [transient for <XID>]\n"
 	 "a - ARGB (32-bit) window, otherwise 16-bit is used\n"
 	 "f - fullscreen window\n"
 	 "o - override-redirect window\n"
@@ -345,6 +349,7 @@ static void print_usage_and_exit(QString& stdOut)
 	 "c - set InputHint=False in WM_HINTS\n"
          "h - set _MEEGOTOUCH_DECORATOR_BUTTONS for home and close buttons\n"
          "p - claim to support the _NET_WM_PING protocol (but don't)\n"
+         "l - use InputOnly window class\n"
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
@@ -602,7 +607,8 @@ static bool old_main(QStringList& args, QString& stdOut)
         time_t last_time;
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
-            shaped = 0, initial_iconic = 0, no_focus = 0, support_ping = 0;
+            shaped = 0, initial_iconic = 0, no_focus = 0, support_ping = 0,
+            input_only = 0;
 	WindowType windowtype = TYPE_INVALID;
 
 	if (args.count() < 1 || args.count() > 4) {
@@ -664,6 +670,10 @@ static bool old_main(QStringList& args, QString& stdOut)
                 }
 		if (*p == 'p') {
                         support_ping = 1;
+                        continue;
+                }
+		if (*p == 'l') {
+                        input_only = 1;
                         continue;
                 }
 		if (*p == 'd') {
@@ -780,7 +790,7 @@ static bool old_main(QStringList& args, QString& stdOut)
 	}
 
 	w = create_window (dpy, WIN_W * 2 / 3, WIN_H * 2 / 3, argb, fullscreen,
-                           &colormap, override_redirect);
+                           &colormap, override_redirect, input_only);
 	/* print XID of the window */
 	{
 		char buf[20];

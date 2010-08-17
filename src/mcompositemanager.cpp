@@ -144,6 +144,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_VIDEO_ALPHA",
         "_MEEGO_STACKING_LAYER",
         "_MEEGOTOUCH_DECORATOR_BUTTONS",
+        "_MEEGOTOUCH_CURRENT_APP_WINDOW",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
@@ -755,6 +756,8 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
                                               MWindowPropertyCache *pc)
 {
     bool fs;
+    if (pc && pc->isInputOnly())
+        return false;
     if (!pc)
         fs = atom->hasState(window, ATOM(_NET_WM_STATE_FULLSCREEN));
     else
@@ -779,7 +782,7 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
     else if (!pc) {
         XWindowAttributes a;
         if (!XGetWindowAttributes(QX11Info::display(), window, &a)
-            || a.override_redirect)
+            || a.override_redirect || a.c_class == InputOnly)
             return false;
     }
     MCompAtoms::Type t;
@@ -950,7 +953,7 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
     MCompositeWindow *cw = 0;
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);
-        if (!(cw = COMPOSITE_WINDOW(w)))
+        if (!(cw = COMPOSITE_WINDOW(w)) || cw->propertyCache()->isInputOnly())
             continue;
         if (w == stack[DESKTOP_LAYER]) {
             top = w;
@@ -1616,6 +1619,17 @@ void MCompositeManagerPrivate::setupButtonWindows(MCompositeWindow *topmost)
     }
 }
 
+void MCompositeManagerPrivate::setCurrentApp(Window w)
+{
+    static Window prev = (Window)-1;
+    if (prev == w)
+        return;
+    XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
+                    ATOM(_MEEGOTOUCH_CURRENT_APP_WINDOW),
+                    XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
+    prev = w;
+}
+
 #define RAISE_MATCHING(X) { \
     first_moved = 0; \
     for (int i = 0; i < last_i;) { \
@@ -1643,7 +1657,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         }
         stacking_timer.stop();
     }
-    Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved;
+    Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved,
+           set_as_current_app = 0;
     int last_i = stacking_list.size() - 1;    
     bool desktop_up = false, fs_app = false;
     int app_i = -1;
@@ -1651,10 +1666,13 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     MCompositeWindow *aw = 0;
 
     active_app = getTopmostApp(&app_i);
-    if (!active_app || app_i < 0)
+    if (!active_app || app_i < 0) {
         desktop_up = true;
-    else {
+        if (duihome)
+            set_as_current_app = duihome;
+    } else {
         aw = COMPOSITE_WINDOW(active_app);
+        set_as_current_app = active_app;
         if (aw) {
             // getTopmostApp() can return a transient now
             Window parent = getLastVisibleParent(aw->propertyCache());
@@ -1788,8 +1806,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     for (int i = 0; i <= last_i; ++i) {
          MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
          if (witem && witem->isMapped() &&
-             !witem->propertyCache()->isOverrideRedirect()
-             && !witem->isNewlyMapped() && !witem->isClosing())
+             !witem->isNewlyMapped() && !witem->isClosing())
              only_mapped.append(stacking_list.at(i));
     }
     static QList<Window> prev_only_mapped;
@@ -1811,12 +1828,13 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         XRestackWindows(QX11Info::display(), reverse.toVector().data(),
                         reverse.size());
 
-        // decorator is not included to the property
+        // decorator and OR windows are not included to the property
         QList<Window> no_decors = only_mapped;
         for (int i = 0; i <= last_i; ++i) {
              MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
              if (witem && witem->isMapped() &&
-                 witem->propertyCache()->isDecorator()) 
+                 (witem->propertyCache()->isOverrideRedirect()
+                  || witem->propertyCache()->isDecorator()))
                  no_decors.removeOne(stacking_list.at(i));
         }
         XChangeProperty(QX11Info::display(),
@@ -1890,6 +1908,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 setWindowState(cw->window(), NormalState);
         }
     }
+    setCurrentApp(set_as_current_app);
 }
 
 void MCompositeManagerPrivate::stackingTimeout()
@@ -2002,7 +2021,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             item->saveBackingStore(true);
         // TODO: don't show the animation if the window is not stacked on top
         const XWMHints &h = pc->getWMHints();
-        if (!(h.flags & StateHint) || h.initial_state != IconicState)
+        if ((!(h.flags & StateHint) || h.initial_state != IconicState)
+            && !pc->isInputOnly())
             item->showWindow();
         else {
             item->setVisible(true);
@@ -2025,7 +2045,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
 #endif
         const XWMHints &h = pc->getWMHints();
         if ((!(h.flags & StateHint) || h.initial_state != IconicState)
-            && item->isAppWindow())
+            && !pc->isInputOnly() && item->isAppWindow())
             item->showWindow();
         else {
             item->setVisible(true);

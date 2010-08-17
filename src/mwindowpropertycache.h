@@ -171,6 +171,11 @@ public:
             return false;
         return attrs->override_redirect;
     }
+    bool isInputOnly() const {
+        if (!is_valid || !attrs)
+            return false;
+        return attrs->_class == XCB_WINDOW_CLASS_INPUT_ONLY;
+    }
 
     const XWMHints &getWMHints();
 

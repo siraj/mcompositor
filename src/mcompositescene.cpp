@@ -106,7 +106,8 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         MCompositeWindow *cw = (MCompositeWindow *) items[i];
         
         if (cw->isDirectRendered() || !cw->isVisible()
-            || !cw->propertyCache()->isMapped())
+            || !cw->propertyCache()->isMapped()
+            || cw->propertyCache()->isInputOnly())
             continue;
         if (visible.isEmpty())
             // nothing below is visible anymore
