@@ -1,6 +1,6 @@
-mcompositor (0.5.8~1) unstable; urgency=low
+mcompositor (0.5.8-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#185979 - Managing separate child window causing mcompositor to crash
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 17 Aug 2010 14:31:42 +0300
 
