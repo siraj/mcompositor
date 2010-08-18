@@ -322,7 +322,7 @@ void MCompositeWindow::closeWindow()
     
     updateWindowPixmap();
     origPosition = pos();
-    iconify(iconGeometry, defer);
+    iconify(fadeRect, defer);
 }
 
 void MCompositeWindow::deleteLater()
