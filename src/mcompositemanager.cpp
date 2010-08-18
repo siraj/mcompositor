@@ -833,8 +833,6 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
     if (item) {
         if (!item->isClosing())
             item->deleteLater();
-        if (!removeWindow(e->window))
-            qWarning("destroyEvent(): Error removing window");
     } else {
         // We got a destroy event from a framed window (or a window that was
         // never mapped)
@@ -2297,8 +2295,8 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
     if ((!delete_sent || window->status() == MCompositeWindow::Hung)) {
         kill_window(window->window());
         MDecoratorFrame::instance()->lower();
-        removeWindow(window->window());
     }
+    window->deleteLater(); 
 }
 
 void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)

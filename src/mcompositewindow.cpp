@@ -108,6 +108,10 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 
 MCompositeWindow::~MCompositeWindow()
 {
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    if (!p->d->removeWindow(window()))
+        qWarning("destroyEvent(): Error removing window");
+
     if (t_ping) {
         stopPing();
         t_ping = 0;
@@ -120,7 +124,6 @@ MCompositeWindow::~MCompositeWindow()
     anim = 0;
     
     if (pc) {
-        MCompositeManager *p = (MCompositeManager *) qApp;
         p->d->prop_caches.remove(window());
         pc->deleteLater();
     }    
@@ -297,7 +300,7 @@ void MCompositeWindow::q_fadeIn()
 
 void MCompositeWindow::closeWindow()
 {
-    if (!isAppWindow()) {
+    if (!isAppWindow() || propertyCache()->windowState() == IconicState) {
         setVisible(false);
         emit windowClosed(this);
         return;
@@ -305,7 +308,6 @@ void MCompositeWindow::closeWindow()
     if (window_status == MCompositeWindow::Hung) {
         hide();
         emit windowClosed(this);
-        QTimer::singleShot(200, this, SLOT(deleteLater()));
         return;
     }
     window_status = MCompositeWindow::Closing;
@@ -354,7 +356,6 @@ void MCompositeWindow::finalizeState()
         emit itemIconified(this);
         if (isClosing()) {
             emit windowClosed(this);
-            QTimer::singleShot(200, this, SLOT(deleteLater()));
             return;
         }
     } else {
@@ -646,4 +647,14 @@ int MCompositeWindow::indexInStack() const
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
     return p->d->stacking_list.indexOf(window());
+}
+
+void MCompositeWindow::setIsMapped(bool mapped) 
+{ 
+    pc->setIsMapped(mapped); 
+}
+
+bool MCompositeWindow::isMapped() const 
+{
+    return pc->isMapped();
 }

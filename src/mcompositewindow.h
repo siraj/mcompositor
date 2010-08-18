@@ -179,9 +179,8 @@ public:
      */
     void setDecorated(bool decorated);
 
-    void setIsMapped(bool mapped) { pc->setIsMapped(mapped); }
-    bool isMapped() const {
-       return pc->windowAttributes()->map_state == IsViewable; }
+    void setIsMapped(bool mapped);
+    bool isMapped() const;
     
     void setNewlyMapped(bool newlyMapped) { newly_mapped = newlyMapped; }
     bool isNewlyMapped() const { return newly_mapped; }
