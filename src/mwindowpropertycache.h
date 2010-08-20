@@ -152,7 +152,7 @@ public:
         if (s)
             attrs->map_state = XCB_MAP_STATE_VIEWABLE;
         else
-            attrs->map_state = XCB_MAP_STATE_UNVIEWABLE;
+            attrs->map_state = XCB_MAP_STATE_UNMAPPED;
     }
 
     /*!

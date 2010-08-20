@@ -1635,8 +1635,8 @@ void MCompositeManagerPrivate::setCurrentApp(Window w)
         Window w = stacking_list.at(i); \
         if (w == first_moved) break; \
         MCompositeWindow *cw = COMPOSITE_WINDOW(w); \
-        if (cw && (X)) { \
-            safe_move(stacking_list, i, last_i); \
+        if (cw && cw->isMapped() && (X)) { \
+            stacking_list.move(i, last_i); \
 	    raise_transients(stacking_list, w, last_i); \
             if (!first_moved) first_moved = w; \
         } else ++i; \
@@ -1864,7 +1864,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                  break;
              }
              MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-             MWindowPropertyCache *pc;
+             MWindowPropertyCache *pc = 0;
              if (cw && cw->isMapped())
                  pc = cw->propertyCache();
              if (cw && cw->isMapped() && !pc->hasAlpha() &&
