@@ -109,8 +109,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 MCompositeWindow::~MCompositeWindow()
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
-    if (!p->d->removeWindow(window()))
-        qWarning("destroyEvent(): Error removing window");
+    p->d->removeWindow(window());
 
     if (t_ping) {
         stopPing();
@@ -345,7 +344,7 @@ void MCompositeWindow::finalizeState()
         --window_transitioning;
         is_transitioning = false;
     }
-    if (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
+    if (pc && pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         emit desktopActivated(this);
 
     // iconification status
@@ -441,8 +440,9 @@ void MCompositeWindow::manipulationEnabled(bool isEnabled)
 
 void MCompositeWindow::setVisible(bool visible)
 {
-    if (pc->isInputOnly() || (visible && newly_mapped && isAppWindow()) ||
-        (!visible && is_transitioning)) 
+    if ((pc && pc->isInputOnly())
+        || (visible && newly_mapped && isAppWindow()) 
+        || (!visible && is_transitioning)) 
         return;
     
     // Set the iconification status as well
@@ -615,7 +615,7 @@ bool MCompositeWindow::isAppWindow(bool include_transients)
     if (!include_transients && p->d->getLastVisibleParent(pc))
         return false;
     
-    if (!pc->isOverrideRedirect() &&
+    if (pc && !pc->isOverrideRedirect() &&
             (pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NORMAL) ||
              pc->windowTypeAtom() == ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE) ||
              /* non-modal, non-transient dialogs behave like applications */
@@ -651,10 +651,10 @@ int MCompositeWindow::indexInStack() const
 
 void MCompositeWindow::setIsMapped(bool mapped) 
 { 
-    pc->setIsMapped(mapped); 
+    if (pc) pc->setIsMapped(mapped); 
 }
 
 bool MCompositeWindow::isMapped() const 
 {
-    return pc->isMapped();
+    return pc ? pc->isMapped() : false;
 }

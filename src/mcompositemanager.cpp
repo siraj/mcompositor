@@ -833,6 +833,7 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
     if (item) {
         if (!item->isClosing())
             item->deleteLater();
+        removeWindow(item->window());
     } else {
         // We got a destroy event from a framed window (or a window that was
         // never mapped)
