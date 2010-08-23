@@ -966,7 +966,8 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
             || !fs_r.subtracted(cw->propertyCache()->shapeRegion()).isEmpty()))
             // this window prevents direct rendering
             return false;
-        if (cw->isMapped() && cw->isAppWindow(true)) {
+        // it is a fullscreen, non-transparent window of any type
+        if (cw->isMapped()) {
             top = w;
             win_i = i;
             break;
