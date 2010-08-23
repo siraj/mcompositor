@@ -2297,7 +2297,11 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
         kill_window(window->window());
         MDecoratorFrame::instance()->lower();
     }
-    window->deleteLater(); 
+    /* DO NOT deleteLater() this window yet because
+       a) it can remove a mapped window from stacking_list
+       b) delete can be ignored (e.g. "Do you want to exit?" dialog)
+       c) _NET_WM_PID could be wrong (i.e. the window does not go away)
+       d) we get UnmapNotify/DestroyNotify anyway when it _really_ closes */
 }
 
 void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
