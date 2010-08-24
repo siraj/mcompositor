@@ -165,6 +165,11 @@ public:
     void setIconified(bool iconified);
 
     /*!
+     * Set scale, opacity etc. to normal values.
+     */
+    void setUntransformed();
+
+    /*!
      * Returns how this window was iconified.
      */
     IconifyState iconifyState() const;

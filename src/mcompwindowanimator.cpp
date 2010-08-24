@@ -201,6 +201,12 @@ void MCompWindowAnimator::startAnimation()
     }
 }
 
+void MCompWindowAnimator::stopAnimation()
+{
+    timer.stop();
+    item->setTransform(matrix);
+}
+
 void MCompWindowAnimator::deferAnimation(bool defer)
 {
     deferred_animation = defer;
