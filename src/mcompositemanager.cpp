@@ -1811,18 +1811,18 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
              only_mapped.append(stacking_list.at(i));
     }
     static QList<Window> prev_only_mapped;
+
+    // fix Z-values always to make sure we do it after an animation
+    for (int i = 0; i <= last_i; ++i) {
+         MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
+         if (witem && witem->hasTransitioningWindow())
+             // don't change Z values until animation is over
+             break;
+         if (witem)
+             witem->requestZValue(i);
+    }
     bool order_changed = prev_only_mapped != only_mapped;
     if (order_changed) {
-        /* fix Z-values */
-        for (int i = 0; i <= last_i; ++i) {
-            MCompositeWindow *witem = COMPOSITE_WINDOW(stacking_list.at(i));
-            if (witem && witem->hasTransitioningWindow())
-                // don't change Z values until animation is over
-                break;
-            if (witem)
-                witem->requestZValue(i);
-        }
-
         QList<Window> reverse;
         for (int i = last_i; i >= 0; --i)
             reverse.append(stacking_list.at(i));
@@ -2247,7 +2247,12 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                     if (w == stack[DESKTOP_LAYER])
                         break;
                     MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-                    if (cw && cw->isMapped() && cw->isAppWindow(true) &&
+                    if (cw && cw->isMapped() && (cw->isAppWindow(true)
+                        // mark transient dialogs Iconic too, so that
+                        // restoreHandler() is called when they are maximised
+                        || (cw->propertyCache()->windowTypeAtom()
+                               == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)
+                            && getLastVisibleParent(cw->propertyCache()))) &&
                         // skip devicelock and screenlock windows
                         (cw->propertyCache()->meegoStackingLayer() > 2 ||
                          cw->propertyCache()->meegoStackingLayer() == 0))
@@ -2346,9 +2351,14 @@ void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
     else
         to_stack = window;
     setWindowState(to_stack->window(), NormalState);
-    
-    if (window->isNewlyMapped())
-        window->setNewlyMapped(false);
+
+    // FIXME: call these for the whole transiency chain
+    window->setNewlyMapped(false);
+    if (to_stack != window)
+        to_stack->setNewlyMapped(false);
+    window->setUntransformed();
+    if (window != to_stack)
+        to_stack->setUntransformed();
 
     positionWindow(to_stack->window(), STACK_TOP);
 

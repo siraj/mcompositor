@@ -92,12 +92,13 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     // We initially prevent item visibility from compositor itself
     // or it's corresponding thumbnail rendered by the switcher
     bool is_app = isAppWindow();
+    newly_mapped = is_app;
     if (!pc->isInputOnly()) {
         // never paint InputOnly windows
         window_visible = !is_app;
-        setVisible(window_visible);
+        setVisible(window_visible); // newly_mapped used here
     }
-    newly_mapped = is_app;
+    origPosition = QPointF(pc->realGeometry().x(), pc->realGeometry().y());
 
     if (fadeRect.isEmpty()) {
         QRectF d = QApplication::desktop()->availableGeometry();
@@ -193,6 +194,21 @@ void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
         ++window_transitioning;
         is_transitioning = true;
     }
+}
+
+void MCompositeWindow::setUntransformed()
+{
+    if (is_transitioning) {
+        --window_transitioning;
+        is_transitioning = false;
+    }
+    anim->stopAnimation(); // stop and restore the matrix
+    newly_mapped = false;
+    setVisible(true);
+    setOpacity(1.0);
+    setScale(1.0);
+    setScaled(false);
+    iconified = false;
 }
 
 void MCompositeWindow::setIconified(bool iconified)

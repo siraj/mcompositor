@@ -73,6 +73,7 @@ public:
     bool isActive();
 
     void startAnimation();
+    void stopAnimation();
     void deferAnimation(bool);
 
     //! There is a pending animation to be executed soon
