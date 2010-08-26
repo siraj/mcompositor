@@ -1,6 +1,7 @@
 mcompositor (0.5.9~1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#184773 - Application dialog gets stucked when left metakey + backspace buttons are pressed
+  * Fixes: NB#181749 - Window animations feel 'cheap' compared to Fremantle	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Wed, 18 Aug 2010 19:43:31 +0300
 
