@@ -419,6 +419,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         xcb_icon_geom_cookie = xcb_get_property(xcb_conn, 0, window,
                                             ATOM(_NET_WM_ICON_GEOMETRY),
                                             XCB_ATOM_CARDINAL, 0, 4);
+        emit iconGeometryUpdated();
     } else if (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA)) {
         if (global_alpha < 0)
             // collect the old reply

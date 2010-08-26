@@ -71,6 +71,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     anim = new MCompWindowAnimator(this);
     connect(anim, SIGNAL(transitionDone()),  SLOT(finalizeState()));
     connect(anim, SIGNAL(transitionStart()), SLOT(windowTransitioning()));
+    connect(mpc, SIGNAL(iconGeometryUpdated()), SLOT(updateIconGeometry()));
     setAcceptHoverEvents(true);
 
     t_ping = new QTimer(this);
@@ -175,10 +176,7 @@ void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
     if (window_status != MCompositeWindow::Closing)
         window_status = MCompositeWindow::Minimizing;
 
-    if (icongeometry.isEmpty())
-        this->iconGeometry = fadeRect;
-    else
-        this->iconGeometry = icongeometry;
+    this->iconGeometry = icongeometry;
     if (!iconified)
         origPosition = pos();
 
@@ -230,12 +228,42 @@ void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
     }
 }
 
+/*
+ * We ensure that ensure there are ALWAYS updated thumbnails in the 
+ * switcher by letting switcher know in advance of the presence of this window.
+ * Delay the minimize animation until we receive an iconGeometry update from
+ * the switcher
+ */
 void MCompositeWindow::startTransition()
 {
+    if (iconified) {
+        if (iconGeometry.isNull())
+            return;
+        setWindowObscured(true);
+    }
     if (anim->pendingAnimation()) {
         MCompositeWindow::setVisible(true);
         anim->startAnimation();
         anim->deferAnimation(false);
+    }
+}
+
+void MCompositeWindow::updateIconGeometry()
+{
+    if (!pc)
+        return;
+    
+    iconGeometry = pc->iconGeometry();
+    if (iconGeometry.isNull())
+        return;
+    
+    // trigger transition the second time around and update animation values
+    if (iconified) {
+        qreal sx = iconGeometry.width() / boundingRect().width();
+        qreal sy = iconGeometry.height() / boundingRect().height();
+        anim->translateScale(qreal(1.0), qreal(1.0), sx, sy,
+                             iconGeometry.topLeft());
+        startTransition();
     }
 }
 
@@ -349,6 +377,7 @@ void MCompositeWindow::finalizeState()
 
     // iconification status
     if (iconified) {
+        iconified = false;
         iconified_final = true;
         hide();
         iconify_state = TransitionIconifyState;

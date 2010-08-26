@@ -293,6 +293,7 @@ public:
 
 public slots:
 
+    void updateIconGeometry();
     void startTransition();
     void manipulationEnabled(bool isEnabled);
     void setUnBlurred();

@@ -831,8 +831,7 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
-        if (!item->isClosing())
-            item->deleteLater();
+        item->deleteLater();
         removeWindow(item->window());
     } else {
         // We got a destroy event from a framed window (or a window that was
@@ -1116,8 +1115,10 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
             item->propertyCache()->setRealGeometry(r);
             check_visibility = true;
         }
-        item->setPos(e->x, e->y);
-        item->resize(e->width, e->height);
+        if (item->propertyCache()->windowState() != IconicState) {
+            item->setPos(e->x, e->y);
+            item->resize(e->width, e->height);
+        }
         if (e->override_redirect == True) {
             if (check_visibility)
                 dirtyStacking(true);

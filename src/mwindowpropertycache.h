@@ -20,19 +20,20 @@
 #ifndef MWINDOWPROPERTYCACHE_H
 #define MWINDOWPROPERTYCACHE_H
 
+#include <QRegion>
 #include <X11/Xutil.h>
 #include <X11/Xlib-xcb.h>
 #include <xcb/render.h>
 #include <xcb/shape.h>
 #include <X11/extensions/shape.h>
 #include "mcompatoms_p.h"
-#include <QRegion>
 
 /*!
  * This is a class for caching window property values for a window.
  */
 class MWindowPropertyCache: public QObject
 {
+    Q_OBJECT
 public:
 
     /*! Construct a MWindowPropertyCache
@@ -209,6 +210,9 @@ public:
     static void set_xcb_connection(xcb_connection_t *c) {
         MWindowPropertyCache::xcb_conn = c;
     }
+
+signals:
+    void iconGeometryUpdated();
 
 private:
     int alphaValue(xcb_get_property_cookie_t c);
