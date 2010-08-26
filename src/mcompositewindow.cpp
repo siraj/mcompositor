@@ -502,6 +502,10 @@ void MCompositeWindow::setVisible(bool visible)
     QGraphicsItem::setVisible(visible);
     MCompositeManager *p = (MCompositeManager *) qApp;
     p->d->setWindowDebugProperties(window());
+
+    QGraphicsScene* sc = scene();    
+    if (sc && !visible && sc->items().count() == 1)
+        clearTexture();
 }
 
 void MCompositeWindow::startPing()
