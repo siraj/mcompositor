@@ -319,9 +319,12 @@ void MCompositeWindow::showWindow()
         ++window_transitioning;
         is_transitioning = true;
     }
-    if (newly_mapped) 
+    if (newly_mapped) {
+        // NB#180628 - some stupid apps are listening for visibilitynotifies.
+        // Well, all of the toolkit anyways
+        setWindowObscured(false);
         QTimer::singleShot(700, this, SLOT(q_fadeIn()));
-    else
+    } else
         q_fadeIn();
 }
 
