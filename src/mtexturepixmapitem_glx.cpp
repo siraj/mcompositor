@@ -284,10 +284,14 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
     if (d->custom_tfp && d->windowp) {
         QPixmap qp = QPixmap::fromX11Pixmap(d->windowp);
 
-        QImage img = d->glwidget->convertToGLFormat(qp.toImage());
-        glBindTexture(GL_TEXTURE_2D, d->ctextureId);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width(), img.height(), 0,
-                     GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+        QT_TRY {
+            QImage img = d->glwidget->convertToGLFormat(qp.toImage());
+            glBindTexture(GL_TEXTURE_2D, d->ctextureId);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width(), img.height(), 0,
+                         GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+       } QT_CATCH(std::bad_alloc e) {
+           /* XGetImage() failed, the window has been unmapped. */;
+       }
     }
     update();
 }
