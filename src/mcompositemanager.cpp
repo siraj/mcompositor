@@ -1034,7 +1034,10 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     if (item) {
         item->stopPing();
         item->setIsMapped(false);
-        setWindowState(e->window, IconicState);
+        if (e->send_event == True) 
+            setWindowState(e->window, WithdrawnState);
+        else
+            setWindowState(e->window, IconicState);
         if (item->isVisible() && !item->isClosing())
             item->setVisible(false);
         if (!item->isClosing())
