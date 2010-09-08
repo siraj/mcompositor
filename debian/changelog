@@ -1,3 +1,9 @@
+mcompositor (0.5.10-1) unstable; urgency=low
+
+  * Fixes: NB#184226 - PIN code dialog uses initial_state==IconicState when it shows itself
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Wed, 08 Sep 2010 17:06:40 +0300
+
 mcompositor (0.5.9-1) unstable; urgency=low
 
   * Fixes: NB#184773 - Application dialog gets stucked when left metakey + backspace buttons are pressed
