@@ -2634,8 +2634,13 @@ void MCompositeManagerPrivate::buttonEvent(XButtonEvent* e)
         memset(&ev, 0, sizeof(ev));
         ev.type = ClientMessage;
         ev.window = buttoned_win;
-        ev.message_type = ATOM(_NET_CLOSE_WINDOW);
-        rootMessageEvent(&ev);
+        ev.message_type = ATOM(WM_PROTOCOLS);
+        ev.format = 32;
+        ev.data.l[0] = ATOM(WM_DELETE_WINDOW);
+        ev.data.l[1] = CurrentTime;
+        XSendEvent(QX11Info::display(), buttoned_win, False, NoEventMask,
+                   (XEvent*)&ev);
+        return;
     }
     if (buttoned_win) {
         XButtonEvent ev = *e;
