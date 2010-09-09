@@ -1,3 +1,10 @@
+mcompositor (0.6.0-1) unstable; urgency=low
+
+  * Fixes: NB#186402 - The application is getting minimized on clicking close button
+  * Improvements: beginAnimation() and endAnimation() API
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Thu, 09 Sep 2010 23:42:14 +0300
+
 mcompositor (0.5.10-1) unstable; urgency=low
 
   * Fixes: NB#184226 - PIN code dialog uses initial_state==IconicState when it shows itself
