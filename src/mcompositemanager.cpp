@@ -2170,8 +2170,9 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
     } else if (i && event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
         
         i->closeWindow();
-        // update stacking lit to remove window from switcher
-        checkStacking(false);
+        // update stacking list to remove window from switcher
+        if (i->propertyCache()->windowState() != IconicState)
+            checkStacking(false);
         
     } else if (event->message_type == ATOM(WM_PROTOCOLS)) {
         if (event->data.l[0] == (long) ATOM(_NET_WM_PING)) {
@@ -3236,6 +3237,11 @@ void MCompositeManager::hideLaunchIndicator()
 bool MCompositeManager::isCompositing()
 {
     return d->compositing;
+}
+
+void MCompositeManager::debug(const QString& d)
+{
+    _log("%s\n", d.toAscii());
 }
 
 #include "mcompositemanager.moc"

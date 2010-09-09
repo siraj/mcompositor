@@ -107,6 +107,8 @@ public:
      */
     bool isCompositing();
     
+    void debug(const QString& d);
+
 public slots:
     void enableCompositing();
     void disableCompositing();

@@ -307,6 +307,21 @@ public slots:
     /* Operations with transition animations*/
     void closeWindow();
     void showWindow();
+
+protected slots:
+    
+    /*!
+     * This slot is called whenever a start of window animation occurs. This
+     * is an atomic operation. Ensure that endTransition() is invoked when
+     * the animation is finished.
+     */
+    void beginAnimation();
+    
+    /*!
+     * This slot is called whenever the window has finished animating its 
+     * effects
+     */
+    void endAnimation();
     
 private slots:
 
@@ -317,7 +332,6 @@ private slots:
 
     void pingTimeout();
     void pingWindow();
-    void windowTransitioning();
     void q_delayShow();
     void q_itemRestored();
     void q_fadeIn();

@@ -70,7 +70,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         is_valid = true;
     anim = new MCompWindowAnimator(this);
     connect(anim, SIGNAL(transitionDone()),  SLOT(finalizeState()));
-    connect(anim, SIGNAL(transitionStart()), SLOT(windowTransitioning()));
+    connect(anim, SIGNAL(transitionStart()), SLOT(beginAnimation()));
     connect(mpc, SIGNAL(iconGeometryUpdated()), SLOT(updateIconGeometry()));
     setAcceptHoverEvents(true);
 
@@ -117,11 +117,8 @@ MCompositeWindow::~MCompositeWindow()
         stopPing();
         t_ping = 0;
     }
-    if (is_transitioning) {
-        // we got destroyed during animation
-        --window_transitioning;
-        is_transitioning = false;
-    }
+    endAnimation();
+    
     anim = 0;
     
     if (pc) {
@@ -190,18 +187,13 @@ void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
                          iconGeometry.topLeft());
     iconified = true;
     // do this to avoid stacking code disturbing Z values
-    if (!is_transitioning) {
-        ++window_transitioning;
-        is_transitioning = true;
-    }
+    beginAnimation();
 }
 
 void MCompositeWindow::setUntransformed()
 {
-    if (is_transitioning) {
-        --window_transitioning;
-        is_transitioning = false;
-    }
+    endAnimation();
+    
     anim->stopAnimation(); // stop and restore the matrix
     newly_mapped = false;
     setVisible(true);
@@ -301,10 +293,7 @@ void MCompositeWindow::restore(const QRectF &icongeometry, bool defer)
     anim->translateScale(qreal(1.0), qreal(1.0), sx, sy, origPosition, true);
     iconified = false;
     // do this to avoid stacking code disturbing Z values
-    if (!is_transitioning) {
-        ++window_transitioning;
-        is_transitioning = true;
-    }
+    beginAnimation();
 }
 
 void MCompositeWindow::showWindow()
@@ -315,10 +304,7 @@ void MCompositeWindow::showWindow()
         return;
     
     findBehindWindow();
-    if (!is_transitioning) {
-        ++window_transitioning;
-        is_transitioning = true;
-    }
+    beginAnimation();
     if (newly_mapped) {
         // NB#180628 - some stupid apps are listening for visibilitynotifies.
         // Well, all of the toolkit anyways
@@ -330,10 +316,8 @@ void MCompositeWindow::showWindow()
 
 void MCompositeWindow::q_fadeIn()
 {   
-    if (is_transitioning) {
-        --window_transitioning;
-        is_transitioning = false;
-    }
+    endAnimation();
+    
     newly_mapped = false;
     setVisible(true);
     setOpacity(0.0);
@@ -387,10 +371,8 @@ void MCompositeWindow::prettyDestroy()
 
 void MCompositeWindow::finalizeState()
 {
-    if (is_transitioning) {
-        --window_transitioning;
-        is_transitioning = false;
-    }
+    endAnimation();
+
     if (pc && pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         emit desktopActivated(this);
 
@@ -412,7 +394,7 @@ void MCompositeWindow::finalizeState()
         QTimer::singleShot(200, this, SLOT(q_itemRestored()));
     }
     window_status = Normal;
-
+    
     // item lifetime
     if (destroyed)
         deleteLater();
@@ -596,11 +578,22 @@ MCompositeWindow *MCompositeWindow::compositeWindow(Qt::HANDLE window)
     return p->d->windows.value(window, 0);
 }
 
-void MCompositeWindow::windowTransitioning()
+void MCompositeWindow::beginAnimation()
 {
+    if (!isMapped())
+        return;
+
     if (!is_transitioning) {
-        ++window_transitioning;
+        ++window_transitioning;        
         is_transitioning = true;
+    }
+}
+
+void MCompositeWindow::endAnimation()
+{    
+    if (is_transitioning) {
+        --window_transitioning;
+        is_transitioning = false;
     }
 }
 
