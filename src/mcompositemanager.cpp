@@ -1020,6 +1020,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         wpc = prop_caches.value(e->window);
         wpc->setBeingMapped(false);
         wpc->setIsMapped(false);
+        if (!wpc->isInputOnly())
+            XRemoveFromSaveSet(QX11Info::display(), e->window);
     }
 
     // do not keep unmapped windows in windows_as_mapped list
@@ -1076,7 +1078,6 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         XReparentWindow(QX11Info::display(), e->window,
                         RootWindow(QX11Info::display(), 0), 0, 0);
         setWindowState(e->window, IconicState);
-        XRemoveFromSaveSet(QX11Info::display(), e->window);
         framed_windows.remove(e->window);
         XUngrabServer(QX11Info::display());
         delete fd.frame;
@@ -1326,6 +1327,8 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         // we know the parent due to SubstructureRedirectMask on root window
         pc->setParentWindow(RootWindow(dpy, 0));
     }
+    if(!pc->isInputOnly())
+        XAddToSaveSet(QX11Info::display(), e->window);
 
     MCompAtoms::Type wtype = pc->windowType();
     QRect a = pc->realGeometry();
@@ -1382,8 +1385,6 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
     pc->setBeingMapped(true);
     if (needDecoration(e->window, pc)) {
-        XAddToSaveSet(QX11Info::display(), e->window);
-
         if (MDecoratorFrame::instance()->decoratorItem()) {
             enableCompositing();
             MapRequesterPrivate::instance()->requestMap(e->window);
@@ -2003,12 +2004,13 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         pc = item->propertyCache();
         if (!pc) return;
     }
-    // Compositing is assumed to be enabled at this point if a window
+    // Compositing is always assumed to be enabled at this point if a window
     // has alpha channels
     if (!compositing && (pc && pc->hasAlpha())) {
         qWarning("mapEvent(): compositing not enabled!");
-        return;
+        enableCompositing(true);
     }
+    
     if (item && pc) {
         if (wtype == MCompAtoms::NORMAL)
             pc->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
@@ -3246,7 +3248,8 @@ bool MCompositeManager::isCompositing()
 
 void MCompositeManager::debug(const QString& d)
 {
-    _log("%s\n", d.toAscii());
+    const char* msg = d.toAscii();
+    _log("%s\n", msg);
 }
 
 #include "mcompositemanager.moc"

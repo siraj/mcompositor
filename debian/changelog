@@ -1,3 +1,9 @@
+mcompositor (0.6.1-1) unstable; urgency=low
+
+  * Fixes: NB#180786 - QWidget::show() does not fire subsequent X11 window map requests
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 14 Sep 2010 13:29:10 +0300
+
 mcompositor (0.6.0-1) unstable; urgency=low
 
   * Fixes: NB#186402 - The application is getting minimized on clicking close button
