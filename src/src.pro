@@ -21,7 +21,7 @@ contains(QT_CONFIG, opengles2) {
      }
 } 
 
-TEMPLATE = app
+TEMPLATE = lib
 TARGET = mcompositor
 DEPENDPATH += .
 QT += dbus
@@ -30,6 +30,7 @@ QT += dbus
 INCLUDEPATH += ../decorators/libdecorator/
 HEADERS += \
     mtexturepixmapitem.h \
+    mtexturepixmapitem_p.h \
     mcompositescene.h \
     mcompositewindow.h \
     mwindowpropertycache.h \
@@ -39,10 +40,12 @@ HEADERS += \
     mcompositemanager_p.h \
     mdevicestate.h \
     mcompatoms_p.h \
-    mdecoratorframe.h
+    mdecoratorframe.h \
+    mcompositemanagerextension.h \
+    mcompositewindowshadereffect.h \
+    mcompmgrextensionfactory.h
 
 SOURCES += \
-    main.cpp \
     mtexturepixmapitem_p.cpp \
     mcompositescene.cpp \
     mcompositewindow.cpp \
@@ -51,7 +54,9 @@ SOURCES += \
     mcompositemanager.cpp \
     msimplewindowframe.cpp \
     mdevicestate.cpp \
-    mdecoratorframe.cpp
+    mdecoratorframe.cpp \
+    mcompositemanagerextension.cpp \
+    mcompositewindowshadereffect.cpp
 
 RESOURCES = tools.qrc
 
@@ -59,7 +64,7 @@ CONFIG += release link_pkgconfig
 PKGCONFIG += contextsubscriber-1.0
 QT += core gui opengl
 
-target.path += $$M_INSTALL_BIN
+target.path += /usr/lib
 INSTALLS += target 
 
 LIBS += -lXdamage -lXcomposite -lXfixes -lX11-xcb -lxcb-render -lxcb-shape \

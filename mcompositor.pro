@@ -3,6 +3,7 @@ CONFIG+=ordered
 SUBDIRS = \
     decorators \
     src \
+    mcompositor\
     tests \
 
 src.depends=decorators

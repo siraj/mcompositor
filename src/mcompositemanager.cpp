@@ -25,11 +25,14 @@
 #include "msimplewindowframe.h"
 #include "mdecoratorframe.h"
 #include "mdevicestate.h"
+#include "mcompositemanagerextension.h"
+#include "mcompmgrextensionfactory.h"
 #include <mrmiserver.h>
 
 #include <QX11Info>
 #include <QByteArray>
 #include <QVector>
+#include <QtPlugin>
 
 #include <X11/Xutil.h>
 #include <X11/extensions/Xcomposite.h>
@@ -750,6 +753,28 @@ void MCompositeManagerPrivate::prepare()
     XSelectInput(QX11Info::display(), home_button_win,
                  ButtonReleaseMask | ButtonPressMask);
     XMapWindow(QX11Info::display(), home_button_win);
+}
+
+void MCompositeManagerPrivate::loadPlugins()
+{
+    // hard-coded for now. move this to plugindir later
+#define PDIR "/usr/lib/mcompositor"
+    QDir pluginsDir = QDir(PDIR);
+   
+    foreach (QString fileName, pluginsDir.entryList(QDir::Files)) {
+         QPluginLoader loader(pluginsDir.absoluteFilePath(fileName));
+         QObject *plugin = loader.instance();
+         if (plugin) {
+             MCompmgrExtensionFactory* p = qobject_cast<MCompmgrExtensionFactory *>(plugin);
+             if (p) 
+                 p->create();
+         } else {
+             QString msg;
+             QDebug dbg(&msg);
+             dbg << "didnt load" << loader.fileName() << loader.errorString();
+             ((MCompositeManager*)qApp)->debug(msg);
+         }
+     }
 }
 
 bool MCompositeManagerPrivate::needDecoration(Window window,
@@ -1632,6 +1657,8 @@ void MCompositeManagerPrivate::setCurrentApp(Window w)
     XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
                     ATOM(_MEEGOTOUCH_CURRENT_APP_WINDOW),
                     XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
+    current_app = w;
+    emit currentAppChanged(current_app);
     prev = w;
 }
 
@@ -2549,6 +2576,7 @@ void MCompositeManagerPrivate::setWindowDebugProperties(Window w)
 
 bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
 {
+    // Core non-subclassable events
     static const int damage_ev = damage_event + XDamageNotify;
     static int shape_event_base = 0;
     if (!shape_event_base) {
@@ -2572,8 +2600,11 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
         }
         return true;
     }
+    
+    if (processX11EventFilters(event))
+        return true;
+    
     switch (event->type) {
-
     case DestroyNotify:
         destroyEvent(&event->xdestroywindow); break;
     case PropertyNotify:
@@ -2591,7 +2622,7 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
     case ClientMessage:
         clientMessageEvent(&event->xclient); break;
     case ButtonRelease:
-    case ButtonPress:
+    case ButtonPress: 
         buttonEvent(&event->xbutton);
         // Qt needs to handle this event for the window frame buttons
         return false;
@@ -2614,6 +2645,19 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
         return false;
     }
     return true;
+}
+
+bool MCompositeManagerPrivate::processX11EventFilters(XEvent *event)
+{
+    if (!m_extensions.contains(event->type))
+        return false;
+    
+    QList<MCompositeManagerExtension*> evlist = m_extensions.values(event->type);
+    bool processed = false;
+    for (int i = 0; i < evlist.size(); ++i) 
+        processed = evlist[i]->x11Event(event);
+    
+    return processed;
 }
 
 void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
@@ -2680,7 +2724,7 @@ void MCompositeManagerPrivate::redirectWindows()
         xcb_get_window_attributes_reply_t *attr;
         attr = xcb_get_window_attributes_reply(xcb_conn,
                      xcb_get_window_attributes(xcb_conn, kids[i]), 0);
-        if (!attr)
+        if (!attr || attr->_class == XCB_WINDOW_CLASS_INPUT_ONLY)
             continue;
         xcb_get_geometry_reply_t *geom;
         geom = xcb_get_geometry_reply(xcb_conn,
@@ -3147,6 +3191,12 @@ void MCompositeManagerPrivate::exposeSwitcher()
     }
 }
 
+void MCompositeManagerPrivate::installX11EventFilter(long xevent, 
+                                                     MCompositeManagerExtension* extension)
+{  
+    m_extensions.insert(xevent, extension);
+}
+
 void MCompositeManagerPrivate::showLaunchIndicator(int timeout)
 {
     if (!launchIndicator) {
@@ -3201,6 +3251,11 @@ void MCompositeManager::prepareEvents()
     d->prepare();
 }
 
+void MCompositeManager::loadPlugins()
+{
+    d->loadPlugins();
+}
+
 bool MCompositeManager::x11EventFilter(XEvent *event)
 {
     return d->x11EventFilter(event);
@@ -3221,9 +3276,9 @@ bool MCompositeManager::isRedirected(Qt::HANDLE w)
     return d->isRedirected(w);
 }
 
-void MCompositeManager::enableCompositing()
+void MCompositeManager::enableCompositing(bool forced)
 {
-    d->enableCompositing();
+    d->enableCompositing(forced);
 }
 
 void MCompositeManager::disableCompositing()
@@ -3250,6 +3305,11 @@ void MCompositeManager::debug(const QString& d)
 {
     const char* msg = d.toAscii();
     _log("%s\n", msg);
+}
+
+bool MCompositeManager::displayOff()
+{
+    return d->device_state->displayOff();
 }
 
 #include "mcompositemanager.moc"

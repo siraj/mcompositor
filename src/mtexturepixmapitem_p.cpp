@@ -22,6 +22,7 @@
 #endif
 #include "mtexturepixmapitem.h"
 #include "texturepixmapshaders.h"
+#include "mcompositewindowshadereffect.h"
 
 #include <QX11Info>
 #include <QRect>
@@ -58,7 +59,10 @@ class MGLResourceManager: public QObject
 {
 public:
 
-    /* add more values here as we add more effects */
+    /*
+     * This is the default set of shaders.
+     * Use MCompositeWindowShaderEffect class to add more shader effects 
+     */
     enum ShaderType {
         NormalShader = 0,
         BlurShader,
@@ -67,8 +71,10 @@ public:
 
     MGLResourceManager(QGLWidget *glwidget)
         : QObject(glwidget),
-          currentShader(0) {
-        QGLShader *sharedVertexShader = new QGLShader(QGLShader::Vertex,
+          glcontext(glwidget->context()),
+          currentShader(0)
+    {
+        sharedVertexShader = new QGLShader(QGLShader::Vertex,
                 glwidget->context(), this);
         if (!sharedVertexShader->compileSourceCode(QLatin1String(TexpVertShaderSource)))
             qWarning("vertex shader failed to compile");
@@ -132,10 +138,8 @@ public:
         }
     }
 
-    void updateVertices(const QTransform &t, ShaderType type) {
-        if (shader[type] != currentShader)
-            currentShader = shader[type];
-
+    void updateVertices(const QTransform &t) 
+    {
         worldMatrix[0][0] = t.m11();
         worldMatrix[0][1] = t.m12();
         worldMatrix[0][3] = t.m13();
@@ -145,12 +149,63 @@ public:
         worldMatrix[3][0] = t.dx();
         worldMatrix[3][1] = t.dy();
         worldMatrix[3][3] = t.m33();
+    }
+
+    void updateVertices(const QTransform &t, ShaderType type) 
+    {        
+        if (shader[type] != currentShader)
+            currentShader = shader[type];
+        
+        updateVertices(t);
         currentShader->bind();
         currentShader->setUniformValue("matWorld", worldMatrix);
     }
 
+    
+    void updateVertices(const QTransform &t, GLuint customShaderId) 
+    {                
+        if (!customShaderId)
+            return;
+        QGLShaderProgram* frag = customShaders.value(customShaderId,0);
+        if (!frag)
+            return;
+        currentShader = frag;        
+        updateVertices(t);
+        currentShader->bind();
+        currentShader->setUniformValue("matWorld", worldMatrix);
+    }
+
+    GLuint installPixelShader(const QByteArray& code)
+    {
+        QByteArray source = code;
+        source.append(TexpCustomShaderSource);
+        QGLShaderProgram *custom = new QGLShaderProgram(glcontext, this);
+        custom->addShader(sharedVertexShader);
+        if (!custom->addShaderFromSourceCode(QGLShader::Fragment,
+                QLatin1String(source)))
+            qWarning("custom fragment shader failed to compile");
+
+        bindAttribLocation(custom, "inputVertex", D_VERTEX_COORDS);
+        bindAttribLocation(custom, "textureCoord", D_TEXTURE_COORDS);
+
+        if (custom->link()) {
+            customShaders[custom->programId()] = custom;
+            return custom->programId();
+        } 
+       
+        qWarning() << "failed installing custom fragment shader:"
+                   << custom->log();
+        custom->deleteLater();
+        
+        return 0;
+    }
+
 private:
     static QGLShaderProgram *shader[ShaderTotal];
+    QHash<GLuint, QGLShaderProgram *> customShaders;
+    QGLShader *sharedVertexShader;
+    const QGLContext* glcontext;    
+    
     GLfloat projMatrix[4][4];
     GLfloat worldMatrix[4][4];
     GLfloat vertCoords[8];
@@ -166,12 +221,24 @@ private:
 QGLShaderProgram *MGLResourceManager::shader[ShaderTotal];
 #endif
 
+
 void MTexturePixmapPrivate::drawTexture(const QTransform &transform, const QRectF &drawRect, qreal opacity)
 {
+    if (current_effect) {
+        current_effect->d->drawTexture(this, transform, drawRect, opacity);
+    } else
+        q_drawTexture(transform, drawRect, opacity);
+}
+
+void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform, const QRectF &drawRect, qreal opacity)
+{
     // TODO only update if matrix is dirty
-    glresource->updateVertices(transform, item->blurred() ?
-                               MGLResourceManager::BlurShader :
-                               MGLResourceManager::NormalShader);
+    if(current_effect)
+        glresource->updateVertices(transform, current_effect->activeShaderFragment());
+    else
+        glresource->updateVertices(transform, item->blurred() ?
+                                   MGLResourceManager::BlurShader :
+                                   MGLResourceManager::NormalShader);
     GLfloat vertexCoords[] = {
         drawRect.left(),  drawRect.top(),
         drawRect.left(),  drawRect.bottom(),
@@ -187,7 +254,10 @@ void MTexturePixmapPrivate::drawTexture(const QTransform &transform, const QRect
     else
         glVertexAttribPointer(D_TEXTURE_COORDS, 2, GL_FLOAT, GL_FALSE, 0,
                               glresource->texCoords);
-    if (item->blurred())
+    
+    if (current_effect)
+        current_effect->setUniforms(glresource->currentShader);
+    else if (item->blurred())
         glresource->currentShader->setUniformValue("blurstep", (GLfloat) 0.5);
     glresource->currentShader->setUniformValue("opacity", (GLfloat) opacity);
     glresource->currentShader->setUniformValue("texture", 0);
@@ -198,6 +268,42 @@ void MTexturePixmapPrivate::drawTexture(const QTransform &transform, const QRect
 
     glwidget->paintEngine()->syncState();
     glActiveTexture(GL_TEXTURE0);
+}
+
+void MTexturePixmapPrivate::installEffect(MCompositeWindowShaderEffect* effect)
+{
+    current_effect = effect;
+    connect(effect, SIGNAL(enabledChanged(bool)), SLOT( activateEffect(bool)));
+    connect(effect, SIGNAL(destroyed()), SLOT(removeEffect()));
+}
+
+void MTexturePixmapPrivate::removeEffect()
+{
+    MCompositeWindowShaderEffect* e= (MCompositeWindowShaderEffect* ) sender();
+    
+    for (int i=0; i < e->fragmentIds().size(); ++i) {
+        GLuint id = e->fragmentIds()[i];
+        glresource->customShaders.remove(id);        
+        QGLShaderProgram* frag = glresource->customShaders.value(i,0);
+        if (frag)
+            delete frag;
+    }    
+}
+
+GLuint MTexturePixmapPrivate::installPixelShader(const QByteArray& code)
+{
+    if (glresource)
+        return glresource->installPixelShader(code);
+
+    return 0;
+}
+
+void MTexturePixmapPrivate::activateEffect(bool enabled)
+{
+    if (enabled)
+        current_effect = (MCompositeWindowShaderEffect* ) sender();
+    else
+        current_effect = 0;
 }
 
 void MTexturePixmapPrivate::init()

@@ -94,6 +94,8 @@ public:
      */
     void redirectWindows();
 
+    void loadPlugins();
+
     /*!
      * Returns whether a Window is redirected or not
      *
@@ -107,10 +109,15 @@ public:
      */
     bool isCompositing();
     
+    /*!
+     * Returns if the display is off
+     */
+    bool displayOff();
+    
     void debug(const QString& d);
 
 public slots:
-    void enableCompositing();
+    void enableCompositing(bool forced = false);
     void disableCompositing();
 
     /*! Invoked remotely by MRmiClient to show a launch indicator
@@ -129,6 +136,8 @@ private:
 
     friend class MCompositeWindow;
     friend class MCompWindowAnimator;
+    friend class MCompositeManagerExtension;
+    friend class MTexturePixmapPrivate;
 };
 
 #endif

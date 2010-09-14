@@ -39,6 +39,7 @@ class MCompAtoms;
 class MCompositeWindow;
 class MDeviceState;
 class MWindowPropertyCache;
+class MCompositeManagerExtension;
 
 enum {
     INPUT_LAYER = 0,
@@ -74,6 +75,7 @@ public:
     QGraphicsScene *scene();
 
     void prepare();
+    void loadPlugins();
     void activateWindow(Window w, Time timestamp,
 		        bool disableCompositing = true);
     void updateWinList();
@@ -93,6 +95,7 @@ public:
     void clientMessageEvent(XClientMessageEvent *);
     void keyEvent(XKeyEvent*);
     void buttonEvent(XButtonEvent*);
+    void installX11EventFilter(long xevent, MCompositeManagerExtension* extension);
     
     void redirectWindows();
     void mapOverlayWindow();
@@ -111,6 +114,7 @@ public:
     bool possiblyUnredirectTopmostWindow();
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
+    bool processX11EventFilters(XEvent *event);
     bool removeWindow(Window w);
     bool needDecoration(Window w, MWindowPropertyCache *pc = 0);
     MCompositeWindow *getHighestDecorated();
@@ -124,6 +128,7 @@ public:
     Window xoverlay;
     Window prev_focus;
     Window close_button_win, home_button_win, buttoned_win;
+    Window current_app;
     QRect home_button_geom, close_button_geom;
 
     static Window stack[TOTAL_LAYERS];
@@ -144,6 +149,7 @@ public:
     QHash<Window, FrameData> framed_windows;
     QHash<Window, QList<XConfigureRequestEvent*> > configure_reqs;
     QHash<Window, MWindowPropertyCache*> prop_caches;
+    QMultiHash<int, MCompositeManagerExtension* > m_extensions;
     QRegion dock_region;
 
     int damage_event;
@@ -164,6 +170,7 @@ public:
 signals:
     void inputEnabled();
     void compositingEnabled();
+    void currentAppChanged(Window w);
 
 public slots:
 

@@ -20,8 +20,10 @@
 #ifndef DUITEXTUREPIXMAPITEM_P_H
 #define DUITEXTUREPIXMAPITEM_P_H
 
+#include <QObject>
 #include <QRect>
 #include <QRegion>
+#include <QPointer>
 
 #include <X11/extensions/Xdamage.h>
 
@@ -39,13 +41,16 @@ class QGLWidget;
 class QGraphicsItem;
 class MTexturePixmapItem;
 class QGLContext;
+class QTransform;
 class MGLResourceManager;
+class MCompositeWindowShaderEffect;
 
 /*! Internal private implementation of MTexturePixmapItem
   Warning! Interface here may change at any time!
  */
-class MTexturePixmapPrivate
+class MTexturePixmapPrivate: QObject
 {
+    Q_OBJECT
 public:
     MTexturePixmapPrivate(Window window, QGLWidget *w, MTexturePixmapItem *item);
     ~MTexturePixmapPrivate();
@@ -57,7 +62,11 @@ public:
     void resize(int w, int h);
     void windowRaised();
     void drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
+    
+    void q_drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
     void damageTracking(bool enabled);
+    void installEffect(MCompositeWindowShaderEffect* effect);
+    static GLuint installPixelShader(const QByteArray& code);
                 
     QGLContext *ctx;
     QGLWidget *glwidget;
@@ -80,11 +89,16 @@ public:
 
     Damage damage_object;
     MTexturePixmapItem *item;
+    QPointer<MCompositeWindowShaderEffect> current_effect;
 
 #ifdef GLES2_VERSION
     static EglResourceManager *eglresource;
 #endif
     static MGLResourceManager* glresource;
+
+private slots:
+    void activateEffect(bool enabled);
+    void removeEffect();
 };
 
 #endif //DUITEXTUREPIXMAPITEM_P_H

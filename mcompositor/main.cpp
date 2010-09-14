@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
 
     app.prepareEvents();
     app.redirectWindows();
+    app.loadPlugins();
 
     return app.exec();
 }

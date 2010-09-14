@@ -40,6 +40,15 @@ static const char* TexpFragShaderSource = "\
             gl_FragColor = texture2D(texture, fragTexCoord) * opacity; \
     }";
 
+static const char* TexpCustomShaderSource = "\
+    varying highp vec2 fragTexCoord;\n\
+    uniform lowp sampler2D texture;\n\
+    uniform lowp float opacity;\n\
+    void main(void) \n\
+    {\n\
+            gl_FragColor = customShader(texture, fragTexCoord) * opacity; \n\
+    }\n\n";
+
 
 #if 0
 static const char *AlphaTestFragShaderSource = "\

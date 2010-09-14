@@ -220,7 +220,8 @@ MCompositeWindow::IconifyState MCompositeWindow::iconifyState() const
 
 void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
 {
-    if (obscured == window_obscured)
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    if ((obscured == window_obscured) || (!obscured && p->displayOff()))
         return;
     window_obscured = obscured;
 

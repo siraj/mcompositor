@@ -108,6 +108,7 @@ private:
     MTexturePixmapPrivate *const d;
     friend class MTexturePixmapPrivate;
     friend class MCompositeManagerPrivate;
+    friend class MCompositeWindowShaderEffect;
 };
 
 #endif // DUIGLXTEXTUREPIXMAPITEM_H

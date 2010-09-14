@@ -40,8 +40,9 @@ class MCompositeWindow: public QObject, public QGraphicsItem
     Q_OBJECT
 #if QT_VERSION >= 0x040600
     Q_INTERFACES(QGraphicsItem)
+    Q_PROPERTY(QPointF pos READ pos WRITE setPos)
+    Q_PROPERTY(qreal scale READ scale WRITE setScale)
 #endif
-
 public:
     
     enum WindowStatus {
@@ -201,7 +202,7 @@ public:
      * Overrides QGraphicsItem::update() so we have complete control of item
      * updates.
      */
-    void update();
+    static void update();
 
     bool blurred();
 
@@ -295,7 +296,7 @@ public:
     void setDimmedEffect(bool dimmed) { dimmed_effect = dimmed; }
     
     bool dimmedEffect() const { return dimmed_effect; }
-
+    
 public slots:
 
     void updateIconGeometry();
@@ -308,20 +309,18 @@ public slots:
     void closeWindow();
     void showWindow();
 
-protected slots:
-    
     /*!
-     * This slot is called whenever a start of window animation occurs. This
-     * is an atomic operation. Ensure that endTransition() is invoked when
-     * the animation is finished.
-     */
+      * This slot is called whenever a start of window animation occurs. This
+      * is an atomic operation. Ensure that endTransition() is invoked when
+      * the animation is finished.
+      */
     void beginAnimation();
     
     /*!
-     * This slot is called whenever the window has finished animating its 
-     * effects
-     */
-    void endAnimation();
+      * This slot is called whenever the window has finished animating its 
+      * effects
+      */
+     void endAnimation();
     
 private slots:
 
