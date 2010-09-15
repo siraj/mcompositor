@@ -1179,7 +1179,7 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
             // FIXME: seems that this branch is never executed?
             if (e->window == MDecoratorFrame::instance()->managedWindow())
                 MDecoratorFrame::instance()->lower();
-            item->setIconified(true);
+            // item->setIconified(true);
             // ensure ZValue is set only after the animation is done
             item->requestZValue(0);
 
@@ -2346,10 +2346,7 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
 }
 
 void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
-{
-    if (window->iconifyState() != MCompositeWindow::TransitionIconifyState)
-        return;
-
+{    
     // TODO: (work for more)
     // Handle minimize request coming from a managed window itself,
     // if there are any
@@ -3316,6 +3313,16 @@ void MCompositeManager::debug(const QString& d)
 bool MCompositeManager::displayOff()
 {
     return d->device_state->displayOff();
+}
+
+bool MCompositeManager::possiblyUnredirectTopmostWindow()
+{
+    return d->possiblyUnredirectTopmostWindow();
+}
+
+void MCompositeManager::exposeSwitcher()
+{
+    d->exposeSwitcher();
 }
 
 #include "mcompositemanager.moc"

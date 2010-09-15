@@ -175,6 +175,12 @@ public:
      */
     IconifyState iconifyState() const;
 
+    
+    /*!
+     * Sets how this window was iconified.
+     */
+    void setIconifyState(IconifyState state);
+
     /*!
      * Returns true if this window needs a decoration
      */

@@ -108,12 +108,17 @@ public:
      * or not
      */
     bool isCompositing();
+
+    /*!
+     * Try to direct-render the topmost window
+     */
+    bool possiblyUnredirectTopmostWindow();
     
     /*!
      * Returns if the display is off
      */
     bool displayOff();
-    
+        
     void debug(const QString& d);
 
 public slots:
@@ -127,6 +132,11 @@ public slots:
      */
     void showLaunchIndicator(int timeout);
     void hideLaunchIndicator();
+
+    /*!
+     * Invoke to show the desktop window, possibly with switcher contents
+     */
+    void exposeSwitcher();
      
 signals:
     void decoratorRectChanged(const QRect& rect);

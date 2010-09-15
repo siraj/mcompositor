@@ -171,6 +171,11 @@ void MCompositeWindow::setThumbMode(bool mode)
  */
 void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
 {
+    if (iconify_state == ManualIconifyState) {
+        setIconified(true);
+        return;
+    }
+
     if (window_status != MCompositeWindow::Closing)
         window_status = MCompositeWindow::Minimizing;
 
@@ -216,6 +221,11 @@ void MCompositeWindow::setIconified(bool iconified)
 MCompositeWindow::IconifyState MCompositeWindow::iconifyState() const
 {
     return iconify_state;
+}
+
+void MCompositeWindow::setIconifyState(MCompositeWindow::IconifyState state)
+{
+    iconify_state = state;
 }
 
 void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
