@@ -41,6 +41,9 @@ def check_focus(w):
 if os.system('/sbin/mcetool --unblank-screen --set-inhibit-mode=stay-on'):
   print 'mcetool is missing!'
 
+if os.system('/usr/bin/gconftool-2 --type bool --set /desktop/meego/notifications/previews_enabled false'):
+  print 'cannot disable notifications'
+
 if os.system('pidof mcompositor'):
   print 'mcompositor is not running'
   sys.exit(1)
@@ -93,5 +96,8 @@ check_focus(new_win)
 os.popen('pkill windowctl')
 time.sleep(1)
 check_focus(home_win)
+
+if os.system('/usr/bin/gconftool-2 --type bool --set /desktop/meego/notifications/previews_enabled true'):
+  print 'cannot re-enable notifications'
 
 sys.exit(ret)

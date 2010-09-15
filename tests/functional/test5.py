@@ -14,6 +14,9 @@ import os, re, sys, time
 if os.system('/sbin/mcetool --unblank-screen --set-tklock-mode=unlocked --set-inhibit-mode=stay-on'):
   print 'mcetool is missing!'
 
+if os.system('/usr/bin/gconftool-2 --type bool --set /desktop/meego/notifications/previews_enabled false'):
+  print 'cannot disable notifications'
+
 if os.system('pidof mcompositor'):
   print 'mcompositor is not running'
   sys.exit(1)
@@ -50,5 +53,8 @@ for l in s.splitlines():
 # cleanup
 os.popen('pkill windowctl')
 time.sleep(1)
+
+if os.system('/usr/bin/gconftool-2 --type bool --set /desktop/meego/notifications/previews_enabled true'):
+  print 'cannot re-enable notifications'
 
 sys.exit(ret)
