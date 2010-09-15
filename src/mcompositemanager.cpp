@@ -1173,7 +1173,8 @@ void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
                 item->update();
                 dirtyStacking(check_visibility);
                 check_visibility = false;
-            }
+            } else
+                dirtyStacking(check_visibility);
         } else {
             // FIXME: seems that this branch is never executed?
             if (e->window == MDecoratorFrame::instance()->managedWindow())
