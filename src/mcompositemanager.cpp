@@ -2817,6 +2817,11 @@ bool MCompositeManagerPrivate::compareWindows(Window w_a, Window w_b)
     MCompositeWindow *cw_b = MCompositeWindow::compositeWindow(w_b);
     MDecoratorFrame *deco = MDecoratorFrame::instance();
     
+    if (!cw_a->propertyCache()) // a is already destroyed
+        return true;
+    if (!cw_b->propertyCache()) // b is already destroyed
+        return false;
+
     // a is unused decorator?
     if (cw_a->propertyCache()->isDecorator() &&
         (!deco->managedClient() ||
