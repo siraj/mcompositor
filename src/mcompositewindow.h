@@ -388,7 +388,7 @@ private:
     WindowStatus window_status;
     bool need_decor;
     bool window_visible;
-    bool window_obscured;
+    short window_obscured;
     bool is_valid;
     bool newly_mapped;
     bool is_closing;

@@ -49,7 +49,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       destroyed(false),
       window_status(Normal),
       need_decor(false),
-      window_obscured(true), // true to synthesize initial visibility event
+      window_obscured(-1),
       is_transitioning(false),
       pinging_enabled(false),
       dimmed_effect(false),
@@ -231,9 +231,10 @@ void MCompositeWindow::setIconifyState(MCompositeWindow::IconifyState state)
 void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
-    if ((obscured == window_obscured) || (!obscured && p->displayOff()))
+    short new_value = obscured ? 1 : 0;
+    if ((new_value == window_obscured) || (!obscured && p->displayOff()))
         return;
-    window_obscured = obscured;
+    window_obscured = new_value;
 
     if (!no_notify) {
         XVisibilityEvent c;
