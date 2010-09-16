@@ -1,8 +1,8 @@
-mcompositor (0.7.0~1) unstable; urgency=low
+mcompositor (0.7.0-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
   * Fixes: NB#191286 - mcompositor is eating CPU from the background in basic panning use cases
   * Fixes: NB#189756 - COREWEB: /usr/bin/mcompositor 'MWindowPropertyCache::isDecorator MCompositeManagerPrivate::compareWindows MCompositeManagerPrivate::roughSort MCompositeManagerPrivate::bindWindow'
+  * New: Modularized compositing framework with support for extensions and custom window effects using shaders	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Wed, 15 Sep 2010 00:11:28 +0300
 
