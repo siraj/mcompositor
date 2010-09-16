@@ -283,10 +283,10 @@ void MTexturePixmapPrivate::removeEffect()
     
     for (int i=0; i < e->fragmentIds().size(); ++i) {
         GLuint id = e->fragmentIds()[i];
-        glresource->customShaders.remove(id);        
         QGLShaderProgram* frag = glresource->customShaders.value(i,0);
         if (frag)
             delete frag;
+        glresource->customShaders.remove(id);
     }    
 }
 
