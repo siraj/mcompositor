@@ -528,7 +528,7 @@ void MCompositeWindow::receivedPing(ulong serverTimeStamp)
 {
     received_ping_timestamp = serverTimeStamp;
     
-    if (window_status != Minimizing || window_status != Closing)
+    if (window_status != Minimizing && window_status != Closing)
         window_status = Normal;
     if (blurred())
         setBlurred(false);
@@ -537,11 +537,10 @@ void MCompositeWindow::receivedPing(ulong serverTimeStamp)
 void MCompositeWindow::pingTimeout()
 {
     if (pinging_enabled && received_ping_timestamp < sent_ping_timestamp
-        && window_status != Hung) {
+        && window_status != Hung
+        && window_status != Minimizing && window_status != Closing) {
         setBlurred(true);
-        
-        if (window_status != Minimizing || window_status != Closing)
-            window_status = Hung;
+        window_status = Hung;
         emit windowHung(this);
     }
     if (pinging_enabled)

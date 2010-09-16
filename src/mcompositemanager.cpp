@@ -2136,6 +2136,7 @@ static bool should_be_pinged(MCompositeWindow *cw)
 {
     MWindowPropertyCache *pc = cw->propertyCache();
     if (pc->supportedProtocols().indexOf(ATOM(_NET_WM_PING)) != -1
+        && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION)
         && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK)
         && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
         && !pc->isDecorator() && !pc->isOverrideRedirect()
