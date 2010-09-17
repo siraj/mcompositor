@@ -854,10 +854,12 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
         configure_reqs.remove(e->window);
     }
 
+    bool delete_pc_later = false;
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
         item->deleteLater();
         removeWindow(item->window());
+        delete_pc_later = true; // PC deleted with the MCompositeWindow
     } else {
         // We got a destroy event from a framed window (or a window that was
         // never mapped)
@@ -868,7 +870,8 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
         }
     }
     
-    if (prop_caches.contains(e->window) && (!item || (item && !item->isClosing()))) {
+    if (!delete_pc_later && prop_caches.contains(e->window)
+        && (!item || !item->isClosing())) {
         delete prop_caches.value(e->window);
         prop_caches.remove(e->window);
     }
