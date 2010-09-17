@@ -1,3 +1,9 @@
+mcompositor (0.7.1~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Fri, 17 Sep 2010 12:32:50 +0300
+
 mcompositor (0.7.0-1) unstable; urgency=low
 
   * Fixes: NB#191286 - mcompositor is eating CPU from the background in basic panning use cases
