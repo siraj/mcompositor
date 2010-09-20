@@ -563,9 +563,9 @@ static void set_global_alpha(unsigned int plane, unsigned int level)
 static void set_alpha_onplane(int plane, int value)
 {
     if (value == 255)
-        toggle_global_alpha_blend(0, plane);
+        toggle_global_alpha_blend(0, 0);
     else if (value < 255)
-        toggle_global_alpha_blend(1, plane);
+        toggle_global_alpha_blend(1, 0);
     
     set_global_alpha(plane, value);
 }
@@ -898,7 +898,7 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
     if (pc && e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA))
         set_alpha_onplane(0, pc->globalAlpha());
     if (pc && e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA))
-        set_alpha_onplane(1, pc->videoGlobalAlpha());
+        set_alpha_onplane(2, pc->videoGlobalAlpha());
 #endif
 }
 
@@ -1123,10 +1123,10 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
     MCompositeWindow *c_newtop = MCompositeWindow::compositeWindow(newtop);
     if(c_newtop) {
         set_alpha_onplane(0, c_newtop->propertyCache()->globalAlpha());
-        set_alpha_onplane(1, c_newtop->propertyCache()->videoGlobalAlpha());
+        set_alpha_onplane(2, c_newtop->propertyCache()->videoGlobalAlpha());
     } else {
         set_alpha_onplane(0, 255);
-        set_alpha_onplane(1, 255);
+        set_alpha_onplane(2, 255);
     }    
 #endif        
 }
@@ -2023,7 +2023,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     int g_alpha = wpc->globalAlpha();
     int v_alpha = wpc->videoGlobalAlpha();
     set_alpha_onplane(0, g_alpha);
-    set_alpha_onplane(1, v_alpha);
+    set_alpha_onplane(2, v_alpha);
 #endif
 
     MWindowPropertyCache *pc = 0;
@@ -2177,7 +2177,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                 set_alpha_onplane(0, g_alpha);
             int v_alpha = i->propertyCache()->videoGlobalAlpha();
             if (v_alpha < 255)
-                set_alpha_onplane(1, v_alpha);
+                set_alpha_onplane(2, v_alpha);
 #endif
         }
         if (fd.frame)
@@ -2373,7 +2373,7 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
 #ifdef GLES2_VERSION
     // Reset the global alpha on minimize
     set_alpha_onplane(0, 255);
-    set_alpha_onplane(1, 255);
+    set_alpha_onplane(2, 255);
 #endif
 }
 
