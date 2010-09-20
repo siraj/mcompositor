@@ -307,7 +307,8 @@ void MTexturePixmapItem::paint(QPainter *painter,
     if (painter->paintEngine()->type()  != QPaintEngine::OpenGL)
         return;
 #else
-    if (painter->paintEngine()->type()  != QPaintEngine::OpenGL2) {
+    if (painter->paintEngine()->type()  != QPaintEngine::OpenGL2 &&
+            painter->paintEngine()->type()  != QPaintEngine::OpenGL) {
         return;
     }
 #endif
