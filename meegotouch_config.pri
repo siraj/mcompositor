@@ -20,4 +20,4 @@ exists(/usr/include/X11/extensions/shapeconst.h) {
 }
 
 # Compositor components only
-VERSION = 0.7.0
+VERSION = 0.7.1
