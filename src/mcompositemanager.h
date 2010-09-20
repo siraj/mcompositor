@@ -148,6 +148,7 @@ private:
     friend class MCompWindowAnimator;
     friend class MCompositeManagerExtension;
     friend class MTexturePixmapPrivate;
+    friend class MWindowPropertyCache;
 };
 
 #endif

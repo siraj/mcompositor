@@ -12,5 +12,11 @@ transient for.\n
 \t- check that the transient is above the application window\n
 \t- iconify the application window\n
 \t- activate the transient window\n
+\t- check that the transient is above the application window\n
+\t- create and show a dialog window that is transient for the previous dialog\n
+\t- iconify the application window\n
+\t- activate the application window\n
+\t- check that both transients are above the application window and in order\n
+\t- swap the transiencies of the dialogs\n
 - Post-conditions\n
-\t- check that the transient is above the application window\n"
+\t- check that both transients are above the application window and in order\n"
