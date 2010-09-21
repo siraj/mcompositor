@@ -272,6 +272,9 @@ void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform, const QRe
 
 void MTexturePixmapPrivate::installEffect(MCompositeWindowShaderEffect* effect)
 {
+    if (current_effect == effect)
+        return;
+    
     current_effect = effect;
     connect(effect, SIGNAL(enabledChanged(bool)), SLOT( activateEffect(bool)));
     connect(effect, SIGNAL(destroyed()), SLOT(removeEffect()));
