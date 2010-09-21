@@ -122,6 +122,11 @@ public:
      */
     const QList<Atom>& netWmState();
 
+    /*!
+     * Returns list of transients of the window.
+     */
+    const QList<Window>& transientWindows() const { return transients; }
+
     // used to set the atom list now, for immediate effect in e.g. stacking
     void setNetWmState(const QList<Atom>& s) {
         if (!is_valid)
@@ -220,6 +225,7 @@ private:
 
     Atom window_type_atom;
     Window transient_for;
+    QList<Window> transients;
     QList<Atom> wm_protocols;
     bool wm_protocols_valid;
     bool icon_geometry_valid;

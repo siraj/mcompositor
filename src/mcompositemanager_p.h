@@ -122,6 +122,7 @@ public:
     static bool compareWindows(Window w_a, Window w_b);
     void roughSort();
     void setCurrentApp(Window w);
+    void raiseTransientsOf(MWindowPropertyCache *pc, int last_i);
 
     MCompositeScene *watch;
     Window localwin, localwin_parent;

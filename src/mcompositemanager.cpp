@@ -1479,20 +1479,18 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
 /* recursion is needed to handle transients that are transient for other
  * transients */
-static void raise_transients(QList<Window>& winlist, Window w, int last_i)
+void MCompositeManagerPrivate::raiseTransientsOf(MWindowPropertyCache *pc,
+                                                 int last_i)
 {
-    Window first_moved = 0;
-    for (int i = 0; i < last_i;) {
-        Window iw = winlist.at(i);
-        if (iw == first_moved)
-            /* each window is only considered once */
-            break;
-        MCompositeWindow *cw = MCompositeWindow::compositeWindow(iw);
-        if (cw && cw->propertyCache()->transientFor() == w) {
-            safe_move(winlist, i, last_i);
-            if (!first_moved) first_moved = iw;
-            raise_transients(winlist, iw, last_i);
-        } else ++i;
+    for (QList<Window>::const_iterator it = pc->transientWindows().begin();
+         it != pc->transientWindows().end(); ++it) {
+        int i = stacking_list.indexOf(*it);
+        if (i != -1) {
+            stacking_list.move(i, last_i);
+            MWindowPropertyCache *p = prop_caches.value(*it, 0);
+            if (p && !p->transientWindows().isEmpty())
+                raiseTransientsOf(p, last_i);
+        }
     }
 }
 
@@ -1672,9 +1670,9 @@ void MCompositeManagerPrivate::setCurrentApp(Window w)
         Window w = stacking_list.at(i); \
         if (w == first_moved) break; \
         MCompositeWindow *cw = COMPOSITE_WINDOW(w); \
-        if (cw && cw->isMapped() && (X)) { \
+        if (cw && cw->propertyCache() && cw->isMapped() && (X)) { \
             stacking_list.move(i, last_i); \
-	    raise_transients(stacking_list, w, last_i); \
+	    raiseTransientsOf(cw->propertyCache(), last_i); \
             if (!first_moved) first_moved = w; \
         } else ++i; \
     } }
@@ -1741,7 +1739,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     
 	safe_move(stacking_list, app_i, last_i);
 	/* raise transients recursively */
-	raise_transients(stacking_list, active_app, last_i);
+        if (aw->propertyCache())
+	    raiseTransientsOf(aw->propertyCache(), last_i);
     } else if (duihome) {
         //qDebug() << "raising home window" << duihome;
         safe_move(stacking_list, stacking_list.indexOf(duihome), last_i);

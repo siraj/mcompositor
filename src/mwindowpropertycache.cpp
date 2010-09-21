@@ -17,6 +17,7 @@
 **
 ****************************************************************************/
 
+#include <QtGui>
 #include <stdlib.h>
 #include <QX11Info>
 #include <QRect>
@@ -25,7 +26,9 @@
 #include <X11/extensions/Xrender.h>
 #include <X11/extensions/shape.h>
 #include <X11/Xmd.h>
+#include "mcompositemanager.h"
 #include "mwindowpropertycache.h"
+#include "mcompositemanager_p.h"
 
 #define MAX_TYPES 10
 
@@ -141,6 +144,14 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     xcb_net_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
                                                ATOM(_NET_WM_STATE),
                                                XCB_ATOM_ATOM, 0, 100);
+    // add any transients to the transients list
+    MCompositeManager *m = (MCompositeManager*)qApp;
+    for (QList<Window>::const_iterator it = m->d->stacking_list.begin();
+         it != m->d->stacking_list.end(); ++it) {
+        MWindowPropertyCache *p = m->d->prop_caches.value(*it, 0);
+        if (p && p != this && p->transientFor() == window)
+            transients.append(*it);
+    }
 }
 
 MWindowPropertyCache::~MWindowPropertyCache()
@@ -164,6 +175,12 @@ MWindowPropertyCache::~MWindowPropertyCache()
     if (xcb_real_geom) {
         free(xcb_real_geom);
         xcb_real_geom = 0;
+    }
+    if (transient_for && transient_for != (Window)-1) {
+        MCompositeManager *m = (MCompositeManager*)qApp;
+        // remove reference from the old "parent"
+        MWindowPropertyCache *p = m->d->prop_caches.value(transient_for, 0);
+        if (p) p->transients.removeAll(window);
     }
     xcb_get_property_reply_t *r;
     if (transient_for == (Window)-1) {
@@ -299,6 +316,16 @@ Window MWindowPropertyCache::transientFor()
             free(r);
             if (transient_for == window)
                 transient_for = 0;
+            if (transient_for) {
+                MCompositeManager *m = (MCompositeManager*)qApp;
+                // add reference to the "parent"
+                MWindowPropertyCache *p = m->d->prop_caches.value(
+                                                        transient_for, 0);
+                if (p) p->transients.append(window);
+                // need to check stacking again to make sure the "parent" is
+                // stacked according to the changed transient window list
+                m->d->dirtyStacking(false);
+            }
         }
     }
     return transient_for;
@@ -389,6 +416,12 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         if (transient_for == (Window)-1)
             // collect the old reply
             transientFor();
+        if (transient_for && transient_for != (Window)-1) {
+            MCompositeManager *m = (MCompositeManager*)qApp;
+            // remove reference from the old "parent"
+            MWindowPropertyCache *p = m->d->prop_caches.value(transient_for, 0);
+            if (p) p->transients.removeAll(window);
+        }
         transient_for = (Window)-1;
         xcb_transient_for_cookie = xcb_get_property(xcb_conn, 0, window,
                                                     XCB_ATOM_WM_TRANSIENT_FOR,
