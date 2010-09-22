@@ -19,6 +19,12 @@ Depends: mcompositor (=${Source-Version})
 Description: MeeGo Touch UI Compositing Window Manager debug symbols
  MeeGo Touch UI Compositor debug symbols
 
+Package: mcompositor-dev
+Architecture: all
+Depends: mcompositor (=${Source-Version})
+Description: MeeGo Touch UI Compositing Window Manager header files
+ MeeGo Touch UI Compositor header files for plugins.
+
 Package: mcompositor-functional-tests
 Architecture: any
 Depends: libmeegotouchcore0, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils, ${shlibs:Depends}

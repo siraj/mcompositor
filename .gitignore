@@ -11,6 +11,7 @@ debian/tmp
 debian/duicompositor
 debian/duicompositor-dbg
 debian/duicompositor-tests
+debian/mcompositor-dev/
 debian/mcompositor-dbg/
 debian/mcompositor-functional-tests/
 debian/mcompositor/
@@ -23,6 +24,8 @@ tests/ut_duisimplewindowframe/ut_duisimplewindowframe
 *-stamp
 tests.xml
 decorators/mdecorator/mdecorator
-src/mcompositor
+mcompositor/mcompositor
 tests/windowctl/windowctl
 tests/windowstack/windowstack
+tests/GLES2/test-gles2
+tests/focus-tracker/focus-tracker

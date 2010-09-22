@@ -24,7 +24,6 @@
 #include <QtOpenGL>
 #include <QPointer>
 #include <X11/Xutil.h>
-#include "mcompatoms_p.h"
 #include "mwindowpropertycache.h"
 
 class MCompWindowAnimator;

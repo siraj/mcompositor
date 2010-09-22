@@ -64,6 +64,17 @@ CONFIG += release link_pkgconfig
 PKGCONFIG += contextsubscriber-1.0
 QT += core gui opengl
 
+# TODO: refactor the headers to exclude private stuff
+publicHeaders.files = mcompositewindow.h \
+                      mcompositemanager.h \
+                      mcompositewindowshadereffect.h \
+                      mcompositemanagerextension.h \
+                      mwindowpropertycache.h \
+                      mcompatoms_p.h \
+                      mcompmgrextensionfactory.h
+publicHeaders.path = $$M_INSTALL_HEADERS/mcompositor
+INSTALLS += publicHeaders
+
 target.path += /usr/lib
 INSTALLS += target 
 
