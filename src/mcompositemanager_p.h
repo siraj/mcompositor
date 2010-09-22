@@ -115,14 +115,15 @@ public:
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
     bool processX11EventFilters(XEvent *event);
-    bool removeWindow(Window w);
+    void removeWindow(Window w);
     bool needDecoration(Window w, MWindowPropertyCache *pc = 0);
     MCompositeWindow *getHighestDecorated();
     
     static bool compareWindows(Window w_a, Window w_b);
     void roughSort();
     void setCurrentApp(Window w);
-    void raiseTransientsOf(MWindowPropertyCache *pc, int last_i);
+    void raiseTransientsOf(MWindowPropertyCache *pc, int last_i,
+                           bool recursion = false);
 
     MCompositeScene *watch;
     Window localwin, localwin_parent;

@@ -1,0 +1,17 @@
+CaseName="Meego_stacking_layer_support"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Some tests for Meego stacking layer support.\n
+\n
+- Test steps\n
+\t- show an application window\n
+\t- show an application window transient to the first one\n
+\t- show an application window transient to the first transient\n
+\t- show an application window transient to the second transient\n
+\t- show an application window\n
+\t- set the first non-transient application window to Meego level 1\n
+\t- set the second non-transient application window to Meego level 1\n
+\t- check correct stacking\n
+\t- set the first non-transient application window to Meego level 2\n
+- Post-conditions\n
+\t- check correct stacking\n"

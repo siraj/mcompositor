@@ -154,8 +154,9 @@ for l in s.splitlines():
     break
 
 # swap the transiencies of the dialogs
-os.popen("windowctl t %s %s" % (new_dialog, old_win))
+# (this introduces a temporary transiency loop)
 os.popen("windowctl t %s %s" % (new_win, new_dialog))
+os.popen("windowctl t %s %s" % (new_dialog, old_win))
 time.sleep(1)
 
 new_dialog_found = new_win_found = 0

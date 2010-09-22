@@ -94,6 +94,7 @@ public:
                                                           ShapeBounding);
     }
 
+    Window winId() const { return window; }
     Window parentWindow() const { return parent_window; }
     void setParentWindow(Window w) { parent_window = w; }
 

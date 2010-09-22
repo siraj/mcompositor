@@ -905,12 +905,14 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
 Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
 {
     Window last = 0, parent;
+    MWindowPropertyCache *orig_pc = pc;
     while (pc && (parent = pc->transientFor())) {
-       MCompositeWindow *cw = COMPOSITE_WINDOW(parent);
-       if (cw)
-           pc = cw->propertyCache();
-       else
-           break; // no-good parent
+       pc = prop_caches.value(parent, 0);
+       if (pc == orig_pc) {
+           qWarning("%s(): window 0x%lx belongs to a transiency loop!",
+                    __func__, orig_pc->winId());
+           break;
+       }
        if (pc && pc->isMapped())
            last = parent;
        else // no-good parent, bail out
@@ -1480,16 +1482,24 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 /* recursion is needed to handle transients that are transient for other
  * transients */
 void MCompositeManagerPrivate::raiseTransientsOf(MWindowPropertyCache *pc,
-                                                 int last_i)
+                                                 int last_i, bool recursion)
 {
+    static MWindowPropertyCache *orig_pc = 0;
+    if (!recursion)
+        orig_pc = pc;
     for (QList<Window>::const_iterator it = pc->transientWindows().begin();
          it != pc->transientWindows().end(); ++it) {
         int i = stacking_list.indexOf(*it);
         if (i != -1) {
             stacking_list.move(i, last_i);
             MWindowPropertyCache *p = prop_caches.value(*it, 0);
+            if (p == orig_pc && orig_pc) {
+                qWarning("%s(): window 0x%lx belongs to a transiency loop!",
+                         __func__, orig_pc->winId());
+                break;
+            }
             if (p && !p->transientWindows().isEmpty())
-                raiseTransientsOf(p, last_i);
+                raiseTransientsOf(p, last_i, true);
         }
     }
 }
@@ -1671,9 +1681,20 @@ void MCompositeManagerPrivate::setCurrentApp(Window w)
         if (w == first_moved) break; \
         MCompositeWindow *cw = COMPOSITE_WINDOW(w); \
         if (cw && cw->propertyCache() && cw->isMapped() && (X)) { \
+            MCompositeWindow *orig_cw = cw; \
+            /* find the next window to move */ \
+            Window next = 0; \
+            for (int next_i = i + 1; next_i <= last_i; ++next_i) { \
+                next = stacking_list.at(next_i); \
+                cw = COMPOSITE_WINDOW(next); \
+                if (cw && cw->propertyCache() && cw->isMapped() && (X)) \
+                    break; \
+            } \
             stacking_list.move(i, last_i); \
-	    raiseTransientsOf(cw->propertyCache(), last_i); \
+	    raiseTransientsOf(orig_cw->propertyCache(), last_i); \
             if (!first_moved) first_moved = w; \
+            if (!next || (i = stacking_list.indexOf(next)) < 0) \
+                break; \
         } else ++i; \
     } }
 
@@ -1759,12 +1780,9 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
     }
     /* Meego layers 1-3: lock screen, ongoing call etc. */
-    /* FIXME: we should check windowState() instead of iconifyState(), which
-       is for animation purposes but that could lead to regressions with
-       initial_state==IconicState windows */
     for (unsigned int level = 1; level < 4; ++level)
          RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache()) &&
-                        cw->iconifyState() == MCompositeWindow::NoIconifyState
+                        cw->propertyCache()->windowState() == NormalState
                         && cw->propertyCache()->meegoStackingLayer() == level)
     /* raise all system-modal dialogs */
     RAISE_MATCHING(!getLastVisibleParent(cw->propertyCache())
@@ -2788,22 +2806,19 @@ bool MCompositeManagerPrivate::isRedirected(Window w)
     return (COMPOSITE_WINDOW(w) != 0);
 }
 
-bool MCompositeManagerPrivate::removeWindow(Window w)
+void MCompositeManagerPrivate::removeWindow(Window w)
 {
     // Item is already removed from scene when it is deleted
+    int removed = 0;
 
-    bool ret = true;
-    windows_as_mapped.removeAll(w);
-    if (windows.remove(w) == 0)
-        ret = false;
-    
-    stacking_list.removeAll(w);
-    
+    removed += windows_as_mapped.removeAll(w);
+    removed += windows.remove(w);
+    removed += stacking_list.removeAll(w);
+
     for (int i = 0; i < TOTAL_LAYERS; ++i)
         if (stack[i] == w) stack[i] = 0;
 
-    updateWinList();
-    return ret;
+    if (removed > 0) updateWinList();
 }
 
 static QList<Window> orig_list;
@@ -3091,10 +3106,10 @@ void MCompositeManagerPrivate::enableRedirection()
             ((MTexturePixmapItem *)tp)->enableRedirectedRendering();
         setWindowDebugProperties(it.key());
     }
-    XSync(QX11Info::display(), False);
-    
+    XFlush(QX11Info::display());
     compositing = true;
-    QTimer::singleShot(100, this, SLOT(enablePaintedCompositing()));
+    // no delay: application does not need to redraw when maximizing it
+    enablePaintedCompositing();
 }
 
 void MCompositeManagerPrivate::enablePaintedCompositing()
