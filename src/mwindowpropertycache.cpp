@@ -524,7 +524,8 @@ int MWindowPropertyCache::windowState()
         if (r && (unsigned)xcb_get_property_value_length(r) >= sizeof(CARD32))
             window_state = ((CARD32*)xcb_get_property_value(r))[0];
         else {
-            window_state = NormalState;
+            // mark it so that MCompositeManagerPrivate::setWindowState sets it
+            window_state = -1;
         }
         if (r) free(r);
         wm_state_query = false;
