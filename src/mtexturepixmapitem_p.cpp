@@ -348,6 +348,9 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MT
 MTexturePixmapPrivate::~MTexturePixmapPrivate()
 {
     damageTracking(false);
+
+    if (windowp)
+        XFreePixmap(QX11Info::display(), windowp);
 }
 
 void MTexturePixmapPrivate::damageTracking(bool enabled)
