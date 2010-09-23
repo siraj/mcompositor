@@ -104,12 +104,12 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
     // visibility is determined from top to bottom
     for (int i = numItems - 1; i >= 0; --i) {
         MCompositeWindow *cw = (MCompositeWindow *) items[i];
-        
+
         if (!cw->propertyCache()) // this window is dead
             continue;
 
         if (cw->isDirectRendered() || !cw->isVisible()
-            || !cw->propertyCache()->isMapped()
+            || !(cw->propertyCache()->isMapped() || cw->isWindowTransitioning())
             || cw->propertyCache()->isInputOnly())
             continue;
         if (visible.isEmpty())
