@@ -146,6 +146,12 @@ public:
     bool beingMapped() const { return being_mapped; }
     void setBeingMapped(bool s) { being_mapped = s; }
 
+    /*!
+     * Used for special windows that should not be minimised/iconified.
+     */
+    bool dontIconify() const { return dont_iconify; }
+    void setDontIconify(bool s) { dont_iconify = s; }
+
     bool isMapped() const {
         if (!is_valid || !attrs)
             return false;
@@ -248,7 +254,7 @@ private:
     int meego_layer, window_state;
     MCompAtoms::Type window_type;
     Window window, parent_window;
-    bool being_mapped;
+    bool being_mapped, dont_iconify;
     // geometry is requested only once in the beginning, after that, we
     // use ConfigureNotifys to update the size through setRealGeometry()
     xcb_get_geometry_reply_t *xcb_real_geom;

@@ -57,6 +57,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       window(w),
       parent_window(RootWindow(QX11Info::display(), 0)),
       being_mapped(false),
+      dont_iconify(false),
       xcb_real_geom(0)
 {
     memset(&req_geom, 0, sizeof(req_geom));
@@ -361,6 +362,9 @@ unsigned int MWindowPropertyCache::meegoStackingLayer()
         }
     }
     if (meego_layer > 6) meego_layer = 6;
+    if (meego_layer == 1 || meego_layer == 2)
+        // these (screen/device lock) cannot be iconified by default
+        dont_iconify = true;
     return (unsigned)meego_layer;
 }
 

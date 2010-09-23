@@ -2309,8 +2309,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                                == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)
                             && getLastVisibleParent(cw->propertyCache()))) &&
                         // skip devicelock and screenlock windows
-                        (cw->propertyCache()->meegoStackingLayer() > 2 ||
-                         cw->propertyCache()->meegoStackingLayer() == 0))
+                        !cw->propertyCache()->dontIconify())
                         setWindowState(cw->window(), IconicState);
                 }
                 Q_ASSERT(lower_i > 0);
@@ -3190,8 +3189,7 @@ void MCompositeManagerPrivate::exposeSwitcher()
         if (!i->isAppWindow(true) ||
             i->propertyCache()->windowState() == IconicState ||
             // skip devicelock and screenlock windows
-            i->propertyCache()->meegoStackingLayer() == 1 ||
-            i->propertyCache()->meegoStackingLayer() == 2 ||
+            i->propertyCache()->dontIconify() ||
 
             i->propertyCache()->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
             continue;
