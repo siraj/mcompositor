@@ -19,5 +19,19 @@ exists(/usr/include/X11/extensions/shapeconst.h) {
     }
 }
 
+contains(QT_CONFIG, opengles2) {
+     DEFINES += GLES2_VERSION
+} else {
+     # Qt wasn't built with EGL/GLES2 support but EGL is present
+     # ensure we still use the EGL back-end 
+     exists($$QMAKE_INCDIR_OPENGL/EGL) {
+         DEFINES += GLES2_VERSION
+     } 
+     # Otherwise use GLX backend
+     else {
+         DEFINES += DESKTOP_VERSION
+     }
+} 
+
 # Compositor components only
 VERSION = 0.7.1
