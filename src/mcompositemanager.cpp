@@ -347,15 +347,18 @@ public:
         return d;
     }
     
-    void requestMap(Window window)
+    void requestMap(MWindowPropertyCache *window)
     {
         if (!((MCompositeManager *) qApp)->isCompositing()
             // if something is already queueing, add to the queue, otherwise
             // the mapping order goes wrong
             || !map_requests.isEmpty())
             map_requests.push_back(window);
-        else
-            XMapWindow(QX11Info::display(), window);
+        else {
+            // create the damage object before mapping to get 'em all
+            window->damageTracking(true);
+            XMapWindow(QX11Info::display(), window->winId());
+        }
     }
 
 public slots:
@@ -363,13 +366,15 @@ public slots:
     {
         while (!map_requests.isEmpty()) {
             // first come first served
-            Window w = map_requests.takeFirst();
-            XMapWindow(QX11Info::display(), w);
+            MWindowPropertyCache *w = map_requests.takeFirst();
+            // create the damage object before mapping to get 'em all
+            w->damageTracking(true);
+            XMapWindow(QX11Info::display(), w->winId());
         }
     }
     
 private:
-    QList<Window> map_requests;
+    QList<MWindowPropertyCache*> map_requests;
     explicit MapRequesterPrivate(QObject* parent = 0)
         :QObject(parent)
     {}
@@ -836,8 +841,11 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
     XFixesDestroyRegion(QX11Info::display(), r);
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->drawable);
-    if (item && rects)
+    if (item && rects) {
         item->updateWindowPixmap(rects, num);
+        if (item->waitingForDamage())
+            item->damageReceived(false);
+    }
 
     if (rects)
         XFree(rects);
@@ -1418,7 +1426,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     if (needDecoration(e->window, pc)) {
         if (MDecoratorFrame::instance()->decoratorItem()) {
             enableCompositing();
-            MapRequesterPrivate::instance()->requestMap(e->window);
+            MapRequesterPrivate::instance()->requestMap(pc);
             // initially visualize decorator item so selective compositing
             // checks won't disable compositing
             MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
@@ -1464,7 +1472,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             XReparentWindow(QX11Info::display(), e->window,
                             frame->windowArea(), 0, 0);
             setWindowState(e->window, NormalState);     
-            MapRequesterPrivate::instance()->requestMap(e->window);
+            MapRequesterPrivate::instance()->requestMap(pc);
             frame->show();
 
             XSync(QX11Info::display(), False);
@@ -1475,7 +1483,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             setWindowState(e->window, IconicState);
         else
             setWindowState(e->window, NormalState);
-        MapRequesterPrivate::instance()->requestMap(e->window);
+        MapRequesterPrivate::instance()->requestMap(pc);
     }
 }
 
@@ -2076,9 +2084,11 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         // TODO: don't show the animation if the window is not stacked on top
         const XWMHints &h = pc->getWMHints();
         if ((!(h.flags & StateHint) || h.initial_state != IconicState)
-            && !pc->isInputOnly())
+            && !pc->isInputOnly()) {
+            // remapped/prestarted apps should also have startup animation
+            item->setNewlyMapped(true);
             item->showWindow();
-        else {
+        } else {
             item->setVisible(true);
             item->setNewlyMapped(false);
         }

@@ -58,7 +58,8 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       parent_window(RootWindow(QX11Info::display(), 0)),
       being_mapped(false),
       dont_iconify(false),
-      xcb_real_geom(0)
+      xcb_real_geom(0),
+      damage_object(0)
 {
     memset(&req_geom, 0, sizeof(req_geom));
     memset(&home_button_geom, 0, sizeof(home_button_geom));

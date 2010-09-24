@@ -338,31 +338,20 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MT
       custom_tfp(false),
       direct_fb_render(false),
       angle(0),
-      damage_object(0),
       item(p)
 {
-    damageTracking(true);
+    if (item->propertyCache())
+        item->propertyCache()->damageTracking(true);
     init();
 }
 
 MTexturePixmapPrivate::~MTexturePixmapPrivate()
 {
-    damageTracking(false);
+    if (item->propertyCache())
+        item->propertyCache()->damageTracking(false);
 
     if (windowp)
         XFreePixmap(QX11Info::display(), windowp);
-}
-
-void MTexturePixmapPrivate::damageTracking(bool enabled)
-{
-    if (damage_object) {
-        XDamageDestroy(QX11Info::display(), damage_object);
-        damage_object = NULL;
-    }
-
-    if (enabled && !damage_object && !item->propertyCache()->isInputOnly())
-        damage_object = XDamageCreate(QX11Info::display(), window,
-                                      XDamageReportNonEmpty); 
 }
 
 void MTexturePixmapPrivate::saveBackingStore(bool renew)

@@ -53,6 +53,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       is_transitioning(false),
       pinging_enabled(false),
       dimmed_effect(false),
+      waiting_for_damage(0),
       win_id(window)
 {
     thumb_mode = false;
@@ -76,6 +77,10 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 
     t_ping = new QTimer(this);
     connect(t_ping, SIGNAL(timeout()), SLOT(pingTimeout()));
+
+    damage_timer = new QTimer(this);
+    damage_timer->setSingleShot(true);
+    connect(damage_timer, SIGNAL(timeout()), SLOT(damageTimeout()));
     
     MCompAtoms* atoms = MCompAtoms::instance(); 
     if (pc->windowType() == MCompAtoms::NORMAL)
@@ -321,9 +326,26 @@ void MCompositeWindow::showWindow()
         // NB#180628 - some stupid apps are listening for visibilitynotifies.
         // Well, all of the toolkit anyways
         setWindowObscured(false);
-        QTimer::singleShot(700, this, SLOT(q_fadeIn()));
+        // waiting for two damage events seems to work for Meegotouch apps
+        // at least, for the rest, there is a timeout
+        waiting_for_damage = 2;
+        damage_timer->start(500);
     } else
         q_fadeIn();
+}
+
+void MCompositeWindow::damageTimeout()
+{
+    damageReceived(true);
+}
+
+void MCompositeWindow::damageReceived(bool timeout)
+{
+    if (timeout || (waiting_for_damage > 0 && !--waiting_for_damage)) {
+        damage_timer->stop();
+        waiting_for_damage = 0;
+        q_fadeIn();
+    }
 }
 
 void MCompositeWindow::q_fadeIn()
@@ -403,7 +425,10 @@ void MCompositeWindow::finalizeState()
         iconify_state = NoIconifyState;
         iconified_final = false;
         show();
-        QTimer::singleShot(200, this, SLOT(q_itemRestored()));
+        // no delay: window does not need to be repainted when restoring
+        // from the switcher (even then the animation should take long enough
+        // to allow it)
+        q_itemRestored();
     }
     window_status = Normal;
     
@@ -611,14 +636,6 @@ void MCompositeWindow::endAnimation()
 bool MCompositeWindow::hasTransitioningWindow()
 {
     return window_transitioning > 0;
-}
-
-void MCompositeWindow::q_delayShow()
-{
-    MCompositeWindow::setVisible(true);
-    updateWindowPixmap();
-    MCompositeManager *p = (MCompositeManager *) qApp;
-    p->d->updateWinList();
 }
 
 QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant &value)

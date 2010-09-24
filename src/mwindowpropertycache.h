@@ -21,11 +21,13 @@
 #define MWINDOWPROPERTYCACHE_H
 
 #include <QRegion>
+#include <QX11Info>
 #include <X11/Xutil.h>
 #include <X11/Xlib-xcb.h>
 #include <xcb/render.h>
 #include <xcb/shape.h>
 #include <X11/extensions/shape.h>
+#include <X11/extensions/Xdamage.h>
 #include "mcompatoms_p.h"
 
 /*!
@@ -223,6 +225,21 @@ public:
         MWindowPropertyCache::xcb_conn = c;
     }
 
+
+void damageTracking(bool enabled)
+{
+    if (damage_object && enabled)
+        return;
+    if (damage_object && !enabled) {
+        XDamageDestroy(QX11Info::display(), damage_object);
+        damage_object = 0;
+    }
+    else if (enabled && !damage_object && !isInputOnly())
+        damage_object = XDamageCreate(QX11Info::display(), window,
+                                      XDamageReportNonEmpty); 
+}
+
+
 signals:
     void iconGeometryUpdated();
 
@@ -276,6 +293,7 @@ private:
     QRegion shape_region;
 
     static xcb_connection_t *xcb_conn;
+    Damage damage_object;
 };
 
 #endif

@@ -24,8 +24,7 @@
 #include <QRect>
 #include <QRegion>
 #include <QPointer>
-
-#include <X11/extensions/Xdamage.h>
+#include <X11/Xlib.h>
 
 #ifdef GLES2_VERSION
 #include <EGL/egl.h>
@@ -64,7 +63,6 @@ public:
     void drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
     
     void q_drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
-    void damageTracking(bool enabled);
     void installEffect(MCompositeWindowShaderEffect* effect);
     static GLuint installPixelShader(const QByteArray& code);
                 
@@ -87,7 +85,6 @@ public:
     QRegion damageRegion;
     qreal angle;
 
-    Damage damage_object;
     MTexturePixmapItem *item;
     QPointer<MCompositeWindowShaderEffect> current_effect;
 

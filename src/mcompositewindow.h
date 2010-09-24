@@ -170,6 +170,11 @@ public:
     void setUntransformed();
 
     /*!
+     * True if this window is waiting for damage event before it can animate.
+     */
+    bool waitingForDamage() const { return waiting_for_damage > 0; }
+
+    /*!
      * Returns how this window was iconified.
      */
     IconifyState iconifyState() const;
@@ -326,6 +331,12 @@ public slots:
       * effects
       */
      void endAnimation();
+
+    /*!
+     * Called on first showing of a window when first damage event is received
+     * or on timeout.
+     */
+    void damageReceived(bool timeout);
     
 private slots:
 
@@ -335,8 +346,8 @@ private slots:
     void finalizeState();
 
     void pingTimeout();
+    void damageTimeout();
     void pingWindow();
-    void q_delayShow();
     void q_itemRestored();
     void q_fadeIn();
     
@@ -394,6 +405,7 @@ private:
     bool is_transitioning;
     bool pinging_enabled;
     bool dimmed_effect;
+    char waiting_for_damage;
 
     static int window_transitioning;
 
@@ -403,6 +415,7 @@ private:
 
     // Main ping timer
     QTimer *t_ping;
+    QTimer *damage_timer;
     Qt::HANDLE win_id;
 
     friend class MTexturePixmapPrivate;

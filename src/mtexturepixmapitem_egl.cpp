@@ -207,7 +207,8 @@ void MTexturePixmapItem::rebindPixmap()
 
 void MTexturePixmapItem::enableDirectFbRendering()
 {
-    d->damageTracking(false);
+    if (d->item->propertyCache())
+        d->item->propertyCache()->damageTracking(false);
 
     if (d->direct_fb_render && d->egl_image == EGL_NO_IMAGE_KHR)
         return;
@@ -227,7 +228,8 @@ void MTexturePixmapItem::enableDirectFbRendering()
 
 void MTexturePixmapItem::enableRedirectedRendering()
 {
-    d->damageTracking(true);
+    if (d->item->propertyCache())
+        d->item->propertyCache()->damageTracking(true);
 
     if (!d->direct_fb_render && d->egl_image != EGL_NO_IMAGE_KHR)
         return;
