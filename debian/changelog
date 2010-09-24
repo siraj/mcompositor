@@ -1,7 +1,10 @@
-mcompositor (0.7.1~1) unstable; urgency=low
+mcompositor (0.7.1-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#193821 - leaking pixmap references
   * Fixes: NB#188336 - setVideoGlobalAlpha does not work
+  * Fixes: NB#193948 - application state is reported incorrectly to tdriver
+  * Fixes: NB#186732 - Reaction times for switching from Home Screen to fullscreen are above target for many applications
+  * New development package	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Fri, 17 Sep 2010 12:37:43 +0300
 
