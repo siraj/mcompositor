@@ -1,3 +1,9 @@
+mcompositor (0.7.2~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Fri, 24 Sep 2010 12:58:13 +0300
+
 mcompositor (0.7.1-1) unstable; urgency=low
 
   * Fixes: NB#193821 - leaking pixmap references
