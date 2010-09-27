@@ -95,6 +95,13 @@ public:
         _MEEGOTOUCH_DECORATOR_BUTTONS,
         _MEEGOTOUCH_CURRENT_APP_WINDOW,
 
+        /* RROutput properties */
+        RROUTPUT_CTYPE,
+        RROUTPUT_PANEL,
+        RROUTPUT_ALPHA_MODE,
+        RROUTPUT_GRAPHICS_ALPHA,
+        RROUTPUT_VIDEO_ALPHA,
+
 #ifdef WINDOW_DEBUG
         _M_WM_INFO,
         _M_WM_WINDOW_ZVALUE,

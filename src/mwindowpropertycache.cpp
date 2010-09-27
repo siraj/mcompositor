@@ -653,7 +653,6 @@ empty_geom:
     return icon_geometry;
 }
 
-#define OPAQUE 0xffffffff
 int MWindowPropertyCache::alphaValue(xcb_get_property_cookie_t c)
 {
     xcb_get_property_reply_t *r;
@@ -666,9 +665,9 @@ int MWindowPropertyCache::alphaValue(xcb_get_property_cookie_t c)
         free(r);
         return 255;
     }
-    CARD32 i = *((CARD32*)xcb_get_property_value(r));
-    double opacity = i * 1.0 / OPAQUE;
-    return opacity * 255;
+
+    /* Map 0..0xFFFFFFFF -> 0..0xFF. */
+    return *(CARD32*)xcb_get_property_value(r) >> 24;
 }
 
 int MWindowPropertyCache::globalAlpha()
@@ -677,7 +676,6 @@ int MWindowPropertyCache::globalAlpha()
         return global_alpha;
     
     global_alpha = alphaValue(xcb_global_alpha_cookie);
-
     return global_alpha;
 }
 

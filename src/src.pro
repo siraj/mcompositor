@@ -76,7 +76,7 @@ target.path += /usr/lib
 INSTALLS += target 
 
 LIBS += -lXdamage -lXcomposite -lXfixes -lX11-xcb -lxcb-render -lxcb-shape \
-        ../decorators/libdecorator/libdecorator.so
+        -lXrandr ../decorators/libdecorator/libdecorator.so
 
 QMAKE_EXTRA_TARGETS += check
 check.depends = $$TARGET

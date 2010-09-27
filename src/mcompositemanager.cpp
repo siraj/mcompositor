@@ -38,6 +38,7 @@
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xfixes.h>
 #include <X11/extensions/shape.h>
+#include <X11/extensions/Xrandr.h>
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
 #include <X11/XKBlib.h>
@@ -97,7 +98,7 @@ MCompAtoms *MCompAtoms::instance()
 
 MCompAtoms::MCompAtoms()
 {
-    const char *atom_names[] = {
+    static const char *atom_names[] = {
         "WM_PROTOCOLS",
         "WM_DELETE_WINDOW",
         "WM_TAKE_FOCUS",
@@ -148,6 +149,13 @@ MCompAtoms::MCompAtoms()
         "_MEEGO_STACKING_LAYER",
         "_MEEGOTOUCH_DECORATOR_BUTTONS",
         "_MEEGOTOUCH_CURRENT_APP_WINDOW",
+
+        /* RROutput properties */
+        RR_PROPERTY_CONNECTOR_TYPE,
+        "Panel",
+        "AlphaMode",
+        "GraphicsAlpha",
+        "VideoAlpha",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
@@ -533,48 +541,131 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
     }
 }
 
-#ifdef GLES2_VERSION
-// This is a Harmattan hardware-specific feature to maniplute the graphics overlay
-static void toggle_global_alpha_blend(unsigned int state, int manager = 0)
+/* Finds, caches and returns the primary (Panel) RROutput.
+ * Returns None if it cannot be found or it doesn't support
+ * alpha blending. */
+static RROutput find_primary_output()
 {
-    FILE *out;
-    char path[256];
+    static bool been_here = false;
+    static RROutput primary = None;
+    int i;
+    Display *dpy;
+    int major, minor;
+    bool has_alpha_mode;
+    XRRScreenResources *scres;
 
-    snprintf(path, 256, "/sys/devices/platform/omapdss/manager%d/alpha_blending_enabled", manager);
+    /* Initialize only once. */
+    if (been_here != None)
+        return primary;
+    been_here = true;
 
-    out = fopen(path, "w");
+    /* Check RandR, who knows what kind of X server we ride. */
+    dpy = QX11Info::display();
+    if (!XRRQueryVersion(dpy, &major, &minor)
+        || !(major > 1 || (major == 1 && minor >= 3)))
+      return None;
 
-    if (out) {
-        fprintf(out, "%d", state);
-        fclose(out);
+    /* Enumerate all the outputs X knows about and find the one
+     * whose connector type is "Panel". */
+    if (!(scres = XRRGetScreenResources(dpy, DefaultRootWindow(dpy))))
+        return None;
+
+    has_alpha_mode = false;
+    for (i = 0, primary = None; i < scres->noutput && primary == None; i++) {
+        Atom t;
+        int fmt;
+        unsigned char *contype;
+        unsigned long nitems, rem;
+
+        if (XRRGetOutputProperty(dpy, scres->outputs[i], ATOM(RROUTPUT_CTYPE),
+                                 0, 1, False, False, AnyPropertyType, &t,
+                                 &fmt, &nitems, &rem, &contype) == Success) {
+            if (t == XA_ATOM && fmt == 32 && nitems == 1
+                && *(Atom *)contype == ATOM(RROUTPUT_PANEL)) {
+                unsigned char *alpha_mode;
+
+                /* Does the primary output support alpha blending? */
+                primary = scres->outputs[i];
+                if (XRRGetOutputProperty(dpy, primary,
+                          ATOM(RROUTPUT_ALPHA_MODE), 0, 1, False, False,
+                          AnyPropertyType, &t, &fmt, &nitems, &rem,
+                          &alpha_mode) == Success) {
+                    has_alpha_mode = t == XA_INTEGER && fmt == 32
+                      && nitems == 1;
+                    XFree(alpha_mode);
+                }
+            }
+            XFree(contype);
+        }
     }
+    XRRFreeScreenResources(scres);
+
+    /* If the primary output doesn't support alpha blending, don't bother. */
+    if (!has_alpha_mode)
+        primary = None;
+
+    return primary;
 }
 
-static void set_global_alpha(unsigned int plane, unsigned int level)
+/* Set GraphicsAlpha and/or VideoAlpha of the primary output
+ * and enable/disable alpha blending if necessary. */
+static void set_global_alpha(int new_gralpha, int new_vidalpha)
 {
-    FILE *out;
-    char path[256];
+    static int blending = -1, gralpha = -1, vidalpha = -1;
+    RROutput output;
+    Display *dpy;
+    int blend;
 
-    snprintf(path, 256, "/sys/devices/platform/omapdss/overlay%d/global_alpha", plane);
+    Q_ASSERT(-1 <= new_gralpha  && new_gralpha  <= 255);
+    Q_ASSERT(-1 <= new_vidalpha && new_vidalpha <= 255);
+    if ((output = find_primary_output()) == None)
+        return;
+    dpy = QX11Info::display();
 
-    out = fopen(path, "w");
+    /* Only set changed properties. */
+    if (new_gralpha < 0)
+        new_gralpha = gralpha;
+    if (new_vidalpha < 0)
+        new_vidalpha = vidalpha;
+    if (new_gralpha < 0 && new_vidalpha < 0)
+        /* There must have been an error getting the properties. */
+        return;
 
-    if (out) {
-        fprintf(out, "%d", level);
-        fclose(out);
+    blend = new_gralpha < 255 || new_vidalpha < 255;
+    if (blend != blending && !blend)
+        /* Disable blending first. */
+        XRRChangeOutputProperty(dpy, output, ATOM(RROUTPUT_ALPHA_MODE),
+                                XA_INTEGER, 32, PropModeReplace,
+                                (unsigned char *)&blend, 1);
+
+    if (new_gralpha >= 0 && new_gralpha != gralpha) {
+        /* Change or reset graphics alpha. */
+        XRRChangeOutputProperty(dpy, output, ATOM(RROUTPUT_GRAPHICS_ALPHA),
+                                XA_INTEGER, 32, PropModeReplace,
+                                (unsigned char *)&new_gralpha, 1);
+        gralpha = new_gralpha;
     }
+    if (new_vidalpha >= 0 && new_vidalpha != vidalpha) {
+        /* Change or reset video alpha. */
+        XRRChangeOutputProperty(dpy, output, ATOM(RROUTPUT_VIDEO_ALPHA),
+                                XA_INTEGER, 32, PropModeReplace,
+                                (unsigned char *)&new_vidalpha, 1);
+        vidalpha = new_vidalpha;
+    }
+
+    if (blend != blending && blend)
+        /* Enable blending last. */
+        XRRChangeOutputProperty(dpy, output, ATOM(RROUTPUT_ALPHA_MODE),
+                                XA_INTEGER, 32, PropModeReplace,
+                                (unsigned char *)&blend, 1);
+    blending = blend;
 }
 
-static void set_alpha_onplane(int plane, int value)
+/* Turn off global alpha blending on both planes. */
+static void reset_global_alpha()
 {
-    if (value == 255)
-        toggle_global_alpha_blend(0, 0);
-    else if (value < 255)
-        toggle_global_alpha_blend(1, 0);
-    
-    set_global_alpha(plane, value);
+    set_global_alpha(255, 255);
 }
-#endif
 
 static Bool map_predicate(Display *display, XEvent *xevent, XPointer arg)
 {
@@ -884,10 +975,13 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
 
 void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
 {
-    MWindowPropertyCache *pc = 0;
-    if (prop_caches.contains(e->window))
-        pc = prop_caches.value(e->window);
-    if (pc && pc->propertyEvent(e) && pc->isMapped()) {
+    MWindowPropertyCache *pc;
+
+    if (!prop_caches.contains(e->window))
+        return;
+    pc = prop_caches.value(e->window);
+
+    if (pc->propertyEvent(e) && pc->isMapped()) {
         dirtyStacking(false);
         MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
         if (cw && !cw->isNewlyMapped()) {
@@ -897,14 +991,13 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
                 enableCompositing(false);
         }
     }
-#ifdef GLES2_VERSION
+
     // global alpha events here. TODO: property cache class could handle this
     // but it is straightforward to manipulate it from here
-    if (pc && e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA))
-        set_alpha_onplane(0, pc->globalAlpha());
-    if (pc && e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA))
-        set_alpha_onplane(2, pc->videoGlobalAlpha());
-#endif
+    if (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA))
+        set_global_alpha(pc->globalAlpha(), -1);
+    else if (e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA))
+        set_global_alpha(-1, pc->videoGlobalAlpha());
 }
 
 Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
@@ -1124,18 +1217,14 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 
     dirtyStacking(false);
 
-#ifdef GLES2_VERSION
     // Set the global alpha if the window beneath this window has one
-    Window newtop = getTopmostApp(0, e->window);
-    MCompositeWindow *c_newtop = MCompositeWindow::compositeWindow(newtop);
-    if(c_newtop) {
-        set_alpha_onplane(0, c_newtop->propertyCache()->globalAlpha());
-        set_alpha_onplane(2, c_newtop->propertyCache()->videoGlobalAlpha());
-    } else {
-        set_alpha_onplane(0, 255);
-        set_alpha_onplane(2, 255);
-    }    
-#endif        
+    MCompositeWindow *newtop = MCompositeWindow::compositeWindow(
+                                         getTopmostApp(0, e->window));
+    if (newtop)
+        set_global_alpha(newtop->propertyCache()->globalAlpha(),
+                         newtop->propertyCache()->videoGlobalAlpha());
+    else
+        reset_global_alpha();
 }
 
 void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
@@ -2040,12 +2129,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         }
     }
 
-#ifdef GLES2_VERSION
-    int g_alpha = wpc->globalAlpha();
-    int v_alpha = wpc->videoGlobalAlpha();
-    set_alpha_onplane(0, g_alpha);
-    set_alpha_onplane(2, v_alpha);
-#endif
+    set_global_alpha(wpc->globalAlpha(), wpc->videoGlobalAlpha());
 
     MWindowPropertyCache *pc = 0;
     MCompositeWindow *item = COMPOSITE_WINDOW(win);
@@ -2194,14 +2278,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             i->setZValue(windows.size() + 1);
             QRectF iconGeometry = i->propertyCache()->iconGeometry();
             i->restore(iconGeometry, needComp);
-#ifdef GLES2_VERSION
-            int g_alpha = i->propertyCache()->globalAlpha();
-            if (g_alpha < 255)
-                set_alpha_onplane(0, g_alpha);
-            int v_alpha = i->propertyCache()->videoGlobalAlpha();
-            if (v_alpha < 255)
-                set_alpha_onplane(2, v_alpha);
-#endif
+            set_global_alpha(i->propertyCache()->globalAlpha(),
+                             i->propertyCache()->videoGlobalAlpha());
         }
         if (fd.frame)
             setWindowState(fd.frame->managedWindow(), NormalState);
@@ -2392,11 +2470,9 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
         positionWindow(stack[DESKTOP_LAYER], STACK_TOP);
         dirtyStacking(false);
     }
-#ifdef GLES2_VERSION
+
     // Reset the global alpha on minimize
-    set_alpha_onplane(0, 255);
-    set_alpha_onplane(2, 255);
-#endif
+    reset_global_alpha();
 }
 
 void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
