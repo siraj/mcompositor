@@ -38,6 +38,7 @@ void MCompositeWindowShaderEffectPrivate::drawTexture(MTexturePixmapPrivate* ren
 {
     priv_render = render;
     effect->drawTexture(transform, drawRect, opacity);
+    enabled = false;
 }
 
 MCompositeWindowShaderEffect::MCompositeWindowShaderEffect(QObject* parent)

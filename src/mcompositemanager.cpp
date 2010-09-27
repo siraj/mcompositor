@@ -862,12 +862,11 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
         configure_reqs.remove(e->window);
     }
 
-    bool delete_pc_later = false;
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
         item->deleteLater();
         removeWindow(item->window());
-        delete_pc_later = true; // PC deleted with the MCompositeWindow
+        // PC deleted with the MCompositeWindow
     } else {
         // We got a destroy event from a framed window (or a window that was
         // never mapped)
@@ -876,12 +875,10 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
             framed_windows.remove(e->window);
             delete fd.frame;
         }
-    }
-    
-    if (!delete_pc_later && prop_caches.contains(e->window)
-        && (!item || !item->isClosing())) {
-        delete prop_caches.value(e->window);
-        prop_caches.remove(e->window);
+        if (prop_caches.contains(e->window)) {
+            delete prop_caches.value(e->window);
+            prop_caches.remove(e->window);
+        }
     }
 }
 
@@ -1782,8 +1779,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 cw->propertyCache()->windowTypeAtom()
                                         == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
     else if (active_app && aw && deco->decoratorItem() &&
-               deco->managedWindow() == active_app &&
-               (fs_app || aw->status() == MCompositeWindow::Hung)) {
+             deco->managedWindow() == active_app) {
         // no dock => decorator starts from (0,0)
         XMoveWindow(QX11Info::display(), deco->decoratorItem()->window(), 0, 0);
     }

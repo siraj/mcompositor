@@ -401,7 +401,6 @@ private:
     short window_obscured;
     bool is_valid;
     bool newly_mapped;
-    bool is_closing;
     bool is_transitioning;
     bool pinging_enabled;
     bool dimmed_effect;
