@@ -225,23 +225,22 @@ public:
         MWindowPropertyCache::xcb_conn = c;
     }
 
-
-void damageTracking(bool enabled)
-{
-    if (damage_object && enabled)
-        return;
-    if (damage_object && !enabled) {
-        XDamageDestroy(QX11Info::display(), damage_object);
-        damage_object = 0;
+    void damageTracking(bool enabled)
+    {
+        if (damage_object && enabled)
+            return;
+        if (damage_object && !enabled) {
+            XDamageDestroy(QX11Info::display(), damage_object);
+            damage_object = 0;
+        }
+        else if (enabled && !damage_object && !isInputOnly())
+            damage_object = XDamageCreate(QX11Info::display(), window,
+                                          XDamageReportNonEmpty); 
     }
-    else if (enabled && !damage_object && !isInputOnly())
-        damage_object = XDamageCreate(QX11Info::display(), window,
-                                      XDamageReportNonEmpty); 
-}
-
 
 signals:
     void iconGeometryUpdated();
+    void meegoDecoratorButtonsChanged(Window w);
 
 private:
     int alphaValue(xcb_get_property_cookie_t c);

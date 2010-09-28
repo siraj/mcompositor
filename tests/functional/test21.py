@@ -69,7 +69,7 @@ for l in s.splitlines():
        and trans2_found and trans3_found:
     print app1, 'found'
     break
-  else:
+  elif not re.search(" no-TYPE ", l.strip()):
     print 'FAIL: stacking order is wrong'
     print 'Failed stack:\n', s
     ret = 1
@@ -98,7 +98,7 @@ for l in s.splitlines():
     break
   elif re.search("%s " % app2, l.strip()):
     print app2, 'found'
-  else:
+  elif not re.search(" no-TYPE ", l.strip()):
     print 'FAIL: stacking order is wrong'
     print 'Failed stack:\n', s
     ret = 1

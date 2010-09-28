@@ -109,7 +109,6 @@ public:
     Window getTopmostApp(int *index_in_stacking_list = 0,
                          Window ignore_window = 0);
     Window getLastVisibleParent(MWindowPropertyCache *pc);
-    void setupButtonWindows(MCompositeWindow *topmost);
 
     bool possiblyUnredirectTopmostWindow();
     bool isRedirected(Window window);
@@ -196,6 +195,7 @@ public slots:
     void displayOff(bool display_off);
     void callOngoing(bool call_ongoing);
     void stackingTimeout();
+    void setupButtonWindows(Window topmost);
 };
 
 #endif

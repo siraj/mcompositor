@@ -645,7 +645,8 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
     connect(&stacking_timer, SIGNAL(timeout()), this, SLOT(stackingTimeout()));
     connect(this, SIGNAL(compositingEnabled()), MapRequesterPrivate::instance(this),
             SLOT(grantMapRequests()));
-
+    connect(this, SIGNAL(currentAppChanged(Window)), this,
+            SLOT(setupButtonWindows(Window)));
 }
 
 MCompositeManagerPrivate::~MCompositeManagerPrivate()
@@ -1629,10 +1630,25 @@ void MCompositeManagerPrivate::pingTopmost()
     }
 }
 
-// TODO: make this know when the property changed, to avoid X calls
-void MCompositeManagerPrivate::setupButtonWindows(MCompositeWindow *topmost)
+void MCompositeManagerPrivate::setupButtonWindows(Window curr_app)
 {
+    Q_UNUSED(curr_app);
+    MCompositeWindow *topmost = 0;
+    // find out highest application window
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+         MCompositeWindow *cw;
+         Window w = stacking_list.at(i);
+         if (w == stack[DESKTOP_LAYER])
+             break;
+         if (!(cw = COMPOSITE_WINDOW(w)))
+             continue;
+         if (cw->isMapped() && cw->isAppWindow(true)) {
+             topmost = cw;
+             break;
+         }
+    }
     bool home_set = false, close_set = false;
+    static bool home_lowered = true, close_lowered = true;
     if (topmost) {
         XWindowChanges wc = {0, 0, 0, 0, 0, topmost->window(), Above};
         int mask = CWX | CWY | CWWidth | CWHeight | CWSibling | CWStackMode;
@@ -1643,6 +1659,7 @@ void MCompositeManagerPrivate::setupButtonWindows(MCompositeWindow *topmost)
             XConfigureWindow(QX11Info::display(), home_button_win, mask, &wc);
             home_button_geom = h;
             home_set = true;
+            home_lowered = false;
         }
         const QRect &c = topmost->propertyCache()->closeButtonGeometry();
         if (c.width() > 1 && c.height() > 1) {
@@ -1651,18 +1668,29 @@ void MCompositeManagerPrivate::setupButtonWindows(MCompositeWindow *topmost)
             XConfigureWindow(QX11Info::display(), close_button_win, mask, &wc);
             close_button_geom = c;
             close_set = true;
+            close_lowered = false;
         }
     }
     if ((home_set || close_set) && topmost) {
         buttoned_win = topmost->window();
-        if (!home_set)
+        if (!home_set && !home_lowered) {
             XLowerWindow(QX11Info::display(), home_button_win);
-        if (!close_set)
+            home_lowered = true;
+        }
+        if (!close_set && !close_lowered) {
             XLowerWindow(QX11Info::display(), close_button_win);
+            close_lowered = true;
+        }
     } else if (buttoned_win) {
         buttoned_win = 0;
-        XLowerWindow(QX11Info::display(), close_button_win);
-        XLowerWindow(QX11Info::display(), home_button_win);
+        if (!close_lowered) {
+            XLowerWindow(QX11Info::display(), close_button_win);
+            close_lowered = true;
+        }
+        if (!home_lowered) {
+            XLowerWindow(QX11Info::display(), home_button_win);
+            home_lowered = true;
+        }
     }
 }
 
@@ -1906,8 +1934,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         if (!device_state->displayOff())
             pingTopmost();
     }
-    // possibly set up InputOnly windows for close and home buttons
-    setupButtonWindows(topmost);
     if (order_changed || force_visibility_check) {
         static int xres = ScreenOfDisplay(QX11Info::display(),
                                    DefaultScreen(QX11Info::display()))->width;
