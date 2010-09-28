@@ -101,13 +101,18 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
     QRegion visible(sceneRect().toRect());
     QVector<int> to_paint(10);
     int size = 0;
+    bool desktop_painted = false;
     // visibility is determined from top to bottom
     for (int i = numItems - 1; i >= 0; --i) {
         MCompositeWindow *cw = (MCompositeWindow *) items[i];
 
         if (!cw->propertyCache()) // this window is dead
             continue;
-
+        if (cw->hasTransitioningWindow() && cw->propertyCache()->isDecorator())
+            // if we have a transition animation, don't draw the decorator
+            // lest we can have it drawn with the transition (especially
+            // when desktop window is not yet shown, NB#192454)
+            continue;
         if (cw->isDirectRendered() || !cw->isVisible()
             || !(cw->propertyCache()->isMapped() || cw->isWindowTransitioning())
             || cw->propertyCache()->isInputOnly())
@@ -126,6 +131,9 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
             if (size >= 9)
                 to_paint.resize(to_paint.size()+1);
             to_paint[size++] = i;
+            if (cw->propertyCache()->windowTypeAtom()
+                                         == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
+                desktop_painted = true;
         }
 
         // subtract opaque regions
@@ -138,6 +146,20 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         for (int i = size - 1; i >= 0; --i) {
             int item_i = to_paint[i];
             painter->save();
+            if (!desktop_painted) {
+                // clear rubbish from the root window during startup when
+                // desktop window does not exist and we show zoom animations
+                glClearColor(0, 0, 0, 0);
+                glClear(GL_COLOR_BUFFER_BIT);
+                desktop_painted = true;
+                if (((MCompositeWindow*)items[item_i])->
+                                             propertyCache()->isDecorator()) {
+                    // don't paint decorator on top of plain black background
+                    // (see NB#182860, NB#192454)
+                    painter->restore();
+                    continue;
+                }
+            }
             // TODO: paint only the intersected region (glScissor?)
             painter->setMatrix(items[item_i]->sceneMatrix(), true);
             items[item_i]->paint(painter, &options[item_i], widget);
