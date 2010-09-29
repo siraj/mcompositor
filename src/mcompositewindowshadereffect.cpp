@@ -81,6 +81,14 @@ GLuint MCompositeWindowShaderEffect::installShaderFragment(const QByteArray& cod
     return id;
 }
 
+GLuint MCompositeWindowShaderEffect::texture() const
+{
+    // TODO: This assumes we have always have hadware TFP support 
+    if (d->priv_render)
+        return d->priv_render->textureId;
+    return 0;
+}
+
 const QVector<GLuint>& MCompositeWindowShaderEffect::fragmentIds() const
 {
     return d->pixfrag_ids;
