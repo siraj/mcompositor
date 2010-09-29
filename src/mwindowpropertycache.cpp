@@ -154,6 +154,8 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
         if (p && p != this && p->transientFor() == window)
             transients.append(*it);
     }
+    connect(this, SIGNAL(meegoDecoratorButtonsChanged(Window)),
+            m->d, SLOT(setupButtonWindows(Window)));
 }
 
 MWindowPropertyCache::~MWindowPropertyCache()
@@ -482,8 +484,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         xcb_decor_buttons_cookie = xcb_get_property(xcb_conn, 0, window,
                                        ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
                                        XCB_ATOM_CARDINAL, 0, 8);
-        // TODO: could be based on a signal
-        return true;
+        emit meegoDecoratorButtonsChanged(window);
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
         if (!wm_protocols_valid)
             // collect the old reply
@@ -516,6 +517,9 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         xcb_meego_layer_cookie = xcb_get_property(xcb_conn, 0, window,
                                                   ATOM(_MEEGO_STACKING_LAYER),
                                                   XCB_ATOM_CARDINAL, 0, 1);
+        // raise it so that it becomes on top of same-leveled windows
+        MCompositeManager *m = (MCompositeManager*)qApp;
+        m->d->positionWindow(window, MCompositeManagerPrivate::STACK_TOP);
         return true;
     }
     return false;
