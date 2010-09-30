@@ -1,6 +1,10 @@
-mcompositor (0.7.2~1) unstable; urgency=low
+mcompositor (0.7.2-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#194203 - MCompositor slows down application start from the grid by 0,8s
+  * Fixes: NB#182860 - Pin query appears..., 
+  * Fixes: NB#192454 - Devicelock UI flickers...
+  * Fixes: NB#188373 Global alpha being reset when running omapxvsink	
+  * New: Improvements and texture getter for shader effects API
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Fri, 24 Sep 2010 12:58:13 +0300
 
