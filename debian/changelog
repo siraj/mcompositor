@@ -1,3 +1,9 @@
+mcompositor (0.7.3~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Thu, 30 Sep 2010 03:29:48 +0300
+
 mcompositor (0.7.2-1) unstable; urgency=low
 
   * Fixes: NB#194203 - MCompositor slows down application start from the grid by 0,8s
