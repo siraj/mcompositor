@@ -169,6 +169,15 @@ static void set_meego_layer (Display *dpy, Window w, int layer)
   XSync(dpy, False);
 }
 
+static void set_always_mapped (Display *dpy, Window w, int value)
+{
+  long data = value;
+  Atom a = XInternAtom (dpy, "_MEEGOTOUCH_ALWAYS_MAPPED", False);
+  XChangeProperty (dpy, w, a, XA_CARDINAL, 32, PropModeReplace,
+                   (unsigned char*)&data, 1);
+  XSync(dpy, False);
+}
+
 static void set_decorator_buttons (Display *dpy, Window w)
 {
   unsigned int data[8] = {0, 0, 100, 100,
@@ -350,6 +359,7 @@ static void print_usage_and_exit(QString& stdOut)
          "h - set _MEEGOTOUCH_DECORATOR_BUTTONS for home and close buttons\n"
          "p - claim to support the _NET_WM_PING protocol (but don't)\n"
          "l - use InputOnly window class\n"
+         "j - set _MEEGOTOUCH_ALWAYS_MAPPED property to 1\n"
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
@@ -379,7 +389,9 @@ static void print_usage_and_exit(QString& stdOut)
 	 "Usage 5: " PROG " K <name>\n"
 	 "K - run 'pkill <name>'\n"
 	 "Usage 6: " PROG " E [<XID>] (0-10)\n"
-	 "E - set _MEEGO_STACKING_LAYER of new window / window <XID> to 0-10\n";
+	 "E - set _MEEGO_STACKING_LAYER of new window / window <XID> to 0-10\n"
+	 "Usage 7: " PROG " J <XID> N\n"
+	 "J - set _MEEGOTOUCH_ALWAYS_MAPPED of window <XID> to N (>= 0)\n";
 }
 
 static void configure (Display *dpy, char *first, char *second, bool above)
@@ -608,7 +620,7 @@ static bool old_main(QStringList& args, QString& stdOut)
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
             shaped = 0, initial_iconic = 0, no_focus = 0, support_ping = 0,
-            input_only = 0;
+            input_only = 0, always_mapped = -1;
 	WindowType windowtype = TYPE_INVALID;
 
 	if (args.count() < 1 || args.count() > 4) {
@@ -761,6 +773,21 @@ static bool old_main(QStringList& args, QString& stdOut)
 		    stdOut.append("execve() failed!");
                     return false;
                 }
+		if (*p == 'j') {
+                    always_mapped = 1;
+                    continue;
+                }
+		if (*p == 'J') {
+                        if (args.count() == 3) {
+                                set_always_mapped(dpy,
+                                    strtol(args.at(1).toAscii().data(), 0, 16),
+                                    atoi(args.at(2).toAscii().data()));
+                                break;
+                        } else {
+	  			print_usage_and_exit(stdOut);
+				return false;
+                        }
+                }
 		if (*p == 'E') {
 			if (args.count() == 3) {
                                 set_meego_layer(dpy,
@@ -811,6 +838,8 @@ static bool old_main(QStringList& args, QString& stdOut)
 
         if (meego_layer >= 0)
                 set_meego_layer(dpy, w, meego_layer);
+        if (always_mapped >= 0)
+                set_always_mapped(dpy, w, always_mapped);
 
         if (decor_buttons) set_decorator_buttons(dpy, w);
         if (shaped) set_shaped(dpy, w);

@@ -58,10 +58,6 @@ class MCompositeManagerPrivate: public QObject
 {
     Q_OBJECT
 public:
-    enum StackPosition {
-        STACK_BOTTOM = 0,
-        STACK_TOP
-    };
     enum ForcingLevel {
         NO_FORCED = 0,
         FORCED
@@ -81,7 +77,7 @@ public:
     void updateWinList();
     void setWindowState(Window , int);
     void setWindowDebugProperties(Window w);
-    void positionWindow(Window w, StackPosition pos);
+    void positionWindow(Window w, bool on_top);
     void addItem(MCompositeWindow *item);
     void damageEvent(XDamageNotifyEvent *);
     void destroyEvent(XDestroyWindowEvent *);
@@ -113,7 +109,7 @@ public:
     bool possiblyUnredirectTopmostWindow();
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
-    bool processX11EventFilters(XEvent *event);
+    bool processX11EventFilters(XEvent *event, bool after);
     void removeWindow(Window w);
     bool needDecoration(Window w, MWindowPropertyCache *pc = 0);
     MCompositeWindow *getHighestDecorated();

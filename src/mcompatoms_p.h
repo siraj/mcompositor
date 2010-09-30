@@ -94,6 +94,7 @@ public:
         _MEEGO_STACKING_LAYER,
         _MEEGOTOUCH_DECORATOR_BUTTONS,
         _MEEGOTOUCH_CURRENT_APP_WINDOW,
+        _MEEGOTOUCH_ALWAYS_MAPPED,
 
         /* RROutput properties */
         RROUTPUT_CTYPE,

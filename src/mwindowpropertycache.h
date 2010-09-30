@@ -208,6 +208,11 @@ public:
     unsigned int meegoStackingLayer();
 
     /*!
+     * Returns value of _MEEGOTOUCH_ALWAYS_MAPPED.
+     */
+    int alwaysMapped();
+
+    /*!
      * Called on PropertyNotify for this window.
      * Returns true if we should re-check stacking order.
      */
@@ -270,6 +275,7 @@ private:
     int meego_layer, window_state;
     MCompAtoms::Type window_type;
     Window window, parent_window;
+    int always_mapped;
     bool being_mapped, dont_iconify;
     // geometry is requested only once in the beginning, after that, we
     // use ConfigureNotifys to update the size through setRealGeometry()
@@ -287,6 +293,7 @@ private:
     xcb_get_property_cookie_t xcb_global_alpha_cookie;
     xcb_get_property_cookie_t xcb_video_global_alpha_cookie;
     xcb_get_property_cookie_t xcb_net_wm_state_cookie;
+    xcb_get_property_cookie_t xcb_always_mapped_cookie;
     xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
     xcb_shape_get_rectangles_cookie_t xcb_shape_rects_cookie;
     QRegion shape_region;

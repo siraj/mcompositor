@@ -18,7 +18,6 @@
 ****************************************************************************/
 
 #include "mcompositemanager.h"
-#include "mcompositewindow.h"
 #include "mcompositemanager_p.h"
 #include "mcompositemanagerextension.h"
 

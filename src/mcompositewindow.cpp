@@ -313,12 +313,12 @@ void MCompositeWindow::restore(const QRectF &icongeometry, bool defer)
     beginAnimation();
 }
 
-void MCompositeWindow::showWindow()
+bool MCompositeWindow::showWindow()
 {
     // defer putting this window in the _NET_CLIENT_LIST
     // only after animation is done to prevent the switcher from rendering it
     if (!isAppWindow())
-        return;
+        return false;
     
     findBehindWindow();
     beginAnimation();
@@ -332,6 +332,7 @@ void MCompositeWindow::showWindow()
         damage_timer->start(500);
     } else
         q_fadeIn();
+    return true;
 }
 
 void MCompositeWindow::damageTimeout()

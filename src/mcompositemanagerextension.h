@@ -77,7 +77,12 @@ class MCompositeManagerExtension: public QObject
      * extensions around and only use as a last resort to reimplement core 
      * functionality.
      */
-    virtual bool x11Event ( XEvent * event ) = 0;
+    virtual bool x11Event(XEvent *event) = 0;
+
+    /*!
+     * Called for each event after MCompositeManager's event handling.
+     */
+    virtual void afterX11Event(XEvent *event) = 0;
     
  private slots:
     void q_currentAppChanged(Window window);

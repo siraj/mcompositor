@@ -317,7 +317,7 @@ public slots:
     
     /* Operations with transition animations*/
     void closeWindow();
-    void showWindow();
+    bool showWindow();
 
     /*!
       * This slot is called whenever a start of window animation occurs. This

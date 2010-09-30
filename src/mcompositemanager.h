@@ -22,6 +22,7 @@
 
 #include <QApplication>
 #include <QGLWidget>
+#include "mwindowpropertycache.h"
 
 class QGraphicsScene;
 class MCompositeManagerPrivate;
@@ -118,8 +119,16 @@ public:
      * Returns if the display is off
      */
     bool displayOff();
-        
+
     void debug(const QString& d);
+    const QHash<Window, MWindowPropertyCache*>& propCaches() const;
+
+    enum StackPosition {
+        STACK_BOTTOM = 0,
+        STACK_TOP
+    };
+    void positionWindow(Window w, StackPosition pos);
+    void setWindowState(Window, int);
 
 public slots:
     void enableCompositing(bool forced = false);

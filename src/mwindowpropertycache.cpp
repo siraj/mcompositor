@@ -56,6 +56,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       window_type(MCompAtoms::INVALID),
       window(w),
       parent_window(RootWindow(QX11Info::display(), 0)),
+      always_mapped(-1),
       being_mapped(false),
       dont_iconify(false),
       xcb_real_geom(0),
@@ -87,6 +88,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
             memset(&xcb_video_global_alpha_cookie, 0,
                    sizeof(xcb_video_global_alpha_cookie));
             memset(&xcb_net_wm_state_cookie, 0, sizeof(xcb_net_wm_state_cookie));
+            memset(&xcb_always_mapped_cookie, 0, sizeof(xcb_always_mapped_cookie));
             memset(&xcb_pict_formats_cookie, 0, sizeof(xcb_pict_formats_cookie));
             memset(&xcb_shape_rects_cookie, 0, sizeof(xcb_shape_rects_cookie));
             return;
@@ -146,6 +148,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     xcb_net_wm_state_cookie = xcb_get_property(xcb_conn, 0, window,
                                                ATOM(_NET_WM_STATE),
                                                XCB_ATOM_ATOM, 0, 100);
+    xcb_always_mapped_cookie = xcb_get_property(xcb_conn, 0, window,
+                                                ATOM(_MEEGOTOUCH_ALWAYS_MAPPED),
+                                                XCB_ATOM_CARDINAL, 0, 1);
     // add any transients to the transients list
     MCompositeManager *m = (MCompositeManager*)qApp;
     for (QList<Window>::const_iterator it = m->d->stacking_list.begin();
@@ -189,6 +194,10 @@ MWindowPropertyCache::~MWindowPropertyCache()
     xcb_get_property_reply_t *r;
     if (transient_for == (Window)-1) {
         r = xcb_get_property_reply(xcb_conn, xcb_transient_for_cookie, 0);
+        if (r) free(r);
+    }
+    if (always_mapped < 0) {
+        r = xcb_get_property_reply(xcb_conn, xcb_always_mapped_cookie, 0);
         if (r) free(r);
     }
     if (meego_layer < 0) {
@@ -330,9 +339,27 @@ Window MWindowPropertyCache::transientFor()
                 // stacked according to the changed transient window list
                 m->d->dirtyStacking(false);
             }
-        }
+        } else
+            transient_for = 0;
     }
     return transient_for;
+}
+
+int MWindowPropertyCache::alwaysMapped()
+{
+    if (is_valid && always_mapped < 0) {
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, xcb_always_mapped_cookie, 0);
+        if (r) {
+            if (xcb_get_property_value_length(r) == sizeof(CARD32))
+                always_mapped = *((CARD32*)xcb_get_property_value(r));
+            else
+                always_mapped = 0;
+            free(r);
+        } else
+            always_mapped = 0;
+    }
+    return always_mapped;
 }
 
 bool MWindowPropertyCache::isDecorator()
@@ -434,6 +461,14 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
                                                     XCB_ATOM_WM_TRANSIENT_FOR,
                                                     XCB_ATOM_WINDOW, 0, 1);
         return true;
+    } else if (e->atom == ATOM(_MEEGOTOUCH_ALWAYS_MAPPED)) {
+        if (always_mapped < 0)
+            // collect the old reply
+            alwaysMapped();
+        always_mapped = -1;
+        xcb_always_mapped_cookie = xcb_get_property(xcb_conn, 0, window,
+                                           ATOM(_MEEGOTOUCH_ALWAYS_MAPPED),
+                                           XCB_ATOM_CARDINAL, 0, 1);
     } else if (e->atom == ATOM(WM_HINTS)) {
         if (!wmhints)
             // collect the old reply
@@ -519,7 +554,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
                                                   XCB_ATOM_CARDINAL, 0, 1);
         // raise it so that it becomes on top of same-leveled windows
         MCompositeManager *m = (MCompositeManager*)qApp;
-        m->d->positionWindow(window, MCompositeManagerPrivate::STACK_TOP);
+        m->d->positionWindow(window, true);
         return true;
     }
     return false;
