@@ -346,7 +346,7 @@ static void wait_for_mapnotify(Display *dpy, Window w)
 static void print_usage_and_exit(QString& stdOut)
 {
 #define PROG "windowctl"
-  stdOut = "Usage 1: " PROG " [afoemksIchpl](n|d|i|b) [transient for <XID>]\n"
+  stdOut = "Usage 1: " PROG " [afoemksIchpl(j[12])](n|d|i|b) [transient for <XID>]\n"
 	 "a - ARGB (32-bit) window, otherwise 16-bit is used\n"
 	 "f - fullscreen window\n"
 	 "o - override-redirect window\n"
@@ -359,7 +359,8 @@ static void print_usage_and_exit(QString& stdOut)
          "h - set _MEEGOTOUCH_DECORATOR_BUTTONS for home and close buttons\n"
          "p - claim to support the _NET_WM_PING protocol (but don't)\n"
          "l - use InputOnly window class\n"
-         "j - set _MEEGOTOUCH_ALWAYS_MAPPED property to 1\n"
+         "j1 - set _MEEGOTOUCH_ALWAYS_MAPPED property to 1\n"
+         "j2 - set _MEEGOTOUCH_ALWAYS_MAPPED property to 2\n"
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
@@ -774,7 +775,16 @@ static bool old_main(QStringList& args, QString& stdOut)
                     return false;
                 }
 		if (*p == 'j') {
-                    always_mapped = 1;
+                    if (*(p + 1) == '2') {
+                        always_mapped = 2;
+                        ++p;
+                    } else if (*(p + 1) == '1') {
+                        always_mapped = 1;
+                        ++p;
+                    } else {
+                        print_usage_and_exit(stdOut);
+                        return false;
+                    }
                     continue;
                 }
 		if (*p == 'J') {
