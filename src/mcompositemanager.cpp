@@ -2293,21 +2293,25 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         if (event->window != stack[DESKTOP_LAYER])
             setExposeDesktop(false);
 
-        Window raise = event->window;
-        MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
-        bool needComp = false;
-        if (d_item && d_item->isDirectRendered()
-            && raise != stack[DESKTOP_LAYER]) {
-            needComp = true;
-            enableCompositing(true);
+        if (!getTopmostApp()) {
+            // Not necessary to animate if not in desktop view.
+            Window raise = event->window;
+            MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
+            bool needComp = false;
+            if (d_item && d_item->isDirectRendered()
+                && raise != stack[DESKTOP_LAYER]) {
+                needComp = true;
+                enableCompositing(true);
+            }
+            if (i && i->propertyCache()->windowState() == IconicState) {
+                i->setZValue(windows.size() + 1);
+                QRectF iconGeometry = i->propertyCache()->iconGeometry();
+                i->restore(iconGeometry, needComp);
+                set_global_alpha(i->propertyCache()->globalAlpha(),
+                                 i->propertyCache()->videoGlobalAlpha());
+            }
         }
-        if (i && i->propertyCache()->windowState() == IconicState) {
-            i->setZValue(windows.size() + 1);
-            QRectF iconGeometry = i->propertyCache()->iconGeometry();
-            i->restore(iconGeometry, needComp);
-            set_global_alpha(i->propertyCache()->globalAlpha(),
-                             i->propertyCache()->videoGlobalAlpha());
-        }
+
         if (fd.frame)
             setWindowState(fd.frame->managedWindow(), NormalState);
         else
