@@ -27,7 +27,7 @@ Description: MeeGo Touch UI Compositing Window Manager header files
 
 Package: mcompositor-functional-tests
 Architecture: any
-Depends: libmeegotouchcore0, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils, ${shlibs:Depends}
+Depends: libmeegotouchcore0, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils, aegis-dss-tools, ${shlibs:Depends}
 XB-Maemo-CI-Packages:  mcompositor
 XB-Maemo-CI-Stage: fast
 Description: mcompositor functional testcases

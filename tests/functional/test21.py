@@ -17,11 +17,7 @@
 
 import os, re, sys, time
 
-if os.system('/sbin/mcetool --unblank-screen --set-tklock-mode=unlocked --set-inhibit-mode=stay-on'):
-  print 'mcetool is missing!'
-
-if os.system('pidof mcompositor'):
-  print 'mcompositor is not running'
+if os.system('mcompositor-test-init.py'):
   sys.exit(1)
 
 # create application window

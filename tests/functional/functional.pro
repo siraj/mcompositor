@@ -1,6 +1,6 @@
 TEMPLATE=subdirs
 
-QMAKE_EXTRA_TARGETS += metadata 
+QMAKE_EXTRA_TARGETS += metadata initScript
 XMLLINT= xmllint --noout --schema /usr/share/test-definition/testdefinition-syntax.xsd --schema /usr/share/test-definition/testdefinition-tm_terms.xsd 
 
 SUITENAME=mcompositor-functional-tests
@@ -20,5 +20,7 @@ metadata.files += tests.xml
 
 metadata.CONFIG += no_check_exist
 
-INSTALLS += metadata scripts
+initScript.files = mcompositor-test-init.py
+initScript.path = /usr/bin
 
+INSTALLS += metadata scripts initScript

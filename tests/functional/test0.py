@@ -10,18 +10,7 @@
 
 import os, re, sys, time
 
-if os.system('/sbin/mcetool --unblank-screen --set-tklock-mode=unlocked --set-inhibit-mode=stay-on'):
-  print 'mcetool is missing!'
-
-if os.system('/usr/bin/gconftool-2 --type bool --set /desktop/meego/notifications/previews_enabled false'):
-  print 'cannot disable notifications'
-
-if os.system('pidof mcompositor'):
-  print 'mcompositor is not running'
-  sys.exit(1)
-
-if os.system('windowstack m | grep mdecorator'):
-  print 'mdecorator is not mapped!'
+if os.system('mcompositor-test-init.py'):
   sys.exit(1)
 
 fd = os.popen('windowctl kn')

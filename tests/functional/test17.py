@@ -38,14 +38,7 @@ def check_focus(w):
     print fd.read(5000)
     ret = 1
 
-if os.system('/sbin/mcetool --unblank-screen --set-inhibit-mode=stay-on'):
-  print 'mcetool is missing!'
-
-if os.system('/usr/bin/gconftool-2 --type bool --set /desktop/meego/notifications/previews_enabled false'):
-  print 'cannot disable notifications'
-
-if os.system('pidof mcompositor'):
-  print 'mcompositor is not running'
+if os.system('mcompositor-test-init.py'):
   sys.exit(1)
 
 fd = os.popen('windowstack m')
