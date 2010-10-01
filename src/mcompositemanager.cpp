@@ -2388,6 +2388,13 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 d_item->setZValue(i->zValue() - 1);
 
                 Window lower, topmost = getTopmostApp();
+                if (i->window() != topmost) {
+                    /* Request from a background app.  Don't do anything,
+                     * just make sure the states are not screwed. */
+                    i->stopPing();
+                    setWindowState(i->window(), IconicState);
+                    return;
+                }
                 if (topmost)
                     lower = topmost;
                 else
