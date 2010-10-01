@@ -20,8 +20,6 @@
 #ifndef MCOMPATOMS_P_H
 #define MCOMPATOMS_P_H
 
-#include <QRectF>
-
 class MCompAtoms
 {
 public:
