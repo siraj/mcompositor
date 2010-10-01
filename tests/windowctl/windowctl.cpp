@@ -188,6 +188,16 @@ static void set_decorator_buttons (Display *dpy, Window w)
   XSync(dpy, False);
 }
 
+static void set_mstatusbar_geom (Display *dpy, Window win, unsigned x,
+                                 unsigned y, unsigned w, unsigned h)
+{
+  unsigned int data[4] = {x, y, w, h};
+  Atom a = XInternAtom (dpy, "_MEEGOTOUCH_MSTATUSBAR_GEOMETRY", False);
+  XChangeProperty (dpy, win, a, XA_CARDINAL, 32, PropModeReplace,
+                   (unsigned char*)&data, 4);
+  XSync(dpy, False);
+}
+
 static void set_shaped (Display *dpy, Window w)
 {
   XRectangle rect = {250, 120, 300, 200};
@@ -392,7 +402,9 @@ static void print_usage_and_exit(QString& stdOut)
 	 "Usage 6: " PROG " E [<XID>] (0-10)\n"
 	 "E - set _MEEGO_STACKING_LAYER of new window / window <XID> to 0-10\n"
 	 "Usage 7: " PROG " J <XID> N\n"
-	 "J - set _MEEGOTOUCH_ALWAYS_MAPPED of window <XID> to N (>= 0)\n";
+	 "J - set _MEEGOTOUCH_ALWAYS_MAPPED of window <XID> to N (>= 0)\n"
+	 "Usage 8: " PROG " X <XID> x y w h\n"
+         "X - set _MEEGOTOUCH_MSTATUSBAR_GEOMETRY of window <XID> to (x y w h)\n";
 }
 
 static void configure (Display *dpy, char *first, char *second, bool above)
@@ -624,7 +636,7 @@ static bool old_main(QStringList& args, QString& stdOut)
             input_only = 0, always_mapped = -1;
 	WindowType windowtype = TYPE_INVALID;
 
-	if (args.count() < 1 || args.count() > 4) {
+	if (args.count() < 1 || args.count() > 6) {
 	  print_usage_and_exit(stdOut);
 	  return false;
 	}
@@ -793,9 +805,6 @@ static bool old_main(QStringList& args, QString& stdOut)
                                     strtol(args.at(1).toAscii().data(), 0, 16),
                                     atoi(args.at(2).toAscii().data()));
                                 break;
-                        } else {
-	  			print_usage_and_exit(stdOut);
-				return false;
                         }
                 }
 		if (*p == 'E') {
@@ -807,9 +816,17 @@ static bool old_main(QStringList& args, QString& stdOut)
                         } else if (args.count() == 2) {
 			        meego_layer = atoi(args.at(1).toAscii().data());
                                 break;
-                        } else {
-	  			print_usage_and_exit(stdOut);
-				return false;
+                        }
+                }
+		if (*p == 'X') {
+			if (args.count() == 6) {
+                                set_mstatusbar_geom(dpy,
+                                    strtol(args.at(1).toAscii().data(), 0, 16),
+                                    atoi(args.at(2).toAscii().data()),
+                                    atoi(args.at(3).toAscii().data()),
+                                    atoi(args.at(4).toAscii().data()),
+                                    atoi(args.at(5).toAscii().data()));
+                                return true;
                         }
                 }
 		if ((command = strchr("NUFCMTAWHSO", *p))) {
