@@ -167,7 +167,7 @@ MTexturePixmapItem::MTexturePixmapItem(Window window, MWindowPropertyCache *mpc,
                                        QGLWidget *glwidget,
                                        QGraphicsItem* parent)
     : MCompositeWindow(window, mpc, parent),
-      d(new MTexturePixmapPrivate(window, glwidget, this))
+      d(new MTexturePixmapPrivate(window, this))
 {
     if (!d->ctx)
         d->ctx = const_cast<QGLContext *>(glwidget->context());

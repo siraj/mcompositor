@@ -23,6 +23,7 @@
 #include "mtexturepixmapitem.h"
 #include "texturepixmapshaders.h"
 #include "mcompositewindowshadereffect.h"
+#include "mcompositemanager.h"
 
 #include <QX11Info>
 #include <QRect>
@@ -42,6 +43,8 @@
 #include "mtexturepixmapitem_p.h"
 
 bool MTexturePixmapPrivate::inverted_texture = true;
+QGLWidget *MTexturePixmapPrivate::glwidget = 0;
+QGLContext *MTexturePixmapPrivate::ctx = 0;
 MGLResourceManager *MTexturePixmapPrivate::glresource = 0;
 
 static const GLuint D_VERTEX_COORDS = 0;
@@ -295,6 +298,14 @@ void MTexturePixmapPrivate::removeEffect()
 
 GLuint MTexturePixmapPrivate::installPixelShader(const QByteArray& code)
 {
+    if (!glwidget) {
+        MCompositeManager *m = (MCompositeManager*)qApp;
+        glwidget = m->glWidget();
+    }
+    if (!glresource) {
+        glresource = new MGLResourceManager(glwidget);
+        glresource->initVertices(glwidget);
+    }
     if (glresource)
         return glresource->installPixelShader(code);
 
@@ -325,10 +336,9 @@ void MTexturePixmapPrivate::init()
                  item->propertyCache()->realGeometry().y());
 }
 
-MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MTexturePixmapItem *p)
-    : ctx(0),
-      glwidget(w),
-      window(window),
+MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window,
+                                             MTexturePixmapItem *p)
+    : window(window),
       windowp(0),
 #ifdef DESKTOP_VERSION
       glpixmap(0),
@@ -340,6 +350,12 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window, QGLWidget *w, MT
       angle(0),
       item(p)
 {
+    if (!glwidget) {
+        MCompositeManager *m = (MCompositeManager*)qApp;
+        glwidget = m->glWidget();
+    }
+    if (!ctx)
+        ctx = const_cast<QGLContext *>(glwidget->context());
     if (item->propertyCache())
         item->propertyCache()->damageTracking(true);
     init();

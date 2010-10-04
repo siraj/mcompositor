@@ -69,6 +69,9 @@ public:
      */
     void setGLWidget(QGLWidget *glw);
 
+    /*! QGLWidget accessor for static initialisations. */
+    QGLWidget *glWidget() const;
+
     /*!
      * Reimplemented from QApplication::x11EventFilter() to catch X11 events
      */

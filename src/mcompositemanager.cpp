@@ -3395,6 +3395,11 @@ void MCompositeManager::setGLWidget(QGLWidget *glw)
     d->glwidget = glw;
 }
 
+QGLWidget *MCompositeManager::glWidget() const
+{
+    return d->glwidget;
+}
+
 QGraphicsScene *MCompositeManager::scene()
 {
     return d->scene();

@@ -51,7 +51,7 @@ class MTexturePixmapPrivate: QObject
 {
     Q_OBJECT
 public:
-    MTexturePixmapPrivate(Window window, QGLWidget *w, MTexturePixmapItem *item);
+    MTexturePixmapPrivate(Window window, MTexturePixmapItem *item);
     ~MTexturePixmapPrivate();
     void init();
     void updateWindowPixmap(XRectangle *rects = 0, int num = 0);
@@ -66,8 +66,8 @@ public:
     void installEffect(MCompositeWindowShaderEffect* effect);
     static GLuint installPixelShader(const QByteArray& code);
                 
-    QGLContext *ctx;
-    QGLWidget *glwidget;
+    static QGLContext *ctx;
+    static QGLWidget *glwidget;
     Window window;
     Pixmap windowp;
 #ifdef GLES2_VERSION
