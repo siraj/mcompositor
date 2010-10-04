@@ -104,6 +104,7 @@ private:
     void initCustomTfp();
     void cleanup();
     void rebindPixmap();
+    void doTFP();
 
     MTexturePixmapPrivate *const d;
     friend class MTexturePixmapPrivate;
