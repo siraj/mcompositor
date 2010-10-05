@@ -1,6 +1,8 @@
-mcompositor (0.7.3~1) unstable; urgency=low
+mcompositor (0.7.3-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#196194 - MCOMPOSITOR titlebar misalignment causes Toast to be unusable
+  * Fixes: NB#195550 - Status Menu opens in background of application
+  * Fixes: NB#187120 - Flicker when opening the dialer page	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Thu, 30 Sep 2010 03:29:48 +0300
 
