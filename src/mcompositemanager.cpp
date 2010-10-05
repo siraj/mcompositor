@@ -1507,6 +1507,11 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     }
 
     pc->setBeingMapped(true);
+    const XWMHints &h = pc->getWMHints();
+    if ((h.flags & StateHint) && (h.initial_state == IconicState))
+        setWindowState(e->window, IconicState);
+    else
+        setWindowState(e->window, NormalState);
     if (needDecoration(e->window, pc)) {
         if (MDecoratorFrame::instance()->decoratorItem()) {
             enableCompositing();
@@ -1515,6 +1520,8 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
             // checks won't disable compositing
             MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
         } else {
+#if 0 /* FIXME/TODO: this does NOT work when mdecorator starts after the first
+         decorated window is shown. See NB#196194 */
             // it will be non-toplevel, so mask needs to be set here
             XSelectInput(dpy, e->window,
                          StructureNotifyMask | ColormapChangeMask |
@@ -1555,20 +1562,17 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
             XReparentWindow(QX11Info::display(), e->window,
                             frame->windowArea(), 0, 0);
-            setWindowState(e->window, NormalState);     
             MapRequesterPrivate::instance()->requestMap(pc);
             frame->show();
 
             XSync(QX11Info::display(), False);
+#else
+            MapRequesterPrivate::instance()->requestMap(pc);
+            qWarning("%s: mdecorator hasn't started yet", __func__);
+#endif
         }
-    } else {
-        const XWMHints &h = pc->getWMHints();
-        if ((h.flags & StateHint) && (h.initial_state == IconicState))
-            setWindowState(e->window, IconicState);
-        else
-            setWindowState(e->window, NormalState);
+    } else
         MapRequesterPrivate::instance()->requestMap(pc);
-    }
 }
 
 /* recursion is needed to handle transients that are transient for other
