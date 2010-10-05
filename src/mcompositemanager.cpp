@@ -3059,7 +3059,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
         prop_caches[window] = wpc;
     }
     wpc->setIsMapped(true);
-    MCompositeWindow *item = new MTexturePixmapItem(window, wpc, glwidget);
+    MCompositeWindow *item = new MTexturePixmapItem(window, wpc);
     if (!item->isValid()) {
         item->deleteLater();
         return 0;

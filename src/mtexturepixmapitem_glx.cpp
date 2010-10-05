@@ -162,10 +162,9 @@ void MTexturePixmapItem::init()
 
 MTexturePixmapItem::MTexturePixmapItem(Window window,
                                        MWindowPropertyCache *pc,
-                                       QGLWidget *glwidget,
                                        QGraphicsItem *parent)
     : MCompositeWindow(window, pc, parent),
-      d(new MTexturePixmapPrivate(window, glwidget, this))
+      d(new MTexturePixmapPrivate(window, this))
 {
     init();
 }

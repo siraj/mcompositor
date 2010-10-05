@@ -49,7 +49,7 @@ public:
      * \param parent QGraphicsItem, defaults to 0
      */
     MTexturePixmapItem(Window window, MWindowPropertyCache *mpc,
-                       QGLWidget *glwidget, QGraphicsItem *parent = 0);
+                       QGraphicsItem *parent = 0);
     /*!
      * Destroys the MTexturePixmapItem and frees the allocated
      * surface and texture
