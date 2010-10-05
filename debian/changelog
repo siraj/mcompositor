@@ -1,3 +1,9 @@
+mcompositor (0.7.4~1) unstable; urgency=low
+
+  * New version [UNRELEASED]
+
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 05 Oct 2010 16:46:41 +0300
+
 mcompositor (0.7.3-1) unstable; urgency=low
 
   * Fixes: NB#196194 - MCOMPOSITOR titlebar misalignment causes Toast to be unusable
