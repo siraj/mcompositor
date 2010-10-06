@@ -185,7 +185,6 @@ public slots:
     
     void onDesktopActivated(MCompositeWindow*);
     void exposeDesktop();
-    void enablePaintedCompositing();
     void exposeSwitcher();
     
     void displayOff(bool display_off);
