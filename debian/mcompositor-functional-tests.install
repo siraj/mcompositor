@@ -1,6 +1,3 @@
 usr/share/mcompositor-functional-tests
 usr/share/meegotouch/testscripts
-usr/bin/windowctl
-usr/bin/windowstack
-usr/bin/focus-tracker
 usr/bin/mcompositor-test-init.py
