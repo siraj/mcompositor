@@ -137,8 +137,10 @@ void MTexturePixmapItem::init()
 
     d->textureId = d->eglresource->texman->getTexture();
     glEnable(GL_TEXTURE_2D);
-    if (d->custom_tfp) d->inverted_texture = true;
-
+    
+    if (d->custom_tfp)
+        d->inverted_texture = false;
+    
     doTFP();
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -163,7 +165,7 @@ void MTexturePixmapItem::saveBackingStore(bool renew)
 
 void MTexturePixmapItem::rebindPixmap()
 {
-    if (!d->custom_tfp &&  d->egl_image != EGL_NO_IMAGE_KHR) {
+    if (!d->custom_tfp && d->egl_image != EGL_NO_IMAGE_KHR) {
         eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
@@ -222,11 +224,9 @@ MTexturePixmapItem::~MTexturePixmapItem()
 
 void MTexturePixmapItem::initCustomTfp()
 {
-    d->ctextureId = d->eglresource->texman->getTexture();
-
-    glBindTexture(GL_TEXTURE_2D, d->ctextureId);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // UNUSED. 
+    // TODO: GLX backend should probably use same approach as here and
+    // re-use same texture id
 }
 
 void MTexturePixmapItem::cleanup()
@@ -258,11 +258,19 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
     for (int i = 0; i < num; ++i)
         r += QRegion(rects[i].x, rects[i].y, rects[i].width, rects[i].height);
     d->damageRegion = r;
-
-    if (!d->custom_tfp && d->egl_image == EGL_NO_IMAGE_KHR)
+    
+    if (d->custom_tfp) {
+        QPixmap qp = QPixmap::fromX11Pixmap(d->windowp);
+        
+        QImage img = d->glwidget->convertToGLFormat(qp.toImage());
+        glBindTexture(GL_TEXTURE_2D, d->textureId);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img.width(), 
+                        img.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+    } else {
+        if (d->egl_image == EGL_NO_IMAGE_KHR)
             saveBackingStore(true);
+    }    
     d->glwidget->update();
-
 }
 
 void MTexturePixmapItem::paint(QPainter *painter,
