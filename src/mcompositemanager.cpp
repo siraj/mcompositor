@@ -150,6 +150,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_DECORATOR_BUTTONS",
         "_MEEGOTOUCH_CURRENT_APP_WINDOW",
         "_MEEGOTOUCH_ALWAYS_MAPPED",
+        "_MEEGOTOUCH_DESKTOP_VIEW",
 
         /* RROutput properties */
         RR_PROPERTY_CONNECTOR_TYPE,
@@ -366,6 +367,7 @@ public:
         else {
             // create the damage object before mapping to get 'em all
             window->damageTracking(true);
+            window->setBeingMapped(true); // don't disable compositing
             XMapWindow(QX11Info::display(), window->winId());
         }
     }
@@ -378,6 +380,7 @@ public slots:
             MWindowPropertyCache *w = map_requests.takeFirst();
             // create the damage object before mapping to get 'em all
             w->damageTracking(true);
+            w->setBeingMapped(true); // don't disable compositing
             XMapWindow(QX11Info::display(), w->winId());
         }
     }
@@ -1102,10 +1105,17 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
             break;
         }
     }
-    
-    // compositing is always assumed when a window gets mapped because of our
-    // MapRequester class
-    
+
+    // this code prevents us disabling compositing when we have a window
+    // that has XMapWindow() called but we have not yet received the MapNotify
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+        Window w = stacking_list.at(i);        
+        if (w == stack[DESKTOP_LAYER]) break;
+        MWindowPropertyCache *pc = prop_caches.value(w, 0);
+        if (pc && pc->is_valid && pc->beingMapped())
+            return false;
+    }
+
     if (top && cw && !MCompositeWindow::hasTransitioningWindow()) {
         // unredirect the chosen window and any docks and OR windows above it
         // TODO: what else should be unredirected?
@@ -1506,7 +1516,6 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         fullscreen_wm_state(this, 1, e->window, &v);
     }
 
-    pc->setBeingMapped(true);
     const XWMHints &h = pc->getWMHints();
     if ((h.flags & StateHint) && (h.initial_state == IconicState))
         setWindowState(e->window, IconicState);
@@ -3242,11 +3251,6 @@ void MCompositeManagerPrivate::enableRedirection()
     XFlush(QX11Info::display());
     compositing = true;
     // no delay: application does not need to redraw when maximizing it
-    enablePaintedCompositing();
-}
-
-void MCompositeManagerPrivate::enablePaintedCompositing()
-{
     scene()->views()[0]->setUpdatesEnabled(true);
     glwidget->update();
     // At this point everything should be rendered off-screen

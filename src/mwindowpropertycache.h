@@ -213,6 +213,11 @@ public:
     int alwaysMapped();
 
     /*!
+     * Returns value of _MEEGOTOUCH_DESKTOP_VIEW (makes sense for desktop only).
+     */
+    int desktopView(bool request_only = false);
+
+    /*!
      * Called on PropertyNotify for this window.
      * Returns true if we should re-check stacking order.
      */
@@ -246,6 +251,7 @@ public:
 signals:
     void iconGeometryUpdated();
     void meegoDecoratorButtonsChanged(Window w);
+    void desktopViewChanged(MWindowPropertyCache *pc);
 
 private:
     int alphaValue(xcb_get_property_cookie_t c);
@@ -275,7 +281,7 @@ private:
     int meego_layer, window_state;
     MCompAtoms::Type window_type;
     Window window, parent_window;
-    int always_mapped;
+    int always_mapped, desktop_view;
     bool being_mapped, dont_iconify;
     // geometry is requested only once in the beginning, after that, we
     // use ConfigureNotifys to update the size through setRealGeometry()
