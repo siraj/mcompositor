@@ -57,6 +57,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       window(w),
       parent_window(RootWindow(QX11Info::display(), 0)),
       always_mapped(-1),
+      desktop_view(-1),
       being_mapped(false),
       dont_iconify(false),
       xcb_real_geom(0),
@@ -200,6 +201,7 @@ MWindowPropertyCache::~MWindowPropertyCache()
         r = xcb_get_property_reply(xcb_conn, xcb_always_mapped_cookie, 0);
         if (r) free(r);
     }
+    desktopView(false);  // free the reply if it has been requested
     if (meego_layer < 0) {
         r = xcb_get_property_reply(xcb_conn, xcb_meego_layer_cookie, 0);
         if (r) free(r);
@@ -362,6 +364,34 @@ int MWindowPropertyCache::alwaysMapped()
     return always_mapped;
 }
 
+int MWindowPropertyCache::desktopView(bool request_only)
+{
+    static bool request_fired = false;
+    static xcb_get_property_cookie_t c;
+    if (is_valid && request_only) {
+        if (request_fired)
+            // free the old reply
+            desktopView(false);
+        c = xcb_get_property(xcb_conn, 0, window,
+                             ATOM(_MEEGOTOUCH_DESKTOP_VIEW),
+                             XCB_ATOM_CARDINAL, 0, 1);
+        request_fired = true;
+    } else if (is_valid && request_fired) {
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, c, 0);
+        if (r) {
+            if (xcb_get_property_value_length(r) == sizeof(CARD32))
+                desktop_view = *((CARD32*)xcb_get_property_value(r));
+            else
+                desktop_view = -1;
+            free(r);
+        } else
+            desktop_view = -1;
+        request_fired = false;
+    }
+    return desktop_view;
+}
+
 bool MWindowPropertyCache::isDecorator()
 {
     if (is_valid && is_decorator < 0) {
@@ -469,6 +499,8 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         xcb_always_mapped_cookie = xcb_get_property(xcb_conn, 0, window,
                                            ATOM(_MEEGOTOUCH_ALWAYS_MAPPED),
                                            XCB_ATOM_CARDINAL, 0, 1);
+    } else if (e->atom == ATOM(_MEEGOTOUCH_DESKTOP_VIEW)) {
+        emit desktopViewChanged(this);
     } else if (e->atom == ATOM(WM_HINTS)) {
         if (!wmhints)
             // collect the old reply

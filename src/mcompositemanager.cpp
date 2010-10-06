@@ -150,6 +150,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_DECORATOR_BUTTONS",
         "_MEEGOTOUCH_CURRENT_APP_WINDOW",
         "_MEEGOTOUCH_ALWAYS_MAPPED",
+        "_MEEGOTOUCH_DESKTOP_VIEW",
 
         /* RROutput properties */
         RR_PROPERTY_CONNECTOR_TYPE,
