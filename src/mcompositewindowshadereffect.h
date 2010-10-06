@@ -37,56 +37,40 @@ class MCompositeWindowShaderEffect: public QObject
  public:
     MCompositeWindowShaderEffect(QObject* parent = 0);
     virtual ~MCompositeWindowShaderEffect();
-
+    
     GLuint installShaderFragment(const QByteArray& code);
     GLuint texture() const;
-
     void setActiveShaderFragment(GLuint id);
-
     GLuint activeShaderFragment() const;
 
-    /*!
-     * Install this effect on a composite window. Note that
-     * we override QGraphicsItem::setGraphicsEffect() because
-     * we have a completely different painting engine.
-     * If a window has a previous effect, it will be overriden by the new one
-     */
     void installEffect(MCompositeWindow* window);
-    
     bool enabled() const;
 
  public slots:
-    
-    /*!
-     * Enable this effect 
-     */
     void setEnabled(bool enabled);
 
  signals:
     void enabledChanged( bool enabled);
     
- protected:
+ protected: 
     void drawSource(const QTransform &transform,
                     const QRectF &drawRect, qreal opacity);
-    
     virtual void drawTexture(const QTransform &transform,
                              const QRectF &drawRect, qreal opacity) = 0;
-    /*!
-     * Set the uniform values on the currently active shader.
-     * Default implementation does nothing. Reimplement this function to
-     * set values if you specified a custom pixel shader in your effects.
-     */
-    virtual void setUniforms(QGLShaderProgram* );
+    virtual void setUniforms(QGLShaderProgram* program);
 
  private:    
+    /* \cond */
     const QVector<GLuint>& fragmentIds() const;
 
     MCompositeWindowShaderEffectPrivate* d;
     friend class MTexturePixmapPrivate;
     friend class MCompositeWindowShaderEffectPrivate;
+    /* \endcond */
+
 };
 
-/*
+/* \cond
  * Internal class. Do not use! Not part of public API
  */
 class MCompositeWindowShaderEffectPrivate
@@ -109,4 +93,6 @@ class MCompositeWindowShaderEffectPrivate
 
     friend class MCompositeWindowShaderEffect;
 };
+
+/* \endcond */
 #endif
