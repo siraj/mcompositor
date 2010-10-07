@@ -2204,6 +2204,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             && !pc->alwaysMapped() && e->send_event == False
             && !pc->isInputOnly()) {
             // remapped/prestarted apps should also have startup animation
+            item->requestZValue(scene()->items().count() + 1);
             item->setNewlyMapped(true);
             if (!item->showWindow())
                 item->setNewlyMapped(false);

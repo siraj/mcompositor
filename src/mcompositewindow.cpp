@@ -237,7 +237,8 @@ void MCompositeWindow::setWindowObscured(bool obscured, bool no_notify)
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
     short new_value = obscured ? 1 : 0;
-    if ((new_value == window_obscured) || (!obscured && p->displayOff()))
+    if ((new_value == window_obscured && !newly_mapped)
+        || (!obscured && p->displayOff()))
         return;
     window_obscured = new_value;
 
@@ -512,7 +513,7 @@ void MCompositeWindow::setVisible(bool visible)
         || (visible && newly_mapped && isAppWindow()) 
         || (!visible && is_transitioning)) 
         return;
-    
+
     // Set the iconification status as well
     iconified_final = !visible;
     if (visible != window_visible)
