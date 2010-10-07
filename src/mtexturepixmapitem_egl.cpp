@@ -138,13 +138,14 @@ void MTexturePixmapItem::init()
     if (d->custom_tfp)
         d->inverted_texture = false;
     
-    d->saveBackingStore();
-
+    glBindTexture(GL_TEXTURE_2D, d->textureId);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    
+    d->saveBackingStore();
 }
 
 MTexturePixmapItem::MTexturePixmapItem(Window window, MWindowPropertyCache *mpc,
@@ -377,6 +378,9 @@ void MTexturePixmapItem::clearTexture()
 
 void MTexturePixmapItem::doTFP()
 {
+    if (isClosing()) // Pixmap is already freed. No sense to create EGL image
+        return;      // from it again
+    
     //no EGL texture from pixmap extensions available
     //use regular X11/GL calls to copy pixels from Pixmap to GL Texture
     if (d->custom_tfp) {
