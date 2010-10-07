@@ -93,9 +93,9 @@ void MTexturePixmapItem::init()
         return;
 
     d->glpixmap = 0;
-    saveBackingStore();
 
     d->custom_tfp = !hasTextureFromPixmap();
+    saveBackingStore();
 
     if (d->custom_tfp) {
         initCustomTfp();
@@ -169,9 +169,9 @@ MTexturePixmapItem::MTexturePixmapItem(Window window,
     init();
 }
 
-void MTexturePixmapItem::saveBackingStore(bool renew)
+void MTexturePixmapItem::saveBackingStore()
 {
-    d->saveBackingStore(renew);
+    d->saveBackingStore();
 }
 
 void MTexturePixmapItem::rebindPixmap()
@@ -234,7 +234,7 @@ void MTexturePixmapItem::enableRedirectedRendering()
     XCompositeRedirectWindow(QX11Info::display(), window(),
                              CompositeRedirectManual);
     XSync(QX11Info::display(), FALSE);
-    saveBackingStore(true);
+    saveBackingStore();
     updateWindowPixmap();
 }
 

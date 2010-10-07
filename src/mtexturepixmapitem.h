@@ -21,6 +21,7 @@
 #define DUITEXTUREPIXMAPITEM_H
 
 #include "mcompositewindow.h"
+#include "mtexturepixmapitem_p.h"
 
 #include <QtOpenGL>
 #include <QPixmap>
@@ -63,13 +64,10 @@ public:
     void updateWindowPixmap(XRectangle *rects = 0, int num = 0);
 
     /*!
-     * Creates the pixmap id and saves the offscreen buffer that represents
-     * this window
-     *
-     * \param renew Set to true if the window was just mapped or resized. This
-     * will update the offscreen backing store.
+     * Recreates the pixmap id and saves the offscreen buffer that represents
+     * this window. This will update the offscreen backing store.
      */
-    void saveBackingStore(bool renew = false);
+    void saveBackingStore();
 
     /*!
       Clears the texture that is associated with the offscreen pixmap
@@ -89,6 +87,8 @@ public:
 
     void enableDirectFbRendering();
     void enableRedirectedRendering();
+
+    Pixmap windowPixmap() const { return d->windowp; }
 
 protected:
     void paint(QPainter *painter,

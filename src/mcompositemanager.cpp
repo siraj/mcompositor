@@ -509,7 +509,8 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
             QRect r = availScreenRect;
             XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
         }
-        priv->dirtyStacking(false);
+        if (win && win->propertyCache()->isMapped())
+            priv->dirtyStacking(false);
     } break;
     case 1: /* add */ {
         if (i == -1) {
@@ -533,7 +534,8 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
             MDecoratorFrame::instance()->lower();
             MDecoratorFrame::instance()->setManagedWindow(0);
         }
-        priv->dirtyStacking(false);
+        if (win && win->propertyCache()->isMapped())
+            priv->dirtyStacking(false);
     } break;
     case 2: /* toggle */ {
         if (i == -1)
@@ -2197,7 +2199,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             ((MTexturePixmapItem *)item)->enableRedirectedRendering();
             setWindowDebugProperties(item->window());
         } else
-            item->saveBackingStore(true);
+            item->saveBackingStore();
         // TODO: don't show the animation if the window is not stacked on top
         const XWMHints &h = pc->getWMHints();
         if ((!(h.flags & StateHint) || h.initial_state != IconicState)
