@@ -370,7 +370,7 @@ MTexturePixmapPrivate::~MTexturePixmapPrivate()
         XFreePixmap(QX11Info::display(), windowp);
 }
 
-void MTexturePixmapPrivate::saveBackingStore(bool renew)
+void MTexturePixmapPrivate::saveBackingStore()
 {
     if ((item->propertyCache()->is_valid && !item->propertyCache()->isMapped())
         || item->propertyCache()->isInputOnly())
@@ -378,10 +378,8 @@ void MTexturePixmapPrivate::saveBackingStore(bool renew)
 
     if (windowp)
         XFreePixmap(QX11Info::display(), windowp);
-    Pixmap px = XCompositeNameWindowPixmap(QX11Info::display(), item->window());
-    windowp = px;
-    if (renew)
-        item->rebindPixmap();
+    windowp = XCompositeNameWindowPixmap(QX11Info::display(), item->window());
+    item->rebindPixmap(); // windowp == 0 is also handled here
 }
 
 void MTexturePixmapPrivate::windowRaised()
@@ -392,7 +390,7 @@ void MTexturePixmapPrivate::windowRaised()
 void MTexturePixmapPrivate::resize(int w, int h)
 {
     if (!brect.isEmpty() && !item->isDirectRendered() && (brect.width() != w || brect.height() != h)) {
-        item->saveBackingStore(true);
+        item->saveBackingStore();
         item->updateWindowPixmap();
     }
     brect.setWidth(w);

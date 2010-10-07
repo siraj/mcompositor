@@ -242,13 +242,10 @@ public:
     virtual void updateWindowPixmap(XRectangle *rects = 0, int num = 0) = 0;
 
     /*!
-     * Creates the pixmap id and saves the offscreen buffer that represents
-     * this window
-     *
-     * \param renew Set to true if the window was just mapped or resized. This
-     * will update the offscreen backing store.
+     * Recreates the pixmap id and saves the offscreen buffer that represents
+     * this window. This will update the offscreen backing store.
      */
-    virtual void saveBackingStore(bool renew = false) = 0;
+    virtual void saveBackingStore() = 0;
 
     /*!
       Clears the texture that is associated with the offscreen pixmap

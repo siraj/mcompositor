@@ -132,16 +132,13 @@ void MTexturePixmapItem::init()
         d->eglresource = new EglResourceManager();
 
     d->custom_tfp = !d->eglresource->texturePixmapSupport();
-    saveBackingStore();
-    d->ctx->makeCurrent();
-
     d->textureId = d->eglresource->texman->getTexture();
     glEnable(GL_TEXTURE_2D);
     
     if (d->custom_tfp)
         d->inverted_texture = false;
     
-    doTFP();
+    d->saveBackingStore();
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -158,9 +155,9 @@ MTexturePixmapItem::MTexturePixmapItem(Window window, MWindowPropertyCache *mpc,
     init();
 }
 
-void MTexturePixmapItem::saveBackingStore(bool renew)
+void MTexturePixmapItem::saveBackingStore()
 {
-    d->saveBackingStore(renew);
+    d->saveBackingStore();
 }
 
 void MTexturePixmapItem::rebindPixmap()
@@ -207,7 +204,7 @@ void MTexturePixmapItem::enableRedirectedRendering()
     d->direct_fb_render = false;
     XCompositeRedirectWindow(QX11Info::display(), window(),
                              CompositeRedirectManual);
-    saveBackingStore(true);
+    saveBackingStore();
     updateWindowPixmap();
 }
 
@@ -268,7 +265,7 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
                         img.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
     } else {
         if (d->egl_image == EGL_NO_IMAGE_KHR)
-            saveBackingStore(true);
+            saveBackingStore();
     }    
     d->glwidget->update();
 }

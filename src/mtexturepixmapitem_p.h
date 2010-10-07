@@ -55,7 +55,7 @@ public:
     ~MTexturePixmapPrivate();
     void init();
     void updateWindowPixmap(XRectangle *rects = 0, int num = 0);
-    void saveBackingStore(bool renew = false);
+    void saveBackingStore();
     void clearTexture();
     bool isDirectRendered() const;
     void resize(int w, int h);
