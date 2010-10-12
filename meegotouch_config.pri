@@ -34,4 +34,4 @@ contains(QT_CONFIG, opengles2) {
 } 
 
 # Compositor components only
-VERSION = 0.7.4
+VERSION = 0.7.5
