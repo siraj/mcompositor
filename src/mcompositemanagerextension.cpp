@@ -54,3 +54,35 @@ Qt::HANDLE MCompositeManagerExtension::currentAppWindow()
     MCompositeManager *p = (MCompositeManager *) qApp;
     return p->d->current_app;
 }
+
+bool MCompositeManagerExtension::windowIconified(MCompositeWindow* window, 
+                                                 bool deferred)
+{
+    Q_UNUSED(window)
+    Q_UNUSED(deferred)
+        
+    return false;
+}
+
+bool MCompositeManagerExtension::windowRestored(MCompositeWindow* window, 
+                                                bool deferred)
+{
+    Q_UNUSED(window)
+    Q_UNUSED(deferred)
+
+    return false;
+}
+
+bool MCompositeManagerExtension::windowShown(MCompositeWindow* window)
+{
+    Q_UNUSED(window)
+
+    return false;
+}
+
+bool MCompositeManagerExtension::windowClosed(MCompositeWindow* window)
+{
+    Q_UNUSED(window)
+
+    return false;
+}

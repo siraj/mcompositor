@@ -83,12 +83,18 @@ class MCompositeManagerExtension: public QObject
      * Called for each event after MCompositeManager's event handling.
      */
     virtual void afterX11Event(XEvent *event) = 0;
+
+    virtual bool windowIconified(MCompositeWindow* window, bool deferred);
+    virtual bool windowRestored(MCompositeWindow* window, bool deferred);
+    virtual bool windowShown(MCompositeWindow* window);
+    virtual bool windowClosed(MCompositeWindow* window);
     
  private slots:
     void q_currentAppChanged(Window window);
 
  private:
     friend class MCompositeManagerPrivate;
+    friend class MCompositeWindow;
 };
 
 #endif

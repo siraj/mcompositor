@@ -23,6 +23,7 @@
 #include "mcompositemanager_p.h"
 #include "mtexturepixmapitem.h"
 #include "mdecoratorframe.h"
+#include "mcompositemanagerextension.h"
 
 #include <QX11Info>
 #include <QGraphicsScene>
@@ -183,7 +184,17 @@ void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
 
     if (window_status != MCompositeWindow::Closing)
         window_status = MCompositeWindow::Minimizing;
-
+    
+    // Custom iconify handler
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    QList<MCompositeManagerExtension*> evlist = p->d->m_extensions.values(MapNotify);
+    for (int i = 0; i < evlist.size(); ++i) { 
+        if (evlist[i]->windowIconified(this, defer)) {
+            iconified = true;
+            return;
+        }
+    }
+    
     this->iconGeometry = icongeometry;
     if (!iconified)
         origPosition = pos();
@@ -191,7 +202,7 @@ void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
     // horizontal and vert. scaling factors
     qreal sx = iconGeometry.width() / boundingRect().width();
     qreal sy = iconGeometry.height() / boundingRect().height();
-
+    
     anim->deferAnimation(defer);
     anim->translateScale(qreal(1.0), qreal(1.0), sx, sy,
                          iconGeometry.topLeft());
@@ -296,6 +307,16 @@ void MCompositeWindow::updateIconGeometry()
 // TODO: have an option of disabling the animation
 void MCompositeWindow::restore(const QRectF &icongeometry, bool defer)
 {
+     // Custom restore handler
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    QList<MCompositeManagerExtension*> evlist = p->d->m_extensions.values(MapNotify);
+    for (int i = 0; i < evlist.size(); ++i) { 
+        if (evlist[i]->windowRestored(this, defer)) {
+            iconified = false;
+            return;
+        }
+    }
+
     if (icongeometry.isEmpty())
         this->iconGeometry = fadeRect;
     else
@@ -359,9 +380,18 @@ void MCompositeWindow::q_fadeIn()
     setOpacity(0.0);
     updateWindowPixmap();
     origPosition = pos();
+    newly_mapped = true;
+    
+    // Custom fade-in handler
+    MCompositeManager *p = (MCompositeManager *) qApp;
+    QList<MCompositeManagerExtension*> evlist = p->d->m_extensions.values(MapNotify);
+    for (int i = 0; i < evlist.size(); ++i) { 
+        if (evlist[i]->windowShown(this)) 
+            return;
+    }
+    
     setPos(fadeRect.topLeft());
     restore(fadeRect, false);
-    newly_mapped = true;
 }
 
 void MCompositeWindow::closeWindow()
@@ -388,6 +418,14 @@ void MCompositeWindow::closeWindow()
     
     updateWindowPixmap();
     origPosition = pos();
+    
+    // Custom close window animation handler    
+    QList<MCompositeManagerExtension*> evlist = p->d->m_extensions.values(MapNotify);
+    for (int i = 0; i < evlist.size(); ++i) { 
+        if (evlist[i]->windowClosed(this)) {
+            return;
+        }
+    }
     iconify(fadeRect, defer);
 }
 
