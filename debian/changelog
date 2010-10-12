@@ -1,6 +1,8 @@
-mcompositor (0.7.4~1) unstable; urgency=low
+mcompositor (0.7.4-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#196316 - Ugly flicker during startup-animation
+  * New: Changes: testing binaries into own package
+  * New: Restored texture from pixmap functionality software rendering	
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 05 Oct 2010 16:46:41 +0300
 
