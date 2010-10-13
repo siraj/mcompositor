@@ -165,6 +165,7 @@ void MTexturePixmapItem::rebindPixmap()
 {
     if (!d->custom_tfp && d->egl_image != EGL_NO_IMAGE_KHR) {
         eglDestroyImageKHR(d->eglresource->dpy, d->egl_image);
+        d->egl_image = EGL_NO_IMAGE_KHR;
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 

@@ -116,7 +116,7 @@ public:
     
     static bool compareWindows(Window w_a, Window w_b);
     void roughSort();
-    void setCurrentApp(Window w);
+    void setCurrentApp(Window w, bool stacking_order_changed);
     void raiseTransientsOf(MWindowPropertyCache *pc, int last_i,
                            bool recursion = false);
 

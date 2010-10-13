@@ -123,7 +123,7 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
 
         // FIXME: this region is always the same as the window's shape,
         // some transformations would be needed...
-        QRegion r(cw->sceneMatrix().map(cw->propertyCache()->shapeRegion()));
+        QRegion r(cw->propertyCache()->shapeRegion());
         
         // transitioning window can be smaller than shapeRegion(), so paint
         // all transitioning windows

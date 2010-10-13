@@ -1795,11 +1795,17 @@ void MCompositeManagerPrivate::setupButtonWindows(Window curr_app)
     }
 }
 
-void MCompositeManagerPrivate::setCurrentApp(Window w)
+void MCompositeManagerPrivate::setCurrentApp(Window w,
+                                             bool stacking_order_changed)
 {
     static Window prev = (Window)-1;
-    if (prev == w)
+    if (prev == w) {
+        if (stacking_order_changed)
+            // signal listener could be interested in transients of
+            // the current application (could be also different signal?)
+            emit currentAppChanged(current_app);
         return;
+    }
     XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
                     ATOM(_MEEGOTOUCH_CURRENT_APP_WINDOW),
                     XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
@@ -2092,7 +2098,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 setWindowState(cw->window(), NormalState);
         }
     }
-    setCurrentApp(set_as_current_app);
+    setCurrentApp(set_as_current_app, order_changed);
 }
 
 void MCompositeManagerPrivate::stackingTimeout()
