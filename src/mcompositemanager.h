@@ -132,6 +132,7 @@ public:
     };
     void positionWindow(Window w, StackPosition pos);
     void setWindowState(Window, int);
+    const QList<Window> &stackingList() const;
 
 public slots:
     void enableCompositing(bool forced = false);

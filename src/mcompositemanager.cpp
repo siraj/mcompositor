@@ -3229,6 +3229,11 @@ void MCompositeManager::positionWindow(Window w,
     d->positionWindow(w, pos == MCompositeManager::STACK_TOP ? true : false);
 }
 
+const QList<Window> &MCompositeManager::stackingList() const
+{
+    return d->stacking_list;
+}
+
 void MCompositeManagerPrivate::enableCompositing(bool forced)
 {
     if (compositing && !forced)
