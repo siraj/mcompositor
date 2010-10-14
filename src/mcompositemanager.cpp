@@ -366,7 +366,8 @@ public:
             map_requests.push_back(window);
         else {
             // create the damage object before mapping to get 'em all
-            window->damageTracking(true);
+            if (!mcmp->device_state->displayOff())
+                window->damageTracking(true);
             window->setBeingMapped(true); // don't disable compositing
             XMapWindow(QX11Info::display(), window->winId());
         }
@@ -379,7 +380,8 @@ public slots:
             // first come first served
             MWindowPropertyCache *w = map_requests.takeFirst();
             // create the damage object before mapping to get 'em all
-            w->damageTracking(true);
+            if (!mcmp->device_state->displayOff())
+                w->damageTracking(true);
             w->setBeingMapped(true); // don't disable compositing
             XMapWindow(QX11Info::display(), w->winId());
         }
@@ -389,9 +391,12 @@ private:
     QList<MWindowPropertyCache*> map_requests;
     explicit MapRequesterPrivate(QObject* parent = 0)
         :QObject(parent)
-    {}
+    {
+        mcmp = dynamic_cast<MCompositeManagerPrivate*>(parent);
+    }
     
     static MapRequesterPrivate *d;
+    MCompositeManagerPrivate *mcmp;
 };
 
 MapRequesterPrivate* MapRequesterPrivate::d = 0;
@@ -732,6 +737,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
 
     watch = new MCompositeScene(this);
     atom = MCompAtoms::instance();
+    MapRequesterPrivate::instance(this);
 
     device_state = new MDeviceState(this);
     connect(device_state, SIGNAL(displayStateChange(bool)),
@@ -929,8 +935,6 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
 
 void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 {
-    if (device_state->displayOff())
-        return;
     XserverRegion r = XFixesCreateRegion(QX11Info::display(), 0, 0);
     int num;
     XDamageSubtract(QX11Info::display(), e->damage, None, r);
@@ -2655,8 +2659,11 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
-             MCompositeWindow *i  = it.value();
+             MCompositeWindow *i = it.value();
              i->stopPing();
+             // stop damage tracking while the display is off
+             if (i->propertyCache())
+                 i->propertyCache()->damageTracking(false);
         }
     } else {
         scene()->views()[0]->setUpdatesEnabled(true);
@@ -2664,6 +2671,14 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
             enableCompositing(false);
         /* start pinging again */
         pingTopmost();
+        // restart damage tracking
+        for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
+             it != windows.end(); ++it) {
+             MCompositeWindow *i = it.value();
+             if (i->propertyCache() && (i->propertyCache()->isMapped() ||
+                                        i->propertyCache()->beingMapped()))
+                 i->propertyCache()->damageTracking(true);
+        }
     }
     dirtyStacking(true);  // VisibilityNotify generation
 }
