@@ -687,8 +687,13 @@ QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant 
         p->d->setWindowDebugProperties(window());
     }
     
+    /* disabled to avoid glSwapBuffers call without painting any item (Qt bug)
+     * see NB#189519
     if (zvalChanged || change == ItemVisibleHasChanged || change == ItemParentHasChanged)
+    {
         p->d->glwidget->update();
+    }
+    */
 
     return QGraphicsItem::itemChange(change, value);
 }
@@ -753,7 +758,10 @@ QPainterPath MCompositeWindow::shape() const
 Window MCompositeWindow::lastVisibleParent() const
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
-    return p->d->getLastVisibleParent(propertyCache());
+    if (pc && pc->is_valid)
+        return p->d->getLastVisibleParent(pc);
+    else
+        return None;
 }
 
 int MCompositeWindow::indexInStack() const

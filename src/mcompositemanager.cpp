@@ -1075,6 +1075,17 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated()
     return 0;
 }
 
+bool MCompositeManagerPrivate::haveMappedWindow() const
+{
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+        Window w = stacking_list.at(i);        
+        MWindowPropertyCache *pc = prop_caches.value(w, 0);
+        if (pc && pc->is_valid && pc->isMapped())
+            return true;
+    }
+    return false;
+}
+
 // TODO: merge this with disableCompositing() so that in the end we have
 // stacking order sensitive logic
 bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
@@ -1120,6 +1131,10 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         MWindowPropertyCache *pc = prop_caches.value(w, 0);
         if (pc && pc->is_valid && pc->beingMapped())
             return false;
+    }
+    if (!haveMappedWindow()) {
+        disableCompositing(FORCED);
+        return true;
     }
 
     if (top && cw && !MCompositeWindow::hasTransitioningWindow()) {
@@ -2654,7 +2669,8 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
 {
     if (display_off) {
         // keep compositing to have synthetic events to obscure all windows
-        enableCompositing(true);
+        if (!haveMappedWindow())
+            enableCompositing(true);
         scene()->views()[0]->setUpdatesEnabled(false);
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
@@ -2666,7 +2682,6 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
                  i->propertyCache()->damageTracking(false);
         }
     } else {
-        scene()->views()[0]->setUpdatesEnabled(true);
         if (!possiblyUnredirectTopmostWindow())
             enableCompositing(false);
         /* start pinging again */
@@ -2960,7 +2975,6 @@ void MCompositeManagerPrivate::redirectWindows()
     }
     if (kids)
         XFree(kids);
-    scene()->views()[0]->setUpdatesEnabled(true);
 
     // Wait for the MapNotify for the overlay (show() of the graphicsview
     // in main() causes it even if we don't map it explicitly)
@@ -3281,7 +3295,7 @@ void MCompositeManagerPrivate::enableRedirection()
     compositing = true;
     // no delay: application does not need to redraw when maximizing it
     scene()->views()[0]->setUpdatesEnabled(true);
-    glwidget->update();
+    // NOTE: enableRedirectedRendering() calls glwidget->update() if needed
     // At this point everything should be rendered off-screen
     emit compositingEnabled();
 }

@@ -258,6 +258,7 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
         r += QRegion(rects[i].x, rects[i].y, rects[i].width, rects[i].height);
     d->damageRegion = r;
     
+    bool new_image = false;
     if (d->custom_tfp) {
         QPixmap qp = QPixmap::fromX11Pixmap(d->windowp);
         
@@ -265,11 +266,13 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
         glBindTexture(GL_TEXTURE_2D, d->textureId);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img.width(), 
                         img.height(), GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
-    } else {
-        if (d->egl_image == EGL_NO_IMAGE_KHR)
-            saveBackingStore();
+        new_image = true;
+    } else if (d->egl_image == EGL_NO_IMAGE_KHR) {
+        saveBackingStore();
+        new_image = true;
     }    
-    d->glwidget->update();
+    if (new_image || !d->damageRegion.isEmpty())
+        d->glwidget->update();
 }
 
 void MTexturePixmapItem::paint(QPainter *painter,

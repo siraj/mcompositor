@@ -107,6 +107,7 @@ public:
     Window getLastVisibleParent(MWindowPropertyCache *pc);
 
     bool possiblyUnredirectTopmostWindow();
+    bool haveMappedWindow() const;
     bool isRedirected(Window window);
     bool x11EventFilter(XEvent *event);
     bool processX11EventFilters(XEvent *event, bool after);
