@@ -44,8 +44,12 @@
 #include <X11/XKBlib.h>
 #include "mcompatoms_p.h"
 
-#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <signal.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define TRANSLUCENT 0xe0000000
 #define OPAQUE      0xffffffff
@@ -3388,6 +3392,323 @@ void MCompositeManagerPrivate::hideLaunchIndicator()
         launchIndicator->hide();
 }
 
+#ifdef WINDOW_DEBUG
+void MCompositeManager::dumpState(const char *heading)
+{
+    static const char *tf[] = { "false", "true" };
+    static const char *yn[] = { "no", "yes" };
+    int i;
+    QString line;
+    const QRect *r;
+    MCompositeWindow *cw;
+
+    if (heading)
+      qDebug("%s: ", heading);
+
+    qDebug(    "display:          %s",
+               d->device_state->displayOff() ? "on" : "off");
+    qDebug(    "call state:       %s",
+               d->device_state->ongoingCall() ? "ongoing" : "idle");
+
+    qDebug(    "composition:      %s", isCompositing() ? "on"  : "off");
+    qDebug(    "xoverlay:         0x%lx, %s", d->xoverlay,
+               d->overlay_mapped ? "mapped" : "unmapped");
+    qDebug(    "avail screen:     %dx%d%+d%+d",
+               availScreenRect.width(), availScreenRect.height(),
+               availScreenRect.x(), availScreenRect.y());
+
+    qDebug(    "current_app:      0x%lx", d->current_app);
+    qDebug(    "topmostApp:       0x%lx (index: %d)",
+               d->getTopmostApp(&i), i);
+    if ((cw = d->getHighestDecorated()) != NULL)
+        qDebug("highestDecorated: 0x%lx", cw->window());
+    else
+        qDebug("highestDecorated: None");
+
+    qDebug(    "local_win:        0x%lx, parent: 0x%lx",
+               d->localwin, d->localwin_parent);
+
+    qDebug(    "prev_focus:       0x%lx", d->prev_focus);
+    qDebug(    "buttoned_win:     0x%lx", d->buttoned_win);
+
+    // Decoration button geometries.
+    r = &d->home_button_geom;
+    qDebug(    "home button:      0x%lx (%dx%d%+d%+d)",
+               d->home_button_win,
+               r->width(), r->height(), r->x(), r->y());
+    r = &d->close_button_geom;
+    qDebug(    "close button:     0x%lx (%dx%d%+d%+d)",
+               d->close_button_win,
+               r->width(), r->height(), r->x(), r->y());
+
+    line = "dock_region:     ";
+    if (!d->dock_region.isEmpty()) {
+        foreach (const QRect &rect, d->dock_region.rects())
+            line += QString().sprintf(" %dx%d%+d%+d",
+                                      rect.width(), rect.height(),
+                                      rect.x(), rect.y());
+    } else
+        line += " <Empty>";
+    qDebug(line.toLatin1().constData());
+
+    // Stacking
+    qDebug(    "stacking_timer:   %s",
+               d->stacking_timer.isActive() ? "active" : "idle");
+    qDebug(    "check_visibility: %s",
+               tf[d->stacking_timeout_check_visibility]);
+
+    // Top windows per stacking layer.
+    qDebug("stacking layers:");
+    qDebug("    input: 0x%lx", d->stack[INPUT_LAYER]);
+    qDebug("     dock: 0x%lx", d->stack[DOCK_LAYER]);
+    qDebug("   system: 0x%lx", d->stack[SYSTEM_LAYER]);
+    qDebug("      app: 0x%lx", d->stack[APPLICATION_LAYER]);
+    qDebug("  desktop: 0x%lx", d->stack[DESKTOP_LAYER]);
+
+    // Stacking order of mapped windows and mapping order of windows.
+    QList<Window>::const_iterator winit;
+    qDebug("window stack:");
+    for (winit = d->stacking_list.constEnd();
+         --winit != d->stacking_list.constBegin(); )
+        qDebug("  0x%lx", *winit);
+    qDebug("mapping order:");
+    for (winit = d->windows_as_mapped.constEnd();
+         --winit != d->windows_as_mapped.constBegin(); )
+        qDebug("  0x%lx", *winit);
+
+    // All MCompositeWindow:s we know about.
+    QHash<Window, MCompositeWindow *>::const_iterator cwit;
+    qDebug() << "windows:";
+    for (cwit = d->windows.constBegin(); cwit != d->windows.constEnd();
+         ++cwit) {
+        static const char *winstates[] = {
+            "normal", "hung", "minimizing", "closing"
+        };
+        static const char *iconstates[] = { "none", "manual", "transition" };
+        MCompositeWindow *cw, *behind;
+        char *name;
+
+        cw = *cwit;
+        Q_ASSERT(cwit.key() == cw->window());
+
+        // Determine the window's name.
+        name = NULL;
+        XFetchName(QX11Info::display(), cw->window(), &name);
+        if (!name) {
+            XClassHint cls;
+
+            XGetClassHint(QX11Info::display(), cw->window(), &cls);
+            if (!(name = cls.res_name))
+                name = cls.res_class;
+            else if (cls.res_class)
+                XFree(cls.res_class);
+        }
+
+        qDebug("  ptr %p == xwin 0x%lx%s: %s", *cwit, cwit.key(),
+               cw->isValid() ? "" : " (not valid anymore)", name);
+        qDebug("    mapped: %s, newly mapped: %s",
+               yn[cw->isMapped()], yn[cw->isNewlyMapped()]);
+        qDebug("    visible: %s, direct rendered: %s",
+               yn[cw->windowVisible()], yn[cw->isDirectRendered()]);
+        qDebug("    is app: %s, needs decoration: %s",
+               yn[cw->isAppWindow()], yn[cw->needDecoration()]);
+        qDebug("    status: %s, iconified: %s, iconification status: %s",
+               winstates[cw->status()], yn[cw->isIconified()],
+               iconstates[cw->iconifyState()]);
+        qDebug("    has transitioning windows: %s, transitioning: %s, "
+                   "closing: %s",
+                   yn[cw->hasTransitioningWindow()],
+                   yn[cw->isWindowTransitioning()],
+                   yn[cw->isClosing()]);
+        qDebug("    dimmed: %s, blurred: %s, scaled: %s",
+                    yn[cw->dimmedEffect()], yn[cw->blurred()],
+                    yn[cw->isScaled()]);
+        behind = cw->behind();
+        qDebug("    stack index: %d, behind window: 0x%lx, "
+                   "last visible parent: 0x%lx", cw->indexInStack(),
+                   behind ? behind->window() : 0, cw->lastVisibleParent());
+
+        if (name)
+            XFree(name);
+    }
+
+    if (!d->framed_windows.isEmpty()) {
+        QHash<Window, MCompositeManagerPrivate::FrameData>::const_iterator fwit;
+
+        qDebug("framed_windows:");
+        for (fwit = d->framed_windows.constBegin();
+             fwit != d->framed_windows.constEnd(); ++fwit)
+            qDebug("  0x%lx: parent=0x%lx, mapped=%s", fwit.key(),
+                   fwit->parentWindow, fwit->mapped ? "yes" : "no");
+    } else
+        qDebug("framed_windows: <None>");
+
+    // Which windows are in the property cache?
+    line = "with property cache:";
+    QHash<Window, MWindowPropertyCache*>::const_iterator pcit;
+    for (pcit = d->prop_caches.constBegin();
+         pcit != d->prop_caches.constEnd(); ++pcit)
+      line += QString().sprintf(" 0x%lx", pcit.key());
+    qDebug(line.toLatin1().constData());
+
+    // Pending XConfigureRequestEvent:s.
+    if (!d->configure_reqs.isEmpty()) {
+        // Print each as "0x123456: 10x20+30+40 [XYWH] Above 0xABCDE"
+        QHash<Window, QList<XConfigureRequestEvent*> >::const_iterator it;
+        QList<XConfigureRequestEvent*>::const_iterator ot;
+
+        qDebug("configure_reqs:");
+        for (it = d->configure_reqs.constBegin();
+             it != d->configure_reqs.constEnd(); ++it) {
+            for (ot = it->constBegin(); ot != it->constEnd(); ++ot) {
+                const XConfigureRequestEvent *ev = *ot;
+
+                // The requested geometry
+                line = QString().sprintf("  0x%lx: %dx%d%+d%+d", it.key(),
+                                         ev->width, ev->height,
+                                         ev->x, ev->y);
+
+                // What is to be changed
+                if (ev->value_mask & (CWX|CWY|CWWidth|CWHeight)) {
+                    line += " [";
+                    if (ev->value_mask & CWX)
+                        line += 'X';
+                    if (ev->value_mask & CWY)
+                        line += 'Y';
+                    if (ev->value_mask & CWWidth)
+                        line += 'W';
+                    if (ev->value_mask & CWHeight)
+                        line += 'H';
+                    line += ']';
+                }
+
+                // Print the new stack mode and possibly the new sibling.
+                if (ev->value_mask & CWStackMode) {
+                    line += " stacking: ";
+                    if (ev->detail == Above)
+                      line += "above";
+                    else if (ev->detail == Below)
+                      line += "below";
+                    else if (ev->detail == TopIf)
+                      line += "topif";
+                    else if (ev->detail == BottomIf)
+                      line += "bottomif";
+                    else if (ev->detail == Opposite)
+                      line += "opposite";
+                    else
+                      line += QString().sprintf("%d", ev->detail);
+
+                    if (ev->value_mask & CWSibling)
+                      line += QString().sprintf(" 0x%lx", ev->above);
+                }
+            }
+        }
+    } else
+        qDebug("configure_reqs: <None>");
+
+    // Dump the scene items from top to bottom.
+    qDebug("scene:");
+    foreach (const QGraphicsItem *gi, d->watch->items()) {
+        if (!gi) {
+            qDebug("  NULL (WTF?)");
+            continue;
+        }
+
+        const QRectF &r = gi->boundingRect();
+        const MCompositeWindow *cw = dynamic_cast<const MCompositeWindow *>(gi);
+        qDebug("  %p: %dx%d%+d%+d %s", cw ? cw : gi,
+                  (int)r.width(), (int)r.height(), (int)r.x(), (int)r.y(),
+                  gi->isVisible() ? "visible" : "hidden");
+    }
+}
+
+// Called when the remote control pipe has got input.
+void MCompositeManager::remoteControl(int cmdfd)
+{
+    int lcmd;
+    char cmd[128];
+
+    if ((lcmd = ::read(cmdfd, cmd, sizeof(cmd)-1)) < 0)
+        return;
+    if (lcmd > 0 && cmd[lcmd-1] == '\n')
+        lcmd--;
+    cmd[lcmd] = '\0';
+
+    if (!strcmp(cmd, "state")) {
+        dumpState();
+    } else if (!strncmp(cmd, "state ", strlen("state "))) {
+        const char *space = &cmd[strlen("state")];
+        dumpState(space+strspn(space, " "));
+    } else if (!strcmp(cmd, "save")
+               || !strncmp(cmd, "save ", strlen("save "))) {
+        // dumpState() into a file
+        static unsigned cnt = 0;
+        int pos;
+        time_t now;
+        QString fname;
+        const char *cfname;
+        FILE *out, *saved_stderr;
+        QRegExp rex("%(\\.\\d+)?[diuxX]");
+
+        // Get the output file name.
+        if ((cfname = strchr(cmd, ' ')) != NULL)
+            cfname += strspn(cfname, " ");
+        fname = cfname && *cfname ? cfname : "mc.log.%.2u";
+
+        // Substitute @res with @cnt if necessary.
+        if ((pos = rex.indexIn(fname)) >= 0)
+            fname.replace(pos, rex.cap(0).length(),
+                          QString().sprintf(rex.cap(0).toLatin1().constData(),
+                                            cnt++));
+
+        // Open @out.
+        cfname = fname.toLatin1().constData();
+        if (!(out = fopen(cfname, "w"))) {
+            qDebug("couldn't open %s", cfname);
+            return;
+        }
+
+        // Temporarily replace @stderr, so qDebug() will output to @out.
+        saved_stderr = stderr;
+        stderr = out;
+        time(&now);
+        dumpState(ctime(&now));
+        stderr = saved_stderr;
+
+        fclose(out);
+        qDebug("state dumped into %s", fname.toLatin1().constData());
+    } else if (!strcmp(cmd, "restart")) {
+        QString me = qApp->applicationFilePath();
+        QStringList args = qApp->arguments();
+        const char **argv;
+        unsigned i;
+
+        // Convert the QStringList of args into a char *[].
+        i = 0;
+        argv = new const char *[args.count()+1];
+        foreach (const QString &arg, args)
+            argv[i] = arg.toLatin1().constData();
+        argv[i] = NULL;
+
+        // Restart ourselves.
+        qDebug("Die, you son of a bitch!");
+        execv(me.toLatin1().constData(), (char **)argv);
+        qDebug("Gothca!");
+    } else if (!strcmp(cmd, "exit") || !strcmp(cmd, "quit")) {
+        // exit() deadlocks, go the fast route
+        _exit(0);
+    } else if (!strcmp(cmd, "help")) {
+        qDebug("Commands i understand:");
+        qDebug("  state [<tag>]   dump MCompositeManager, MCompositeWindow:s ");
+        qDebug("                  and QGraphicsScene state information");
+        qDebug("  save [<fname>]  dump it into <fname>");
+        qDebug("  exit, quit      geez");
+        qDebug("  restart         re-execute mcompositor");
+    } else
+        qDebug("%s: unknown command", cmd);
+}
+#endif // WINDOW_DEBUG
+
 MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
 {
@@ -3399,6 +3720,13 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
     d = new MCompositeManagerPrivate(this);
     MRmiServer *s = new MRmiServer(".mcompositor", this);
     s->exportObject(this);
+
+#ifdef WINDOW_DEBUG
+    // Open the remote control interface.
+    mknod("/tmp/mrc", S_IFIFO | 0666, 0);
+    connect(new QSocketNotifier(open("/tmp/mrc", O_RDWR), QSocketNotifier::Read),
+            SIGNAL(activated(int)), SLOT(remoteControl(int)));
+#endif
 }
 
 MCompositeManager::~MCompositeManager()
