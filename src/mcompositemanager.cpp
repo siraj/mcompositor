@@ -87,6 +87,8 @@ static bool should_be_pinged(MCompositeWindow *cw);
 
 #ifdef WINDOW_DEBUG
 static QTime overhead_measure;
+// this can be toggled with SIGUSR1
+static bool debug_mode = false;
 #endif
 
 MCompAtoms *MCompAtoms::instance()
@@ -2747,6 +2749,7 @@ void MCompositeManager::setWindowState(Window w, int state)
 void MCompositeManagerPrivate::setWindowDebugProperties(Window w)
 {
 #ifdef WINDOW_DEBUG
+    if (!debug_mode) return;
     MCompositeWindow *i = COMPOSITE_WINDOW(w);
     if (!i)
         return;
@@ -3418,9 +3421,18 @@ void MCompositeManagerPrivate::hideLaunchIndicator()
         launchIndicator->hide();
 }
 
+static void sigusr1_handler(int signo)
+{
+    Q_UNUSED(signo)
+#ifdef WINDOW_DEBUG
+    debug_mode = !debug_mode;
+#endif
+}
+
 MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
 {
+    signal(SIGUSR1, sigusr1_handler);
     if (QX11Info::isCompositingManagerRunning()) {
         qCritical("Compositing manager already running.");
         ::exit(0);
