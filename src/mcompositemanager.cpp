@@ -2224,8 +2224,9 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         else
             pc->setWindowTypeAtom(atom->getType(win));
 #ifdef WINDOW_DEBUG
-        qDebug() << "Composition overhead (existing pixmap):" 
-                 << overhead_measure.elapsed();
+        if (debug_mode)
+            qDebug() << "Composition overhead (existing pixmap):" 
+                     << overhead_measure.elapsed();
 #endif
         if (((MTexturePixmapItem *)item)->isDirectRendered()) {
             ((MTexturePixmapItem *)item)->enableRedirectedRendering();
@@ -2257,7 +2258,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             return;
         pc = item->propertyCache();
 #ifdef WINDOW_DEBUG
-        if (pc->hasAlpha())
+        if (debug_mode && pc->hasAlpha())
             qDebug() << "Composition overhead (new pixmap):"
                      << overhead_measure.elapsed();
 #endif
