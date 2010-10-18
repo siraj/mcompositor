@@ -94,7 +94,7 @@ public:
     void installX11EventFilter(long xevent, MCompositeManagerExtension* extension);
     
     void redirectWindows();
-    void mapOverlayWindow();
+    void showOverlayWindow(bool show);
     void enableRedirection();
     void setExposeDesktop(bool exposed);
     void checkStacking(bool force_visibility_check,
@@ -166,15 +166,12 @@ public:
     void pingTopmost();
 
 signals:
-    void inputEnabled();
     void compositingEnabled();
     void currentAppChanged(Window w);
 
 public slots:
 
     void gotHungWindow(MCompositeWindow *window);
-    void enableInput();
-    void disableInput();
     void enableCompositing(bool forced = false);
     void disableCompositing(ForcingLevel forced = NO_FORCED);
     void showLaunchIndicator(int timeout);

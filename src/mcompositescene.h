@@ -52,16 +52,6 @@ public:
      */
     void prepareRoot();
 
-    /*!
-     * Creates an event "hole" within the Window win so that events generated
-     * by win can pass through down to the Window below it.
-     *
-     * \param win Window id of the Window you intend to generate a pass-through
-     * area
-     * \param geom Geometry of the area within win used as a pass-through area
-     */
-    void setupOverlay(Window win, const QRect &geom,
-                      bool restoreInput = false);
 protected:
     void drawItems(QPainter *painter, int numItems, QGraphicsItem *items[], const QStyleOptionGraphicsItem options[], QWidget *widget);
 

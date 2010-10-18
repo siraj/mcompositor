@@ -353,61 +353,6 @@ Atom MCompAtoms::getAtom(Window w, Atoms atomtype)
     return 0;
 }
 
-class MapRequesterPrivate: public QObject
-{
-    Q_OBJECT
-public:
-    static MapRequesterPrivate* instance(QObject* parent = 0)
-    {
-        if (!d)
-            d = new MapRequesterPrivate(parent);
-        return d;
-    }
-    
-    void requestMap(MWindowPropertyCache *window)
-    {
-        if (!((MCompositeManager *) qApp)->isCompositing()
-            // if something is already queueing, add to the queue, otherwise
-            // the mapping order goes wrong
-            || !map_requests.isEmpty())
-            map_requests.push_back(window);
-        else {
-            // create the damage object before mapping to get 'em all
-            if (!mcmp->device_state->displayOff())
-                window->damageTracking(true);
-            window->setBeingMapped(true); // don't disable compositing
-            XMapWindow(QX11Info::display(), window->winId());
-        }
-    }
-
-public slots:
-    void grantMapRequests()
-    {
-        while (!map_requests.isEmpty()) {
-            // first come first served
-            MWindowPropertyCache *w = map_requests.takeFirst();
-            // create the damage object before mapping to get 'em all
-            if (!mcmp->device_state->displayOff())
-                w->damageTracking(true);
-            w->setBeingMapped(true); // don't disable compositing
-            XMapWindow(QX11Info::display(), w->winId());
-        }
-    }
-    
-private:
-    QList<MWindowPropertyCache*> map_requests;
-    explicit MapRequesterPrivate(QObject* parent = 0)
-        :QObject(parent)
-    {
-        mcmp = dynamic_cast<MCompositeManagerPrivate*>(parent);
-    }
-    
-    static MapRequesterPrivate *d;
-    MCompositeManagerPrivate *mcmp;
-};
-
-MapRequesterPrivate* MapRequesterPrivate::d = 0;
-
 static Window transient_for(Window window)
 {
     Window transient_for = 0;
@@ -744,7 +689,6 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
 
     watch = new MCompositeScene(this);
     atom = MCompAtoms::instance();
-    MapRequesterPrivate::instance(this);
 
     device_state = new MDeviceState(this);
     connect(device_state, SIGNAL(displayStateChange(bool)),
@@ -753,8 +697,6 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
             this, SLOT(callOngoing(bool)));
     stacking_timer.setSingleShot(true);
     connect(&stacking_timer, SIGNAL(timeout()), this, SLOT(stackingTimeout()));
-    connect(this, SIGNAL(compositingEnabled()), MapRequesterPrivate::instance(this),
-            SLOT(grantMapRequests()));
     connect(this, SIGNAL(currentAppChanged(Window)), this,
             SLOT(setupButtonWindows(Window)));
 }
@@ -776,20 +718,6 @@ Window MCompositeManagerPrivate::parentWindow(Window child)
     if (kids)
         XFree(kids);
     return p;
-}
-
-void MCompositeManagerPrivate::disableInput()
-{
-    watch->setupOverlay(xoverlay, QRect(0, 0, 0, 0), true);
-    watch->setupOverlay(localwin, QRect(0, 0, 0, 0), true);
-}
-
-void MCompositeManagerPrivate::enableInput()
-{
-    watch->setupOverlay(xoverlay, QRect(0, 0, 0, 0));
-    watch->setupOverlay(localwin, QRect(0, 0, 0, 0));
-
-    emit inputEnabled();
 }
 
 static void setup_key_grabs()
@@ -850,7 +778,6 @@ void MCompositeManagerPrivate::prepare()
     overlay_mapped = false; // make sure we try to map it in startup
     XReparentWindow(QX11Info::display(), localwin, xoverlay, 0, 0);
     localwin_parent = xoverlay;
-    enableInput();
 
     XDamageQueryExtension(QX11Info::display(), &damage_event, &damage_error);
 
@@ -1164,8 +1091,7 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
             }
         }
         if (compositing) {
-            scene()->views()[0]->setUpdatesEnabled(false);
-            XUnmapWindow(QX11Info::display(), xoverlay);
+            showOverlayWindow(false);
             compositing = false;
         }
         ret = true;
@@ -1535,7 +1461,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     }
 
 #ifdef WINDOW_DEBUG
-    overhead_measure.start();
+    if (debug_mode) overhead_measure.start();
 #endif
 
     const QList<Atom> &states = pc->netWmState();
@@ -1551,8 +1477,6 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         setWindowState(e->window, NormalState);
     if (needDecoration(e->window, pc)) {
         if (MDecoratorFrame::instance()->decoratorItem()) {
-            enableCompositing();
-            MapRequesterPrivate::instance()->requestMap(pc);
             // initially visualize decorator item so selective compositing
             // checks won't disable compositing
             MDecoratorFrame::instance()->decoratorItem()->setVisible(true);
@@ -1604,12 +1528,15 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
             XSync(QX11Info::display(), False);
 #else
-            MapRequesterPrivate::instance()->requestMap(pc);
             qWarning("%s: mdecorator hasn't started yet", __func__);
 #endif
         }
-    } else
-        MapRequesterPrivate::instance()->requestMap(pc);
+    }
+    // create the damage object before mapping to get 'em all
+    if (!device_state->displayOff())
+        pc->damageTracking(true);
+    pc->setBeingMapped(true); // don't disable compositing
+    XMapWindow(QX11Info::display(), e->window);
 }
 
 /* recursion is needed to handle transients that are transient for other
@@ -2140,8 +2067,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     Window win = e->window;
 
     if (win == xoverlay) {
-        overlay_mapped = true;
-        enableRedirection();
+        showOverlayWindow(true);
         return;
     }
     if (win == localwin || win == localwin_parent || win == close_button_win
@@ -2993,7 +2919,7 @@ void MCompositeManagerPrivate::redirectWindows()
     // in main() causes it even if we don't map it explicitly)
     XEvent xevent;
     XIfEvent(QX11Info::display(), &xevent, map_predicate, (XPointer)xoverlay);
-    XUnmapWindow(QX11Info::display(), xoverlay);
+    showOverlayWindow(false);
     if (!possiblyUnredirectTopmostWindow())
         enableCompositing(true);
 }
@@ -3176,8 +3102,6 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
     } else if (pc->windowType() == MCompAtoms::DESKTOP) {
         // just in case startup sequence changes
         stack[DESKTOP_LAYER] = window;
-        connect(this, SIGNAL(inputEnabled()), item,
-                SLOT(setUnBlurred()));
         dirtyStacking(false);
         return item;
     }
@@ -3203,7 +3127,6 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
     watch->addItem(item);    
     updateWinList();
     setWindowDebugProperties(item->window());
-    connect(item, SIGNAL(acceptingInput()), SLOT(enableInput()));
 
     if (atom->windowType(item->window()) == MCompAtoms::DESKTOP) {
         connect(item, SIGNAL(desktopActivated(MCompositeWindow *)),
@@ -3282,17 +3205,46 @@ void MCompositeManagerPrivate::enableCompositing(bool forced)
         return;
 
     if (!overlay_mapped)
-        mapOverlayWindow();
+        showOverlayWindow(true);
     else
         enableRedirection();
 }
 
-void MCompositeManagerPrivate::mapOverlayWindow()
+void MCompositeManagerPrivate::showOverlayWindow(bool show)
 {
-    // Freeze painting of framebuffer as of this point
-    scene()->views()[0]->setUpdatesEnabled(false);
-    XMoveWindow(QX11Info::display(), localwin, -2, -2);
-    XMapWindow(QX11Info::display(), xoverlay);
+    static bool first_call = true;
+    static XRectangle empty = {0, 0, 0, 0},
+                      fs = {0, 0,
+                            ScreenOfDisplay(QX11Info::display(),
+                                DefaultScreen(QX11Info::display()))->width,
+                            ScreenOfDisplay(QX11Info::display(),
+                                DefaultScreen(QX11Info::display()))->height};
+    if (!show && (overlay_mapped || first_call)) {
+        scene()->views()[0]->setUpdatesEnabled(false);
+        XShapeCombineRectangles(QX11Info::display(), xoverlay,
+                                ShapeBounding, 0, 0, &empty, 1,
+                                ShapeSet, Unsorted);
+        XShapeCombineRectangles(QX11Info::display(), localwin,
+                                ShapeBounding, 0, 0, &empty, 1,
+                                ShapeSet, Unsorted);
+        overlay_mapped = false;
+    } else if (show && (!overlay_mapped || first_call)) {
+        XShapeCombineRectangles(QX11Info::display(), xoverlay,
+                                ShapeBounding, 0, 0, &fs, 1,
+                                ShapeSet, Unsorted);
+        XShapeCombineRectangles(QX11Info::display(), localwin,
+                                ShapeBounding, 0, 0, &fs, 1,
+                                ShapeSet, Unsorted);
+        XserverRegion r = XFixesCreateRegion(QX11Info::display(), &empty, 1);
+        XFixesSetWindowShapeRegion(QX11Info::display(), xoverlay,
+                                   ShapeInput, 0, 0, r);
+        XFixesSetWindowShapeRegion(QX11Info::display(), localwin,
+                                   ShapeInput, 0, 0, r);
+        XFixesDestroyRegion(QX11Info::display(), r);
+        overlay_mapped = true;
+        enableRedirection();
+    }
+    first_call = false;
 }
 
 void MCompositeManagerPrivate::enableRedirection()
@@ -3304,7 +3256,6 @@ void MCompositeManagerPrivate::enableRedirection()
             ((MTexturePixmapItem *)tp)->enableRedirectedRendering();
         setWindowDebugProperties(it.key());
     }
-    XFlush(QX11Info::display());
     compositing = true;
     // no delay: application does not need to redraw when maximizing it
     scene()->views()[0]->setUpdatesEnabled(true);
@@ -3332,8 +3283,6 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
             return;
     }
 
-    scene()->views()[0]->setUpdatesEnabled(false);
-
     for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
             it != windows.end(); ++it) {
         MCompositeWindow *tp  = it.value();
@@ -3344,8 +3293,7 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
         setWindowDebugProperties(it.key());
     }
 
-    XUnmapWindow(QX11Info::display(), xoverlay);
-    XFlush(QX11Info::display());
+    showOverlayWindow(false);
 
     if (MDecoratorFrame::instance()->decoratorItem())
         MDecoratorFrame::instance()->lower();

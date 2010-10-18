@@ -74,28 +74,6 @@ void MCompositeScene::prepareRoot()
     XSetErrorHandler(error_handler);
 }
 
-
-void MCompositeScene::setupOverlay(Window window, const QRect &geom,
-                                     bool restoreInput)
-{
-    Display *dpy = QX11Info::display();
-    XRectangle rect;
-
-    rect.x      = geom.x();
-    rect.y      = geom.y();
-    rect.width  = geom.width();
-    rect.height = geom.height();
-    XserverRegion region = XFixesCreateRegion(dpy, &rect, 1);
-
-    XFixesSetWindowShapeRegion(dpy, window, ShapeBounding, 0, 0, 0);
-    if (!restoreInput)
-        XFixesSetWindowShapeRegion(dpy, window, ShapeInput, 0, 0, region);
-    else
-        XFixesSetWindowShapeRegion(dpy, window, ShapeInput, 0, 0, 0);
-
-    XFixesDestroyRegion(dpy, region);
-}
-
 void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *items[], const QStyleOptionGraphicsItem options[], QWidget *widget)
 {
     QRegion visible(sceneRect().toRect());
