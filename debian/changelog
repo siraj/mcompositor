@@ -1,7 +1,11 @@
-mcompositor (0.7.5~1) unstable; urgency=low
+mcompositor (0.7.5-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
-
+  * Fixes: NB#189364 - Same properties are changed multiple times for all bg apps..
+  * Fixes: NB#189519 - compositor calls eglSwapBuffers without rendering anything	
+  * Fixes: NB#196385 - Display is not updated correctly after screen blank on-off sequence, take two
+  * New interface: custom window animation handler
+  * New interface: stacking list 	
+	
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 12 Oct 2010 14:14:43 +0300
 
 mcompositor (0.7.4-1) unstable; urgency=low
