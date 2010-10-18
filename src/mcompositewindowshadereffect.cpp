@@ -172,6 +172,9 @@ void MCompositeWindowShaderEffect::drawSource(const QTransform &transform,
 */
 void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 {
+    if (!window->isValid())
+        return;
+
     // only happens with GL. sorry n800 guys :p
 #ifdef QT_OPENGL_LIB
     MTexturePixmapItem* item = (MTexturePixmapItem*) window;
