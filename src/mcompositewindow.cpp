@@ -60,7 +60,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     thumb_mode = false;
     if (!mpc || (mpc && !mpc->is_valid)) {
         is_valid = false;
-        pc = 0;
         anim = 0;
         newly_mapped = false;
         sent_ping_timestamp = 0;
