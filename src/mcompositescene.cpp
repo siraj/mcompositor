@@ -121,9 +121,11 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
             // nothing below is visible anymore
             break;
 
-        // FIXME: this region is always the same as the window's shape,
-        // some transformations would be needed...
-        QRegion r(cw->propertyCache()->shapeRegion());
+        // Ensure that intersects() still work, otherwise, painting a window
+        // is skipped when another window above it is scaled or moved to an 
+        // area that exposed the lower window and causes an ugly flicker.
+        // r reflects the applied transformation and position of the window
+        QRegion r = cw->sceneTransform().map(cw->propertyCache()->shapeRegion());
         
         // transitioning window can be smaller than shapeRegion(), so paint
         // all transitioning windows
