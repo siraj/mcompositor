@@ -58,7 +58,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       win_id(window)
 {
     thumb_mode = false;
-    if (!mpc->is_valid) {
+    if (!mpc || (mpc && !mpc->is_valid)) {
         is_valid = false;
         pc = 0;
         anim = 0;
