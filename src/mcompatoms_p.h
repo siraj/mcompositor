@@ -94,6 +94,7 @@ public:
         _MEEGOTOUCH_CURRENT_APP_WINDOW,
         _MEEGOTOUCH_ALWAYS_MAPPED,
         _MEEGOTOUCH_DESKTOP_VIEW,
+        _MEEGOTOUCH_CANNOT_MINIMIZE,
 
         /* RROutput properties */
         RROUTPUT_CTYPE,

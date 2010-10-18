@@ -57,6 +57,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       window(w),
       parent_window(RootWindow(QX11Info::display(), 0)),
       always_mapped(-1),
+      cannot_minimize(-1),
       desktop_view(-1),
       being_mapped(false),
       dont_iconify(false),
@@ -90,6 +91,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                    sizeof(xcb_video_global_alpha_cookie));
             memset(&xcb_net_wm_state_cookie, 0, sizeof(xcb_net_wm_state_cookie));
             memset(&xcb_always_mapped_cookie, 0, sizeof(xcb_always_mapped_cookie));
+            memset(&xcb_cannot_minimize_cookie, 0, sizeof(xcb_always_mapped_cookie));
             memset(&xcb_pict_formats_cookie, 0, sizeof(xcb_pict_formats_cookie));
             memset(&xcb_shape_rects_cookie, 0, sizeof(xcb_shape_rects_cookie));
             return;
@@ -152,6 +154,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     xcb_always_mapped_cookie = xcb_get_property(xcb_conn, 0, window,
                                                 ATOM(_MEEGOTOUCH_ALWAYS_MAPPED),
                                                 XCB_ATOM_CARDINAL, 0, 1);
+    xcb_cannot_minimize_cookie = xcb_get_property(xcb_conn, 0, window,
+                                         ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE),
+                                         XCB_ATOM_CARDINAL, 0, 1);
     // add any transients to the transients list
     MCompositeManager *m = (MCompositeManager*)qApp;
     for (QList<Window>::const_iterator it = m->d->stacking_list.begin();
@@ -199,6 +204,10 @@ MWindowPropertyCache::~MWindowPropertyCache()
     }
     if (always_mapped < 0) {
         r = xcb_get_property_reply(xcb_conn, xcb_always_mapped_cookie, 0);
+        if (r) free(r);
+    }
+    if (cannot_minimize < 0) {
+        r = xcb_get_property_reply(xcb_conn, xcb_cannot_minimize_cookie, 0);
         if (r) free(r);
     }
     desktopView(false);  // free the reply if it has been requested
@@ -345,6 +354,23 @@ Window MWindowPropertyCache::transientFor()
             transient_for = 0;
     }
     return transient_for;
+}
+
+int MWindowPropertyCache::cannotMinimize()
+{
+    if (is_valid && cannot_minimize < 0) {
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, xcb_cannot_minimize_cookie, 0);
+        if (r) {
+            if (xcb_get_property_value_length(r) == sizeof(CARD32))
+                cannot_minimize = *((CARD32*)xcb_get_property_value(r));
+            else
+                cannot_minimize = 0;
+            free(r);
+        } else
+            cannot_minimize = 0;
+    }
+    return cannot_minimize;
 }
 
 int MWindowPropertyCache::alwaysMapped()
@@ -498,6 +524,14 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         always_mapped = -1;
         xcb_always_mapped_cookie = xcb_get_property(xcb_conn, 0, window,
                                            ATOM(_MEEGOTOUCH_ALWAYS_MAPPED),
+                                           XCB_ATOM_CARDINAL, 0, 1);
+    } else if (e->atom == ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE)) {
+        if (cannot_minimize < 0)
+            // collect the old reply
+            cannotMinimize();
+        cannot_minimize = -1;
+        xcb_cannot_minimize_cookie = xcb_get_property(xcb_conn, 0, window,
+                                           ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE),
                                            XCB_ATOM_CARDINAL, 0, 1);
     } else if (e->atom == ATOM(_MEEGOTOUCH_DESKTOP_VIEW)) {
         emit desktopViewChanged(this);

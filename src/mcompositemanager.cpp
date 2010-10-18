@@ -87,6 +87,8 @@ static bool should_be_pinged(MCompositeWindow *cw);
 
 #ifdef WINDOW_DEBUG
 static QTime overhead_measure;
+// this can be toggled with SIGUSR1
+static bool debug_mode = false;
 #endif
 
 MCompAtoms *MCompAtoms::instance()
@@ -151,6 +153,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_CURRENT_APP_WINDOW",
         "_MEEGOTOUCH_ALWAYS_MAPPED",
         "_MEEGOTOUCH_DESKTOP_VIEW",
+        "_MEEGOTOUCH_CANNOT_MINIMIZE",
 
         /* RROutput properties */
         RR_PROPERTY_CONNECTOR_TYPE,
@@ -366,7 +369,8 @@ public:
             map_requests.push_back(window);
         else {
             // create the damage object before mapping to get 'em all
-            window->damageTracking(true);
+            if (!mcmp->device_state->displayOff())
+                window->damageTracking(true);
             window->setBeingMapped(true); // don't disable compositing
             XMapWindow(QX11Info::display(), window->winId());
         }
@@ -379,7 +383,8 @@ public slots:
             // first come first served
             MWindowPropertyCache *w = map_requests.takeFirst();
             // create the damage object before mapping to get 'em all
-            w->damageTracking(true);
+            if (!mcmp->device_state->displayOff())
+                w->damageTracking(true);
             w->setBeingMapped(true); // don't disable compositing
             XMapWindow(QX11Info::display(), w->winId());
         }
@@ -389,9 +394,12 @@ private:
     QList<MWindowPropertyCache*> map_requests;
     explicit MapRequesterPrivate(QObject* parent = 0)
         :QObject(parent)
-    {}
+    {
+        mcmp = dynamic_cast<MCompositeManagerPrivate*>(parent);
+    }
     
     static MapRequesterPrivate *d;
+    MCompositeManagerPrivate *mcmp;
 };
 
 MapRequesterPrivate* MapRequesterPrivate::d = 0;
@@ -732,6 +740,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
 
     watch = new MCompositeScene(this);
     atom = MCompAtoms::instance();
+    MapRequesterPrivate::instance(this);
 
     device_state = new MDeviceState(this);
     connect(device_state, SIGNAL(displayStateChange(bool)),
@@ -929,8 +938,6 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
 
 void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 {
-    if (device_state->displayOff())
-        return;
     XserverRegion r = XFixesCreateRegion(QX11Info::display(), 0, 0);
     int num;
     XDamageSubtract(QX11Info::display(), e->damage, None, r);
@@ -1071,6 +1078,17 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated()
     return 0;
 }
 
+bool MCompositeManagerPrivate::haveMappedWindow() const
+{
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+        Window w = stacking_list.at(i);        
+        MWindowPropertyCache *pc = prop_caches.value(w, 0);
+        if (pc && pc->is_valid && pc->isMapped())
+            return true;
+    }
+    return false;
+}
+
 // TODO: merge this with disableCompositing() so that in the end we have
 // stacking order sensitive logic
 bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
@@ -1116,6 +1134,10 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
         MWindowPropertyCache *pc = prop_caches.value(w, 0);
         if (pc && pc->is_valid && pc->beingMapped())
             return false;
+    }
+    if (!haveMappedWindow()) {
+        disableCompositing(FORCED);
+        return true;
     }
 
     if (top && cw && !MCompositeWindow::hasTransitioningWindow()) {
@@ -2650,20 +2672,31 @@ void MCompositeManagerPrivate::displayOff(bool display_off)
 {
     if (display_off) {
         // keep compositing to have synthetic events to obscure all windows
-        enableCompositing(true);
+        if (!haveMappedWindow())
+            enableCompositing(true);
         scene()->views()[0]->setUpdatesEnabled(false);
         /* stop pinging to save some battery */
         for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
              it != windows.end(); ++it) {
-             MCompositeWindow *i  = it.value();
+             MCompositeWindow *i = it.value();
              i->stopPing();
+             // stop damage tracking while the display is off
+             if (i->propertyCache())
+                 i->propertyCache()->damageTracking(false);
         }
     } else {
-        scene()->views()[0]->setUpdatesEnabled(true);
         if (!possiblyUnredirectTopmostWindow())
             enableCompositing(false);
         /* start pinging again */
         pingTopmost();
+        // restart damage tracking
+        for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
+             it != windows.end(); ++it) {
+             MCompositeWindow *i = it.value();
+             if (i->propertyCache() && (i->propertyCache()->isMapped() ||
+                                        i->propertyCache()->beingMapped()))
+                 i->propertyCache()->damageTracking(true);
+        }
     }
     dirtyStacking(true);  // VisibilityNotify generation
 }
@@ -2716,6 +2749,7 @@ void MCompositeManager::setWindowState(Window w, int state)
 void MCompositeManagerPrivate::setWindowDebugProperties(Window w)
 {
 #ifdef WINDOW_DEBUG
+    if (!debug_mode) return;
     MCompositeWindow *i = COMPOSITE_WINDOW(w);
     if (!i)
         return;
@@ -2945,7 +2979,6 @@ void MCompositeManagerPrivate::redirectWindows()
     }
     if (kids)
         XFree(kids);
-    scene()->views()[0]->setUpdatesEnabled(true);
 
     // Wait for the MapNotify for the overlay (show() of the graphicsview
     // in main() causes it even if we don't map it explicitly)
@@ -3266,7 +3299,7 @@ void MCompositeManagerPrivate::enableRedirection()
     compositing = true;
     // no delay: application does not need to redraw when maximizing it
     scene()->views()[0]->setUpdatesEnabled(true);
-    glwidget->update();
+    // NOTE: enableRedirectedRendering() calls glwidget->update() if needed
     // At this point everything should be rendered off-screen
     emit compositingEnabled();
 }
@@ -3388,9 +3421,18 @@ void MCompositeManagerPrivate::hideLaunchIndicator()
         launchIndicator->hide();
 }
 
+static void sigusr1_handler(int signo)
+{
+    Q_UNUSED(signo)
+#ifdef WINDOW_DEBUG
+    debug_mode = !debug_mode;
+#endif
+}
+
 MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
 {
+    signal(SIGUSR1, sigusr1_handler);
     if (QX11Info::isCompositingManagerRunning()) {
         qCritical("Compositing manager already running.");
         ::exit(0);

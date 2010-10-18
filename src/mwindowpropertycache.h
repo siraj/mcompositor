@@ -151,7 +151,9 @@ public:
     /*!
      * Used for special windows that should not be minimised/iconified.
      */
-    bool dontIconify() const { return dont_iconify; }
+    bool dontIconify() {
+        return cannotMinimize() > 0 || dont_iconify;
+    }
     void setDontIconify(bool s) { dont_iconify = s; }
 
     bool isMapped() const {
@@ -211,6 +213,11 @@ public:
      * Returns value of _MEEGOTOUCH_ALWAYS_MAPPED.
      */
     int alwaysMapped();
+
+    /*!
+     * Returns value of _MEEGOTOUCH_CANNOT_MINIMIZE.
+     */
+    int cannotMinimize();
 
     /*!
      * Returns value of _MEEGOTOUCH_DESKTOP_VIEW (makes sense for desktop only).
@@ -281,7 +288,7 @@ private:
     int meego_layer, window_state;
     MCompAtoms::Type window_type;
     Window window, parent_window;
-    int always_mapped, desktop_view;
+    int always_mapped, cannot_minimize, desktop_view;
     bool being_mapped, dont_iconify;
     // geometry is requested only once in the beginning, after that, we
     // use ConfigureNotifys to update the size through setRealGeometry()
@@ -300,6 +307,7 @@ private:
     xcb_get_property_cookie_t xcb_video_global_alpha_cookie;
     xcb_get_property_cookie_t xcb_net_wm_state_cookie;
     xcb_get_property_cookie_t xcb_always_mapped_cookie;
+    xcb_get_property_cookie_t xcb_cannot_minimize_cookie;
     xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
     xcb_shape_get_rectangles_cookie_t xcb_shape_rects_cookie;
     QRegion shape_region;

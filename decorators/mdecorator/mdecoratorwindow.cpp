@@ -73,10 +73,10 @@ protected:
     virtual void activateEvent() {
     }
 
-    virtual void setAutoRotation(bool mode) {
-        decorwindow->setOrientationAngleLocked(!mode);
-        if (!mode)
-            decorwindow->setOrientationAngle(M::Angle0);
+    virtual void setAutoRotation(bool mode)
+    {
+        Q_UNUSED(mode)
+        // we follow the orientation of the topmost app
     }
 
     virtual void setOnlyStatusbar(bool mode) 
@@ -112,10 +112,6 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     managedWindowAtom = XInternAtom(QX11Info::display(),
                                     "_MDECORATOR_MANAGED_WINDOW", False);
 
-    // default setting is not to rotate automatically
-    setOrientationAngle(M::Angle0);
-    setOrientationAngleLocked(true);
-
     homeButtonPanel = new MHomeButtonPanel();
     escapeButtonPanel = new MEscapeButtonPanel();
     navigationBar = new MNavigationBar();
@@ -142,6 +138,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     setMDecoratorWindowProperty();
 
     setInputRegion();
+    setProperty("followsCurrentApplicationWindowOrientation", true);
 }
 
 void MDecoratorWindow::setWindowTitle(const QString& title)
