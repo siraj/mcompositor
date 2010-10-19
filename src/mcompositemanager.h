@@ -134,10 +134,12 @@ public:
     void setWindowState(Window, int);
     const QList<Window> &stackingList() const;
 
+#ifdef WINDOW_DEBUG
     // Dump the current state of MCompositeManager and MCompositeWindow:s
     // to qDebug().  Only available if compiled with TESTABILITY=on
     // (-DWINDOW_DEBUG).
     void dumpState(const char *heading = 0);
+#endif
 
 public slots:
     void enableCompositing(bool forced = false);
@@ -156,7 +158,9 @@ public slots:
      */
     void exposeSwitcher();
 
+#ifdef WINDOW_DEBUG
     void remoteControl(int fd);
+#endif
      
 signals:
     void decoratorRectChanged(const QRect& rect);
