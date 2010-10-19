@@ -800,7 +800,7 @@ static void setup_key_grabs()
         switcher_key = XKeysymToKeycode(dpy, XStringToKeysym("BackSpace"));
         XGrabKey(dpy, switcher_key, Mod5Mask,
                  RootWindow(QX11Info::display(), 0), True,
-                 GrabModeSync, GrabModeSync);
+                 GrabModeAsync, GrabModeAsync);
     }
     
     if (!ignored_mod) {
