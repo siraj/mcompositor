@@ -309,7 +309,6 @@ public slots:
     void updateIconGeometry();
     void startTransition();
     void manipulationEnabled(bool isEnabled);
-    void setUnBlurred();
     void setBlurred(bool);
     
     /* Operations with transition animations*/

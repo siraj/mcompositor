@@ -138,12 +138,6 @@ void MCompositeWindow::setBlurred(bool b)
     update();
 }
 
-void MCompositeWindow::setUnBlurred()
-{
-    blur = false;
-    update();
-}
-
 bool MCompositeWindow::blurred()
 {
     return blur;

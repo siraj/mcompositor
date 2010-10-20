@@ -57,6 +57,54 @@ static void bindAttribLocation(QGLShaderProgram *p, const char *attrib, int loca
     p->bindAttributeLocation(attrib, location);
 }
 
+class MShaderProgram : public QGLShaderProgram
+{
+public:
+    MShaderProgram(QGLShaderProgram *parent)
+        : QGLShaderProgram(parent)
+    {
+        texture = -1;
+        opacity = -1;
+        blurstep = -1;
+    }
+    void setWorldMatrix(GLfloat m[4][4]) {
+        static bool init = true;
+        if (init || memcmp(m, worldMatrix, sizeof(worldMatrix))) {
+            setUniformValue("matWorld", m);
+            memcpy(worldMatrix, m, sizeof(worldMatrix));
+            init = false;
+        }
+    }
+
+    void setTexture(GLuint t) {
+        if (t != texture) {
+            setUniformValue("texture", t);
+            texture = t;
+        }
+    }
+
+    void setOpacity(GLfloat o) {
+        if (o != opacity) {
+            setUniformValue("opacity", o);
+            opacity = o;
+        }
+    }
+    void setBlurStep(GLfloat b) {
+        if (b != blurstep) {
+            setUniformValue("blurstep", b);
+            blurstep = b;
+        }
+    }
+
+private:
+    // static because this is set in the shared vertex shader
+    static GLfloat worldMatrix[4][4];
+    GLfloat opacity, blurstep;
+    GLuint texture;
+};
+
+GLfloat MShaderProgram::worldMatrix[4][4];
+
 // OpenGL ES 2.0 / OpenGL 2.0 - compatible texture painter
 class MGLResourceManager: public QObject
 {
@@ -82,14 +130,16 @@ public:
         if (!sharedVertexShader->compileSourceCode(QLatin1String(TexpVertShaderSource)))
             qWarning("vertex shader failed to compile");
 
-        QGLShaderProgram *normalShader = new QGLShaderProgram(glwidget->context(), this);
-        shader[NormalShader] = normalShader;
+        MShaderProgram *normalShader = new MShaderProgram(
+                         new QGLShaderProgram(glwidget->context(), this));
         normalShader->addShader(sharedVertexShader);
         if (!normalShader->addShaderFromSourceCode(QGLShader::Fragment,
                 QLatin1String(TexpFragShaderSource)))
             qWarning("normal fragment shader failed to compile");
+        shader[NormalShader] = normalShader;
 
-        QGLShaderProgram *blurShader = new QGLShaderProgram(glwidget->context(), this);
+        MShaderProgram *blurShader = new MShaderProgram(
+                         new QGLShaderProgram(glwidget->context(), this));
         shader[BlurShader] = blurShader;
         blurShader->addShader(sharedVertexShader);
         if (!blurShader->addShaderFromSourceCode(QGLShader::Fragment,
@@ -161,7 +211,7 @@ public:
         
         updateVertices(t);
         currentShader->bind();
-        currentShader->setUniformValue("matWorld", worldMatrix);
+        currentShader->setWorldMatrix(worldMatrix);
     }
 
     
@@ -169,13 +219,13 @@ public:
     {                
         if (!customShaderId)
             return;
-        QGLShaderProgram* frag = customShaders.value(customShaderId,0);
+        MShaderProgram* frag = customShaders.value(customShaderId, 0);
         if (!frag)
             return;
         currentShader = frag;        
         updateVertices(t);
         currentShader->bind();
-        currentShader->setUniformValue("matWorld", worldMatrix);
+        currentShader->setWorldMatrix(worldMatrix);
     }
 
     GLuint installPixelShader(const QByteArray& code)
@@ -183,29 +233,30 @@ public:
         QByteArray source = code;
         source.append(TexpCustomShaderSource);
         QGLShaderProgram *custom = new QGLShaderProgram(glcontext, this);
-        custom->addShader(sharedVertexShader);
-        if (!custom->addShaderFromSourceCode(QGLShader::Fragment,
+        MShaderProgram *p = new MShaderProgram(custom);
+        p->addShader(sharedVertexShader);
+        if (!p->addShaderFromSourceCode(QGLShader::Fragment,
                 QLatin1String(source)))
             qWarning("custom fragment shader failed to compile");
 
-        bindAttribLocation(custom, "inputVertex", D_VERTEX_COORDS);
-        bindAttribLocation(custom, "textureCoord", D_TEXTURE_COORDS);
+        bindAttribLocation(p, "inputVertex", D_VERTEX_COORDS);
+        bindAttribLocation(p, "textureCoord", D_TEXTURE_COORDS);
 
-        if (custom->link()) {
-            customShaders[custom->programId()] = custom;
-            return custom->programId();
+        if (p->link()) {
+            customShaders[p->programId()] = p;
+            return p->programId();
         } 
        
         qWarning() << "failed installing custom fragment shader:"
-                   << custom->log();
-        custom->deleteLater();
+                   << p->log();
+        p->deleteLater();
         
         return 0;
     }
 
 private:
-    static QGLShaderProgram *shader[ShaderTotal];
-    QHash<GLuint, QGLShaderProgram *> customShaders;
+    static MShaderProgram *shader[ShaderTotal];
+    QHash<GLuint, MShaderProgram *> customShaders;
     QGLShader *sharedVertexShader;
     const QGLContext* glcontext;    
     
@@ -214,14 +265,14 @@ private:
     GLfloat vertCoords[8];
     GLfloat texCoords[8];
     GLfloat texCoordsInv[8];
-    QGLShaderProgram *currentShader;
+    MShaderProgram *currentShader;
     int width;
     int height;
 
     friend class MTexturePixmapPrivate;
 };
 
-QGLShaderProgram *MGLResourceManager::shader[ShaderTotal];
+MShaderProgram *MGLResourceManager::shader[ShaderTotal];
 #endif
 
 
@@ -235,8 +286,7 @@ void MTexturePixmapPrivate::drawTexture(const QTransform &transform, const QRect
 
 void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform, const QRectF &drawRect, qreal opacity)
 {
-    // TODO only update if matrix is dirty
-    if(current_effect)
+    if (current_effect)
         glresource->updateVertices(transform, current_effect->activeShaderFragment());
     else
         glresource->updateVertices(transform, item->blurred() ?
@@ -261,9 +311,9 @@ void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform, const QRe
     if (current_effect)
         current_effect->setUniforms(glresource->currentShader);
     else if (item->blurred())
-        glresource->currentShader->setUniformValue("blurstep", (GLfloat) 0.5);
-    glresource->currentShader->setUniformValue("opacity", (GLfloat) opacity);
-    glresource->currentShader->setUniformValue("texture", 0);
+        glresource->currentShader->setBlurStep((GLfloat) 0.5);
+    glresource->currentShader->setOpacity((GLfloat) opacity);
+    glresource->currentShader->setTexture(0);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
     glDisableVertexAttribArray(D_VERTEX_COORDS);
