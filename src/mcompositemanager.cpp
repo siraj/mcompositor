@@ -2734,7 +2734,11 @@ void MCompositeManagerPrivate::setWindowState(Window w, int state)
     MCompositeWindow* i = COMPOSITE_WINDOW(w);
     if(i && i->propertyCache()->windowState() == state)
         return;
-    else if (i)
+    else if (i && !i->isMapped()
+             && (state == NormalState || state == IconicState)) {
+        /* qWarning("CENSORED -- window is in wrong state"); */
+        return;
+    } else if (i)
         // cannot wait for the property change notification
         i->propertyCache()->setWindowState(state);
 
