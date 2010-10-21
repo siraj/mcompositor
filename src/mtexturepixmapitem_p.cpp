@@ -390,7 +390,9 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window,
                                              MTexturePixmapItem *p)
     : window(window),
       windowp(0),
-#ifdef DESKTOP_VERSION
+#ifdef GLES2_VERSION
+      egl_image(EGL_NO_IMAGE_KHR),
+#else
       glpixmap(0),
 #endif
       textureId(0),
