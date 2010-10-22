@@ -729,6 +729,9 @@ static void setup_key_grabs()
         XGrabKey(dpy, switcher_key, Mod5Mask,
                  RootWindow(QX11Info::display(), 0), True,
                  GrabModeAsync, GrabModeAsync);
+        XGrabKey(dpy, switcher_key, Mod5Mask | LockMask,
+                 RootWindow(QX11Info::display(), 0), True,
+                 GrabModeAsync, GrabModeAsync);
     }
     
     if (!ignored_mod) {
