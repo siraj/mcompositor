@@ -1,8 +1,9 @@
-mcompositor (0.7.6~1) unstable; urgency=low
+mcompositor (0.7.6-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#198346 - Not able to answer coming calls when device lock...
+  * Fixes: NB#187502 - Fn+Backspace works simultaneously as a task switcher...
 
- -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Tue, 19 Oct 2010 14:36:29 +0300
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Fri, 22 Oct 2010 10:31:05 +0300
 
 mcompositor (0.7.5-1) unstable; urgency=low
 
