@@ -1,3 +1,9 @@
+mcompositor (0.7.7~1) unstable; urgency=low
+
+  * unreleased
+
+ -- Kimmo Hämäläinen <kihamala@mylly>  Fri, 22 Oct 2010 10:35:41 +0300
+
 mcompositor (0.7.6-1) unstable; urgency=low
 
   * Fixes: NB#198346 - Not able to answer coming calls when device lock...
