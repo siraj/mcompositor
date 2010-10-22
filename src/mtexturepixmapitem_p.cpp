@@ -60,8 +60,8 @@ static void bindAttribLocation(QGLShaderProgram *p, const char *attrib, int loca
 class MShaderProgram : public QGLShaderProgram
 {
 public:
-    MShaderProgram(QGLShaderProgram *parent)
-        : QGLShaderProgram(parent)
+    MShaderProgram(const QGLContext* context, QObject* parent)
+        : QGLShaderProgram(context, parent)
     {
         texture = -1;
         opacity = -1;
@@ -130,16 +130,16 @@ public:
         if (!sharedVertexShader->compileSourceCode(QLatin1String(TexpVertShaderSource)))
             qWarning("vertex shader failed to compile");
 
-        MShaderProgram *normalShader = new MShaderProgram(
-                         new QGLShaderProgram(glwidget->context(), this));
+        MShaderProgram *normalShader = new MShaderProgram(glwidget->context(), 
+                                                          this);
         normalShader->addShader(sharedVertexShader);
         if (!normalShader->addShaderFromSourceCode(QGLShader::Fragment,
                 QLatin1String(TexpFragShaderSource)))
             qWarning("normal fragment shader failed to compile");
         shader[NormalShader] = normalShader;
 
-        MShaderProgram *blurShader = new MShaderProgram(
-                         new QGLShaderProgram(glwidget->context(), this));
+        MShaderProgram *blurShader = new MShaderProgram(glwidget->context(), 
+                                                        this);
         shader[BlurShader] = blurShader;
         blurShader->addShader(sharedVertexShader);
         if (!blurShader->addShaderFromSourceCode(QGLShader::Fragment,
@@ -232,8 +232,7 @@ public:
     {
         QByteArray source = code;
         source.append(TexpCustomShaderSource);
-        QGLShaderProgram *custom = new QGLShaderProgram(glcontext, this);
-        MShaderProgram *p = new MShaderProgram(custom);
+        MShaderProgram *p = new MShaderProgram(glcontext, this);
         p->addShader(sharedVertexShader);
         if (!p->addShaderFromSourceCode(QGLShader::Fragment,
                 QLatin1String(source)))

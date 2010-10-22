@@ -3826,5 +3826,3 @@ void MCompositeManager::exposeSwitcher()
 {
     d->exposeSwitcher();
 }
-
-#include "mcompositemanager.moc"
