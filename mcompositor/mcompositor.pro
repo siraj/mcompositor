@@ -13,4 +13,9 @@ INSTALLS += target
 # Input
 SOURCES += main.cpp
 
-QT = gui opengl
+contains(DEFINES, WINDOW_DEBUG) {
+    HEADERS += xserverpinger.h
+    SOURCES += xserverpinger.cpp
+}
+
+QT = core gui opengl
