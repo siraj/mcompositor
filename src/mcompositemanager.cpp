@@ -2383,7 +2383,6 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 bool needComp = false;
                 if (i->isDirectRendered() || d_item->isDirectRendered()) {
                     d_item->setVisible(true);
-                    enableCompositing(true);
                     needComp = true;
                 }
 
@@ -2421,6 +2420,8 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                 // that have selective compositing. This is triggered
                 // when windows are rendered off-screen
                 i->iconify(i->propertyCache()->iconGeometry(), needComp);
+                if (needComp)
+                    enableCompositing(true);
                 if (i->needDecoration())
                     i->startTransition();
                 i->stopPing();
