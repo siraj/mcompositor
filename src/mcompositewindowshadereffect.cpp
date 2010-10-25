@@ -183,6 +183,21 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 }
 
 /*!
+  Remove this effect from a composite window object \a window. After removing
+  the effect the window will use default shaders.
+*/
+void MCompositeWindowShaderEffect::removeEffect(MCompositeWindow* window)
+{
+    if (!window->isValid())
+        return;
+
+#ifdef QT_OPENGL_LIB
+    MTexturePixmapItem* item = (MTexturePixmapItem*) window;
+    item->d->installEffect(0);    
+#endif
+}
+
+/*!
   \return Whether this effect is enabled or not
 */
 bool MCompositeWindowShaderEffect::enabled() const

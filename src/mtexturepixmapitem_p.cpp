@@ -324,18 +324,30 @@ void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform, const QRe
 
 void MTexturePixmapPrivate::installEffect(MCompositeWindowShaderEffect* effect)
 {
-    if (current_effect == effect)
+    if (effect == prev_effect)
         return;
-    
+
+    if (prev_effect) {
+        disconnect(prev_effect, SIGNAL(enabledChanged(bool)), this,
+                   SLOT(activateEffect(bool)));
+        disconnect(prev_effect, SIGNAL(destroyed()), this,
+                   SLOT(removeEffect()));
+    }
     current_effect = effect;
-    connect(effect, SIGNAL(enabledChanged(bool)), SLOT( activateEffect(bool)));
-    connect(effect, SIGNAL(destroyed()), SLOT(removeEffect()));
+    prev_effect = effect;
+    if (effect) {
+        connect(effect, SIGNAL(enabledChanged(bool)),
+                SLOT(activateEffect(bool)), Qt::UniqueConnection);
+        connect(effect, SIGNAL(destroyed()), SLOT(removeEffect()),
+                Qt::UniqueConnection);
+    }
 }
 
 void MTexturePixmapPrivate::removeEffect()
 {
     MCompositeWindowShaderEffect* e= (MCompositeWindowShaderEffect* ) sender();
-    
+    if (e == prev_effect)
+        prev_effect = 0;
     for (int i=0; i < e->fragmentIds().size(); ++i) {
         GLuint id = e->fragmentIds()[i];
         QGLShaderProgram* frag = glresource->customShaders.value(i,0);
@@ -399,7 +411,8 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window,
       custom_tfp(false),
       direct_fb_render(false),
       angle(0),
-      item(p)
+      item(p),
+      prev_effect(0)
 {
     if (!glwidget) {
         MCompositeManager *m = (MCompositeManager*)qApp;

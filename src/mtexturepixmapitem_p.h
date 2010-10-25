@@ -87,6 +87,7 @@ public:
 
     MTexturePixmapItem *item;
     QPointer<MCompositeWindowShaderEffect> current_effect;
+    const MCompositeWindowShaderEffect *prev_effect;
 
 #ifdef GLES2_VERSION
     static EglResourceManager *eglresource;

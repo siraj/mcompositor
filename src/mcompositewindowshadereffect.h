@@ -44,6 +44,7 @@ class MCompositeWindowShaderEffect: public QObject
     GLuint activeShaderFragment() const;
 
     void installEffect(MCompositeWindow* window);
+    void removeEffect(MCompositeWindow* window);
     bool enabled() const;
 
  public slots:
