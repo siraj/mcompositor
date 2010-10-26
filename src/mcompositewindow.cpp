@@ -480,7 +480,7 @@ void MCompositeWindow::requestZValue(int zvalue)
 {
     // when animating, Z-value is set again after finishing the animation
     // (setting it later in finalizeState() caused flickering)
-    if (!anim->isActive() && !anim->pendingAnimation())
+    if (anim && !anim->isActive() && !anim->pendingAnimation())
         setZValue(zvalue);
 }
 
