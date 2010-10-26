@@ -13,7 +13,7 @@ INSTALLS += target
 # Input
 SOURCES += main.cpp
 
-contains(DEFINES, WINDOW_DEBUG) {
+contains(DEFINES, WINDOW_DEBUG_ALOT) {
     HEADERS += xserverpinger.h
     SOURCES += xserverpinger.cpp
 }
