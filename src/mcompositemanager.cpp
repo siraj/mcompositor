@@ -3712,10 +3712,6 @@ MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
 {
     signal(SIGUSR1, sigusr1_handler);
-    if (QX11Info::isCompositingManagerRunning()) {
-        qCritical("Compositing manager already running.");
-        ::exit(0);
-    }
 
     d = new MCompositeManagerPrivate(this);
     MRmiServer *s = new MRmiServer(".mcompositor", this);
@@ -3756,7 +3752,12 @@ QGraphicsScene *MCompositeManager::scene()
 }
 
 void MCompositeManager::prepareEvents()
-{
+{    
+    if (QX11Info::isCompositingManagerRunning()) {
+        qCritical("Compositing manager already running.");
+        ::exit(0);
+    }
+    
     d->prepare();
 }
 
