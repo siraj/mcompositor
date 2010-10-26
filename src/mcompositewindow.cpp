@@ -208,7 +208,8 @@ void MCompositeWindow::setUntransformed()
 {
     endAnimation();
     
-    anim->stopAnimation(); // stop and restore the matrix
+    if (anim)
+        anim->stopAnimation(); // stop and restore the matrix
     newly_mapped = false;
     setVisible(true);
     setOpacity(1.0);
