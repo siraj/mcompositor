@@ -60,7 +60,12 @@ for CASEFILE in $*; do
     BNAME=${CASEFILE}.testdata
     if [ -e $BNAME ]; then
         . ./$BNAME
-        TESTCASE_TEMPLATE="\t\t\t<case name=\"$CaseName\" description=\"$CaseDescription\" requirement=\"$CaseRequirement\" timeout=\"$CaseTimeout\">\n\t\t\t\t<step expected_result=\"0\">$INSTALL_PATH/$CASEFILE</step>\n\t\t\t</case>\n"
+        if [ x$CaseInsignificant != x ]; then
+            TESTCASE_TEMPLATE="\t\t\t<case name=\"$CaseName\" description=\"$CaseDescription\" requirement=\"$CaseRequirement\" timeout=\"$CaseTimeout\" insignificant=\"$CaseInsignificant\">\n\t\t\t\t<step expected_result=\"0\">$INSTALL_PATH/$CASEFILE</step>\n\t\t\t</case>\n"
+        else
+            TESTCASE_TEMPLATE="\t\t\t<case name=\"$CaseName\" description=\"$CaseDescription\" requirement=\"$CaseRequirement\" timeout=\"$CaseTimeout\">\n\t\t\t\t<step expected_result=\"0\">$INSTALL_PATH/$CASEFILE</step>\n\t\t\t</case>\n"
+        fi
+      unset CaseInsignificant
       TESTCASES="${TESTCASES}${TESTCASE_TEMPLATE}"
     fi
 done
