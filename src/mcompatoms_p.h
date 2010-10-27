@@ -42,6 +42,7 @@ public:
     };
 
     enum Atoms {
+        // The following atoms are added to the _NET_SUPPORTED list.
         // window manager
         WM_PROTOCOLS,
         WM_DELETE_WINDOW,
@@ -96,13 +97,6 @@ public:
         _MEEGOTOUCH_DESKTOP_VIEW,
         _MEEGOTOUCH_CANNOT_MINIMIZE,
 
-        /* RROutput properties */
-        RROUTPUT_CTYPE,
-        RROUTPUT_PANEL,
-        RROUTPUT_ALPHA_MODE,
-        RROUTPUT_GRAPHICS_ALPHA,
-        RROUTPUT_VIDEO_ALPHA,
-
 #ifdef WINDOW_DEBUG
         _M_WM_INFO,
         _M_WM_WINDOW_ZVALUE,
@@ -111,6 +105,16 @@ public:
         _M_WM_WINDOW_DIRECT_VISIBLE,
         _M_WM_WINDOW_DIRECT_INVISIBLE,
 #endif
+
+        // The rest of the atoms are not added to _NET_SUPPORTED.
+        END_OF_NET_SUPPORTED,
+
+        // RROutput properties
+        RROUTPUT_CTYPE = END_OF_NET_SUPPORTED,
+        RROUTPUT_PANEL,
+        RROUTPUT_ALPHA_MODE,
+        RROUTPUT_GRAPHICS_ALPHA,
+        RROUTPUT_VIDEO_ALPHA,
 
         ATOMS_TOTAL
     };

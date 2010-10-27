@@ -159,13 +159,6 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_DESKTOP_VIEW",
         "_MEEGOTOUCH_CANNOT_MINIMIZE",
 
-        /* RROutput properties */
-        RR_PROPERTY_CONNECTOR_TYPE,
-        "Panel",
-        "AlphaMode",
-        "GraphicsAlpha",
-        "VideoAlpha",
-
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
         "_M_WM_INFO",
@@ -175,6 +168,14 @@ MCompAtoms::MCompAtoms()
         "_M_WM_WINDOW_DIRECT_VISIBLE",
         "_M_WM_WINDOW_DIRECT_INVISIBLE",
 #endif
+
+        // Add atoms you don't want to be in rootWindow::_NET_SUPPORTED below.
+        // RROutput properties
+        RR_PROPERTY_CONNECTOR_TYPE,
+        "Panel",
+        "AlphaMode",
+        "GraphicsAlpha",
+        "VideoAlpha",
     };
 
     Q_ASSERT((sizeof(atom_names) / sizeof(atom_names[0])) == ATOMS_TOTAL);
@@ -186,7 +187,7 @@ MCompAtoms::MCompAtoms()
 
     XChangeProperty(dpy, QX11Info::appRootWindow(), atoms[_NET_SUPPORTED],
                     XA_ATOM, 32, PropModeReplace, (unsigned char *)atoms,
-                    ATOMS_TOTAL);
+                    END_OF_NET_SUPPORTED);
 }
 
 MCompAtoms::Type MCompAtoms::windowType(Window w)
