@@ -3412,7 +3412,7 @@ void MCompositeManager::dumpState(const char *heading)
       qDebug("%s: ", heading);
 
     qDebug(    "display:          %s",
-               d->device_state->displayOff() ? "on" : "off");
+               d->device_state->displayOff() ? "off" : "on");
     qDebug(    "call state:       %s",
                d->device_state->ongoingCall() ? "ongoing" : "idle");
 
@@ -3510,7 +3510,7 @@ void MCompositeManager::dumpState(const char *heading)
                 XFree(cls.res_class);
         }
 
-        qDebug("  ptr %p == xwin 0x%lx%s: %s", *cwit, cwit.key(),
+        qDebug("  ptr %p == xwin 0x%lx%s: %s", cw, cw->window(),
                cw->isValid() ? "" : " (not valid anymore)", name);
         qDebug("    mapped: %s, newly mapped: %s",
                yn[cw->isMapped()], yn[cw->isNewlyMapped()]);
@@ -3622,7 +3622,7 @@ void MCompositeManager::dumpState(const char *heading)
 
         const QRectF &r = gi->boundingRect();
         const MCompositeWindow *cw = dynamic_cast<const MCompositeWindow *>(gi);
-        qDebug("  %p: %dx%d%+d%+d %s", cw ? cw : gi,
+        qDebug("  %p: %dx%d%+d%+d %s", cw ? (void *)cw : (void *)gi,
                   (int)r.width(), (int)r.height(), (int)r.x(), (int)r.y(),
                   gi->isVisible() ? "visible" : "hidden");
     }
