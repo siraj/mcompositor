@@ -134,6 +134,7 @@ MCompAtoms::MCompAtoms()
         "_NET_WM_WINDOW_OPACITY",
         "_NET_WM_STATE",
         "_NET_WM_ICON_GEOMETRY",
+        "_NET_WM_USER_TIME_WINDOW",
         "WM_STATE",
 
         // misc
