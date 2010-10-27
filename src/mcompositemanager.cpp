@@ -3406,7 +3406,7 @@ void MCompositeManager::dumpState(const char *heading)
       qDebug("%s: ", heading);
 
     qDebug(    "display:          %s",
-               d->device_state->displayOff() ? "on" : "off");
+               d->device_state->displayOff() ? "off" : "on");
     qDebug(    "call state:       %s",
                d->device_state->ongoingCall() ? "ongoing" : "idle");
 
