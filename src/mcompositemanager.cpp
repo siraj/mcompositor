@@ -1994,10 +1994,10 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                         no_decors.size());
         prev_only_mapped = QList<Window>(only_mapped);
 
-        checkInputFocus(timestamp);
         if (!device_state->displayOff())
             pingTopmost();
     }
+    checkInputFocus(timestamp); // WM_HINTS can change even if the order didn't
     if (order_changed || force_visibility_check) {
         static int xres = ScreenOfDisplay(QX11Info::display(),
                                    DefaultScreen(QX11Info::display()))->width;
@@ -3197,6 +3197,11 @@ void MCompositeManager::positionWindow(Window w,
                                        MCompositeManager::StackPosition pos)
 {
     d->positionWindow(w, pos == MCompositeManager::STACK_TOP ? true : false);
+}
+
+const QRect &MCompositeManager::decoratorRect() const
+{
+    return MDecoratorFrame::instance()->decoratorRect();
 }
 
 const QList<Window> &MCompositeManager::stackingList() const

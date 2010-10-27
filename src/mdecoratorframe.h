@@ -92,6 +92,7 @@ public:
     void setDecoratorItem(MCompositeWindow *window);
 
     MCompositeWindow *decoratorItem() const;
+    const QRect &decoratorRect() const { return decorator_rect; }
 
 public slots:
     void setDecoratorAvailableRect(const QRect& r);
