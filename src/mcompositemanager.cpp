@@ -3711,6 +3711,58 @@ void MCompositeManager::remoteControl(int cmdfd)
     } else
         qDebug("%s: unknown command", cmd);
 }
+
+void MCompositeManager::xtrace(const char *fun, const char *msg, int lmsg)
+{
+    MCompositeManager *p = static_cast<MCompositeManager *>(qApp);
+    char str[160];
+
+    // Normalize @fun and @msg so that @msg != NULL in the end,
+    // and turn synopsis [2] into MCompositor::xtrace(NULL, msg).
+    if (!msg) {
+        if (fun) {
+            msg = fun;
+            fun = NULL;
+        } else {
+            msg = "HERE";
+            lmsg = strlen("HERE");
+        }
+    }
+
+    // Fail if we don't have an X connection yet.
+    if (!p || !p->d || !p->d->xcb_conn) {
+        qWarning("cannot xtrace yet from %s", fun ? fun : msg);
+        return;
+    }
+
+    // Format @str to include both @fun and @msg if @fun was specified,
+    // and count the length of @str.
+    if (fun != NULL) {
+        lmsg = snprintf(str, sizeof(str), "%s from %s", msg, fun);
+        msg = str;
+    } else if (lmsg < 0)
+        lmsg = strlen(msg);
+
+    // Make @str visible in xtrace by sending it along with an innocent
+    // X request.  Unfortunately this makes this function a synchronisation
+    // point (it has to wait for the reply).  Use xcb rather than libx11
+    // because the latter maintains a hashtable of known Atom:s.
+    xcb_intern_atom_reply(p->d->xcb_conn,
+                          xcb_intern_atom(p->d->xcb_conn, False, lmsg, msg),
+                          NULL);
+}
+
+void MCompositeManager::xtracef(const char *fun, const char *fmt, ...)
+{
+    va_list printf_args;
+    char msg[160];
+    int lmsg;
+
+    va_start(printf_args, fmt);
+    lmsg = vsnprintf(msg, sizeof(msg), fmt, printf_args);
+    va_end(printf_args);
+    xtrace(fun, msg, lmsg);
+}
 #endif // WINDOW_DEBUG
 
 MCompositeManager::MCompositeManager(int &argc, char **argv)

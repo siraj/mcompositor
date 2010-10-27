@@ -139,6 +139,20 @@ public:
     // to qDebug().  Only available if compiled with TESTABILITY=on
     // (-DWINDOW_DEBUG).
     void dumpState(const char *heading = 0);
+
+    // "Print" @msg in xtrace, to show you where your program's control was
+    // between the various X requests, responses and events.
+    // Synopsis:
+    // [1] MCompositeManager::xtrace();
+    // [2] MCompositeManager::xtrace("HEI");
+    // [3] MCompositeManager::xtrace(__PRETTY_FUNCTION__, "HEI");
+    //
+    // xtracef() is the same, except that it sends a formatted message.
+    // You can leave @fun NULL if you want.
+    static void xtrace (const char *fun = NULL, const char *msg = NULL,
+                        int lmsg = -1);
+    static void xtracef(const char *fun, const char *fmt, ...)
+        __attribute__((format(printf, 2, 3)));
 #endif
 
 public slots:
