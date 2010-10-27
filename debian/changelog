@@ -1,8 +1,9 @@
-mcompositor (0.7.7~1) unstable; urgency=low
+mcompositor (0.7.7-1) unstable; urgency=low
 
-  * unreleased
+  * Fixes: NB#196487 - display doesn't become dimmed
+  * Various optimizations and fixes	
 
- -- Kimmo Hämäläinen <kihamala@mylly>  Fri, 22 Oct 2010 10:35:41 +0300
+ -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Thu, 28 Oct 2010 00:31:43 +0300
 
 mcompositor (0.7.6-1) unstable; urgency=low
 
