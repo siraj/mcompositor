@@ -1476,6 +1476,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         fullscreen_wm_state(this, 1, e->window, &v);
     }
 
+    pc->setBeingMapped(true); // don't disable compositing & allow setting state
     const XWMHints &h = pc->getWMHints();
     if ((h.flags & StateHint) && (h.initial_state == IconicState))
         setWindowState(e->window, IconicState);
@@ -1541,7 +1542,6 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     // create the damage object before mapping to get 'em all
     if (!device_state->displayOff())
         pc->damageTracking(true);
-    pc->setBeingMapped(true); // don't disable compositing
     XMapWindow(QX11Info::display(), e->window);
 }
 
@@ -2665,16 +2665,16 @@ void MCompositeManagerPrivate::callOngoing(bool ongoing_call)
 
 void MCompositeManagerPrivate::setWindowState(Window w, int state)
 {
-    MCompositeWindow* i = COMPOSITE_WINDOW(w);
-    if(i && i->propertyCache()->windowState() == state)
+    MWindowPropertyCache *pc = prop_caches.value(w, 0);
+    if (pc && pc->windowState() == state)
         return;
-    else if (i && !i->isMapped()
+    else if (pc && (!pc->isMapped() && !pc->beingMapped())
              && (state == NormalState || state == IconicState)) {
-        /* qWarning("CENSORED -- window is in wrong state"); */
+        // qWarning("%s: window 0x%lx is in wrong state", __func__, w);
         return;
-    } else if (i)
+    } else if (pc)
         // cannot wait for the property change notification
-        i->propertyCache()->setWindowState(state);
+        pc->setWindowState(state);
 
     CARD32 d[2];
     d[0] = state;
