@@ -68,13 +68,20 @@ void XServerPinger::tick()
         qWarning("X is on holidays");
 }
 
-// Start a new process and let our parent (the real mcompositor) go.
-// Die with the parent.
+// Start XServerPinger in a separate process if it's not running yet.
 static void altmain() __attribute__((constructor));
 static void altmain()
 {
+    // Don't run again if the parent restarted.
+    if (getenv("XSERVERPINGER"))
+        return;
+    putenv("XSERVERPINGER=1");
+
+    // Start a new process and let our parent (the real mcompositor) go.
     if (fork())
         return;
+
+    // Die with the parent.
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 
     int meh = 0;
