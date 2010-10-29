@@ -162,7 +162,8 @@ public:
     // mechanism for lazy stacking
     QTimer stacking_timer;
     bool stacking_timeout_check_visibility;
-    void dirtyStacking(bool force_visibility_check);
+    Time stacking_timeout_timestamp;
+    void dirtyStacking(bool force_visibility_check, Time t = CurrentTime);
     void pingTopmost();
 
 signals:

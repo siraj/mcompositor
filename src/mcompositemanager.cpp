@@ -707,7 +707,8 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
       buttoned_win(0),
       glwidget(0),
       compositing(true),
-      stacking_timeout_check_visibility(false)
+      stacking_timeout_check_visibility(false),
+      stacking_timeout_timestamp(CurrentTime)
 {
     xcb_conn = XGetXCBConnection(QX11Info::display());
     MWindowPropertyCache::set_xcb_connection(xcb_conn);
@@ -958,10 +959,10 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
     pc = prop_caches.value(e->window);
 
     if (pc->propertyEvent(e) && pc->isMapped()) {
-        dirtyStacking(false);
+        dirtyStacking(false, e->time);
         MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
         if (cw && !cw->isNewlyMapped()) {
-            checkStacking(false);
+            checkStacking(false, e->time);
             // window on top could have changed
             if (!possiblyUnredirectTopmostWindow())
                 enableCompositing(false);
@@ -1632,18 +1633,13 @@ void MCompositeManagerPrivate::raiseTransientsOf(MWindowPropertyCache *pc,
     }
 }
 
-#if 0 // disabled due to bugs in applications (e.g. widgetsgallery)
-static Bool
-timestamp_predicate(Display *display,
-                    XEvent  *xevent,
-                    XPointer arg)
+static Bool timestamp_predicate(Display *display, XEvent *xevent, XPointer arg)
 {
     Q_UNUSED(arg);
     if (xevent->type == PropertyNotify &&
             xevent->xproperty.window == RootWindow(display, 0) &&
             xevent->xproperty.atom == ATOM(_NET_CLIENT_LIST))
         return True;
-
     return False;
 }
 
@@ -1651,18 +1647,14 @@ static Time get_server_time()
 {
     XEvent xevent;
     long data = 0;
-
     /* zero-length append to get timestamp in the PropertyNotify */
     XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
                     ATOM(_NET_CLIENT_LIST),
                     XA_WINDOW, 32, PropModeAppend,
                     (unsigned char *)&data, 0);
-
     XIfEvent(QX11Info::display(), &xevent, timestamp_predicate, NULL);
-
     return xevent.xproperty.time;
 }
-#endif
 
 /* NOTE: this assumes that stacking is correct */
 void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
@@ -1672,10 +1664,8 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
     /* find topmost window wanting the input focus */
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window iw = stacking_list.at(i);
-        MCompositeWindow *cw = COMPOSITE_WINDOW(iw);
-        MWindowPropertyCache *pc;
-        if (cw) pc = cw->propertyCache();
-        if (!cw || !cw->isMapped() || !pc->wantsFocus() || pc->isDecorator()
+        MWindowPropertyCache *pc = prop_caches.value(iw, 0);
+        if (!pc || !pc->isMapped() || !pc->wantsFocus() || pc->isDecorator()
             || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DOCK))
             continue;
         if (!pc->isOverrideRedirect() &&
@@ -1695,6 +1685,10 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
         return;
     prev_focus = w;
 
+    // timestamp is needed because Qt could set the focus some cases (i.e.
+    // startup and XEmbed)
+    if (timestamp == CurrentTime)
+        timestamp = get_server_time();
 #if 0 // disabled due to bugs in applications (e.g. widgetsgallery)
     MCompositeWindow *cw = windows.value(w);
     if (cw && cw->supportedProtocols().indexOf(ATOM(WM_TAKE_FOCUS)) != -1) {
@@ -1715,15 +1709,18 @@ void MCompositeManagerPrivate::checkInputFocus(Time timestamp)
         XSendEvent(QX11Info::display(), w, False, NoEventMask, &ev);
     } else
 #endif
-        XSetInputFocus(QX11Info::display(), w, RevertToPointerRoot, timestamp);
+    XSetInputFocus(QX11Info::display(), w, RevertToPointerRoot, timestamp);
 
     XChangeProperty(QX11Info::display(), RootWindow(QX11Info::display(), 0),
                     ATOM(_NET_ACTIVE_WINDOW),
                     XA_WINDOW, 32, PropModeReplace, (unsigned char *)&w, 1);
 }
 
-void MCompositeManagerPrivate::dirtyStacking(bool force_visibility_check)
+void MCompositeManagerPrivate::dirtyStacking(bool force_visibility_check,
+                                             Time timestamp)
 {
+    if (timestamp != CurrentTime)
+        stacking_timeout_timestamp = timestamp;
     if (force_visibility_check)
         stacking_timeout_check_visibility = true;
     if (!stacking_timer.isActive())
@@ -1873,6 +1870,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             stacking_timeout_check_visibility = false;
         }
         stacking_timer.stop();
+        stacking_timeout_timestamp = CurrentTime;
     }
     Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved,
            set_as_current_app = 0;
@@ -2133,8 +2131,10 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 
 void MCompositeManagerPrivate::stackingTimeout()
 {
-    checkStacking(stacking_timeout_check_visibility);
+    checkStacking(stacking_timeout_check_visibility,
+                  stacking_timeout_timestamp);
     stacking_timeout_check_visibility = false;
+    stacking_timeout_timestamp = CurrentTime;
     if (!device_state->displayOff() && !possiblyUnredirectTopmostWindow()) 
         enableCompositing(true);
 }
