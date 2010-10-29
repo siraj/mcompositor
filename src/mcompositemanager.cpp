@@ -792,6 +792,7 @@ void MCompositeManagerPrivate::prepare()
                                      RootWindow(QX11Info::display(), 0),
                                      -1, -1, 1, 1, 0, CopyFromParent,
                                      InputOnly, CopyFromParent, 0, 0);
+    XStoreName(QX11Info::display(), close_button_win, "MCompositor close bytton");
     XSelectInput(QX11Info::display(), close_button_win,
                  ButtonReleaseMask | ButtonPressMask);
     XMapWindow(QX11Info::display(), close_button_win);
@@ -799,6 +800,7 @@ void MCompositeManagerPrivate::prepare()
                                     RootWindow(QX11Info::display(), 0),
                                     -1, -1, 1, 1, 0, CopyFromParent,
                                     InputOnly, CopyFromParent, 0, 0);
+    XStoreName(QX11Info::display(), home_button_win, "MCompositor home button");
     XSelectInput(QX11Info::display(), home_button_win,
                  ButtonReleaseMask | ButtonPressMask);
     XMapWindow(QX11Info::display(), home_button_win);
