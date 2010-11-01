@@ -414,6 +414,8 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window,
       item(p),
       prev_effect(0)
 {
+    XCompositeRedirectWindow(QX11Info::display(), window,
+                             CompositeRedirectManual);
     if (!glwidget) {
         MCompositeManager *m = (MCompositeManager*)qApp;
         glwidget = m->glWidget();

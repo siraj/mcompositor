@@ -100,7 +100,7 @@ private:
     QTransform matrix;
     QTransform local;
     bool visibility;
-    QGraphicsItem *item;
+    MCompositeWindow *item;
     QGraphicsItemAnimation anim;
     QTimeLine timer;
     int zval;

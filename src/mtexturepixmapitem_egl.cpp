@@ -180,6 +180,8 @@ void MTexturePixmapItem::rebindPixmap()
 
 void MTexturePixmapItem::enableDirectFbRendering()
 {
+    if (d->direct_fb_render)
+        return;
     if (d->item->propertyCache())
         d->item->propertyCache()->damageTracking(false);
 
@@ -200,6 +202,8 @@ void MTexturePixmapItem::enableDirectFbRendering()
 
 void MTexturePixmapItem::enableRedirectedRendering()
 {
+    if (!d->direct_fb_render)
+        return;
     if (d->item->propertyCache())
         d->item->propertyCache()->damageTracking(true);
 

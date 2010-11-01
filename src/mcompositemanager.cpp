@@ -3044,7 +3044,6 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
     // no need for StructureNotifyMask because of root's SubstructureNotifyMask
     XSelectInput(display, window, PropertyChangeMask);
     XShapeSelectInput(display, window, ShapeNotifyMask);
-    XCompositeRedirectWindow(display, window, CompositeRedirectManual);
 
     MWindowPropertyCache *wpc;
     if (prop_caches.contains(window)) {

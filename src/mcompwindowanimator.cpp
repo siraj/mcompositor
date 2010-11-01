@@ -29,13 +29,13 @@ static qreal interpolate(qreal step, qreal x1, qreal x2)
     return ((x2 - x1) * step) + x1;
 }
 
-MCompWindowAnimator::MCompWindowAnimator(MCompositeWindow *item)
-    : QObject(item),
+MCompWindowAnimator::MCompWindowAnimator(MCompositeWindow *comp_win)
+    : QObject(comp_win),
       timer(200),
       reversed(false),
       deferred_animation(false)
 {
-    this->item = item;
+    item = comp_win;
     timer.setFrameRange(0, 2000);
     timer.setUpdateInterval(int(1000.0 / Fps));
 
@@ -88,9 +88,9 @@ void MCompWindowAnimator::advanceFrame(qreal step)
     
     // TODO: move calculation to GPU to imrpove speed
     // TODO: Use QPropertyAnimation instead
-    ((MCompositeWindow*)item)->setDimmedEffect(false);
+    item->setDimmedEffect(false);
     item->setOpacity(!reversed ? opac_norm : opac_rev);
-    MCompositeWindow* behind = ((MCompositeWindow*)item)->behind();
+    MCompositeWindow* behind = item->behind();
     if (behind) {
         behind->setDimmedEffect(true);
         behind->setOpacity(!reversed ? opac_rev : opac_norm);
@@ -102,7 +102,12 @@ void MCompWindowAnimator::advanceFrame(qreal step)
 
 void MCompWindowAnimator::resetState()
 {
-    MCompositeWindow* behind = ((MCompositeWindow*)item)->behind();
+    if (!reversed) {
+        item->setPos(anim.posAt(1.0));
+        item->setOpacity(1.0);
+        item->setTransform(matrix);
+    }
+    MCompositeWindow* behind = item->behind();
     if (behind) {
         behind->setOpacity(1.0); 
     }
