@@ -1,0 +1,17 @@
+CaseName="WM_STATE_setting"
+CaseRequirement="NONE"
+CaseTimeout="360"
+CaseDescription="Some tests for correct WM_STATE setting.\n
+\n
+- Test steps\n
+\t- map an application window\n
+\t- check that it is in Normal state\n
+\t- minimise the application window\n
+\t- check that it is in Iconic state\n
+\t- maximise the application window\n
+\t- check that it is in Normal state\n
+\t- unmap the application window\n
+\t- check that it is in Withdrawn state\n
+\t- map the application window\n
+- Post-conditions\n
+\t- check that it is in Normal state and stacked on top\n"
