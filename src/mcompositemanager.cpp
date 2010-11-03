@@ -3582,6 +3582,7 @@ void MCompositeManager::dumpState(const char *heading)
         if (!name) {
             XClassHint cls;
 
+            cls.res_name = cls.res_class = NULL;
             XGetClassHint(QX11Info::display(), cw->window(), &cls);
             if (!(name = cls.res_name))
                 name = cls.res_class;
@@ -3590,7 +3591,8 @@ void MCompositeManager::dumpState(const char *heading)
         }
 
         qDebug("  ptr %p == xwin 0x%lx%s: %s", cw, cw->window(),
-               cw->isValid() ? "" : " (not valid anymore)", name);
+               cw->isValid() ? "" : " (not valid anymore)",
+               name ? name : "[noname]");
         qDebug("    mapped: %s, newly mapped: %s",
                yn[cw->isMapped()], yn[cw->isNewlyMapped()]);
         qDebug("    visible: %s, direct rendered: %s",
