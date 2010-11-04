@@ -67,7 +67,8 @@ void MCompositeScene::prepareRoot()
     XSetWindowAttributes sattr;
     sattr.event_mask =  SubstructureRedirectMask | SubstructureNotifyMask | StructureNotifyMask | PropertyChangeMask;
 
-    //XCompositeRedirectSubwindows (dpy, root, CompositeRedirectAutomatic);
+    // All newly mapped windows should be redirected to avoid double Expose
+    XCompositeRedirectSubwindows(dpy, root, CompositeRedirectManual);
 
     XChangeWindowAttributes(dpy, root, CWEventMask, &sattr);
     XSelectInput(dpy, root, SubstructureNotifyMask | SubstructureRedirectMask

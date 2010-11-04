@@ -409,14 +409,12 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window,
       textureId(0),
       ctextureId(0),
       custom_tfp(false),
-      direct_fb_render(false),
+      direct_fb_render(false), // root's children start redirected
       angle(0),
       item(p),
       prev_effect(0),
       pastDamages(0)
 {
-    XCompositeRedirectWindow(QX11Info::display(), window,
-                             CompositeRedirectManual);
     if (!glwidget) {
         MCompositeManager *m = (MCompositeManager*)qApp;
         glwidget = m->glWidget();
