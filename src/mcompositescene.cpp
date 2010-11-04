@@ -70,7 +70,9 @@ void MCompositeScene::prepareRoot()
     //XCompositeRedirectSubwindows (dpy, root, CompositeRedirectAutomatic);
 
     XChangeWindowAttributes(dpy, root, CWEventMask, &sattr);
-    XSelectInput(dpy, root, SubstructureNotifyMask | SubstructureRedirectMask | StructureNotifyMask | PropertyChangeMask);
+    XSelectInput(dpy, root, SubstructureNotifyMask | SubstructureRedirectMask
+                            | StructureNotifyMask | PropertyChangeMask
+                            | FocusChangeMask);
     XSetErrorHandler(error_handler);
 }
 

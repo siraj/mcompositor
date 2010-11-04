@@ -2820,6 +2820,16 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
     
     bool ret = true;
     switch (event->type) {
+    case FocusIn: {
+        XFocusChangeEvent *e = (XFocusChangeEvent*)event;
+        // make sure we focus right window on reverting the focus to root
+        if (e->window == RootWindow(QX11Info::display(), 0)
+            && e->mode == NotifyNormal) {
+            prev_focus = e->window;
+            checkInputFocus(CurrentTime);
+        }
+        break;
+    }
     case DestroyNotify:
         destroyEvent(&event->xdestroywindow); break;
     case PropertyNotify:
