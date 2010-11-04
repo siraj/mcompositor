@@ -412,7 +412,8 @@ MTexturePixmapPrivate::MTexturePixmapPrivate(Qt::HANDLE window,
       direct_fb_render(false),
       angle(0),
       item(p),
-      prev_effect(0)
+      prev_effect(0),
+      pastDamages(0)
 {
     XCompositeRedirectWindow(QX11Info::display(), window,
                              CompositeRedirectManual);

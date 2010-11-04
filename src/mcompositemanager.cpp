@@ -910,7 +910,7 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->drawable);
     if (item && rects) {
-        item->updateWindowPixmap(rects, num);
+        item->updateWindowPixmap(rects, num, e->timestamp);
         if (item->waitingForDamage())
             item->damageReceived(false);
     }

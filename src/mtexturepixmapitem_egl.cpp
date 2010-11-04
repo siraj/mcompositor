@@ -251,9 +251,38 @@ void MTexturePixmapItem::cleanup()
     XFreePixmap(QX11Info::display(), d->windowp);
 }
 
-void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
+void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
+                                            Time when)
 {
-    if (hasTransitioningWindow() || d->direct_fb_render || !windowVisible()
+    // When a window is in transitioning limit the number of updates
+    // to @limit/@expiry miliseconds.
+    const unsigned expiry = 1000;
+    const int      limit  =   10;
+
+    if (hasTransitioningWindow()) {
+        // Limit the number of damages we're willing to process if we're
+        // in the middle of a transition, so the competition for the GL
+        // resources will be less tight.
+        if (d->pastDamages) {
+            // Forget about pastDamages we received long ago.
+            while (d->pastDamages->size() > 0
+                   && d->pastDamages->first() + expiry < when)
+                d->pastDamages->removeFirst();
+            if (d->pastDamages->size() >= limit)
+                // Too many damages in the given timeframe, throttle.
+                return;
+        } else
+            d->pastDamages = new QList<Time>;
+        // Can afford this damage, but recoed when we received it,
+        // so to know when to forget about them.
+        d->pastDamages->append(when);
+    } else if (d->pastDamages) {
+        // The window is not transitioning, forget about all pastDamages.
+        delete d->pastDamages;
+        d->pastDamages = NULL;
+    }
+
+    if (d->direct_fb_render || !windowVisible()
         || propertyCache()->isInputOnly())
         return;
 
