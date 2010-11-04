@@ -72,10 +72,8 @@ public:
 
     Qt::HANDLE window() const { return win_id; }
 
-    /*!
-     * Overriden QObject::deleteLater()
-     */
-    void deleteLater();
+    // Reimplemented to defer deleteLater()s until transitions are over.
+    virtual bool event(QEvent *);
 
     /*!
      * Saves the global state of this item. Possibly transformations and

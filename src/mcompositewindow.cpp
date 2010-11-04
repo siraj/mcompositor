@@ -423,11 +423,14 @@ void MCompositeWindow::closeWindow()
     iconify(fadeRect, defer);
 }
 
-void MCompositeWindow::deleteLater()
+bool MCompositeWindow::event(QEvent *e)
 {
-    destroyed = true;
-    if (!is_transitioning)
-        QObject::deleteLater();
+    if (e->type() == QEvent::DeferredDelete && is_transitioning) {
+        // Can't delete the object yet, try again in the next iteration.
+        deleteLater();
+        return true;
+    } else
+        return QObject::event(e);
 }
 
 void MCompositeWindow::prettyDestroy()
