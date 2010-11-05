@@ -103,7 +103,8 @@ public:
     void configureWindow(MCompositeWindow *cw, XConfigureRequestEvent *e);
 
     Window getTopmostApp(int *index_in_stacking_list = 0,
-                         Window ignore_window = 0);
+                         Window ignore_window = 0,
+                         bool skip_always_mapped = false);
     Window getLastVisibleParent(MWindowPropertyCache *pc);
 
     bool possiblyUnredirectTopmostWindow();
