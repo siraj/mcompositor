@@ -259,6 +259,7 @@ signals:
     void iconGeometryUpdated();
     void meegoDecoratorButtonsChanged(Window w);
     void desktopViewChanged(MWindowPropertyCache *pc);
+    void alwaysMappedChanged(MWindowPropertyCache *pc);
 
 private:
     int alphaValue(xcb_get_property_cookie_t c);
