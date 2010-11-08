@@ -89,6 +89,11 @@ public:
     QPointer<MCompositeWindowShaderEffect> current_effect;
     const MCompositeWindowShaderEffect *prev_effect;
 
+    // Contains a limited number of server times we received damage
+    // notifications for this window.  Only used by the EGL variant
+    // to throttle repairs if the window is transitioning.
+    QList<Time> *pastDamages;
+
 #ifdef GLES2_VERSION
     static EglResourceManager *eglresource;
 #endif

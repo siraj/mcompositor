@@ -525,6 +525,7 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         xcb_always_mapped_cookie = xcb_get_property(xcb_conn, 0, window,
                                            ATOM(_MEEGOTOUCH_ALWAYS_MAPPED),
                                            XCB_ATOM_CARDINAL, 0, 1);
+        emit alwaysMappedChanged(this);
     } else if (e->atom == ATOM(_MEEGOTOUCH_CANNOT_MINIMIZE)) {
         if (cannot_minimize < 0)
             // collect the old reply

@@ -72,10 +72,8 @@ public:
 
     Qt::HANDLE window() const { return win_id; }
 
-    /*!
-     * Overriden QObject::deleteLater()
-     */
-    void deleteLater();
+    // Reimplemented to defer deleteLater()s until transitions are over.
+    virtual bool event(QEvent *);
 
     /*!
      * Saves the global state of this item. Possibly transformations and
@@ -239,7 +237,8 @@ public:
      * Ensures that the corresponding texture reflects the contents of the
      * associated pixmap and schedules a redraw of this item.
      */
-    virtual void updateWindowPixmap(XRectangle *rects = 0, int num = 0) = 0;
+    virtual void updateWindowPixmap(XRectangle *rects = 0, int num = 0,
+                                    Time when = 0) = 0;
 
     /*!
      * Recreates the pixmap id and saves the offscreen buffer that represents

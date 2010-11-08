@@ -183,7 +183,7 @@ void MTexturePixmapItem::rebindPixmap()
         None
     };
 
-    if (!d->custom_tfp) {
+    if (!d->custom_tfp && d->windowp) {
         Display *display = QX11Info::display();
         glXReleaseTexImageEXT(display, d->glpixmap, GLX_FRONT_LEFT_EXT);
         glXDestroyPixmap(display, d->glpixmap);
@@ -273,7 +273,8 @@ void MTexturePixmapItem::cleanup()
         XFreePixmap(QX11Info::display(), d->windowp);
 }
 
-void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num)
+void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
+                                            Time when)
 {
     Q_UNUSED(rects);
     Q_UNUSED(num);

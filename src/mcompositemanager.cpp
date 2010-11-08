@@ -910,7 +910,7 @@ void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->drawable);
     if (item && rects) {
-        item->updateWindowPixmap(rects, num);
+        item->updateWindowPixmap(rects, num, e->timestamp);
         if (item->waitingForDamage())
             item->damageReceived(false);
     }
@@ -997,7 +997,8 @@ Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
 }
 
 Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
-                                               Window ignore_window)
+                                               Window ignore_window,
+                                               bool skip_always_mapped)
 {
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);        
@@ -1022,6 +1023,9 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
             continue;
         } else if (!(pc = cw->propertyCache())) {
             GTA("  has no property cache");
+            continue;
+        } else if (skip_always_mapped && pc->alwaysMapped()) {
+            GTA("  has _MEEGOTOUCH_ALWAYS_MAPPED");
             continue;
         }
         if (!cw->isAppWindow(true)) {
@@ -2312,7 +2316,7 @@ stack_and_return:
 
     /* do this after bindWindow() so that the window is in stacking_list */
     if (pc->windowState() == NormalState &&
-        (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win)))
+        (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win, true)))
         activateWindow(win, CurrentTime, false);
     else
         // desktop is stacked below the active application
@@ -2820,6 +2824,16 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
     
     bool ret = true;
     switch (event->type) {
+    case FocusIn: {
+        XFocusChangeEvent *e = (XFocusChangeEvent*)event;
+        // make sure we focus right window on reverting the focus to root
+        if (e->window == RootWindow(QX11Info::display(), 0)
+            && e->mode == NotifyNormal) {
+            prev_focus = e->window;
+            checkInputFocus(CurrentTime);
+        }
+        break;
+    }
     case DestroyNotify:
         destroyEvent(&event->xdestroywindow); break;
     case PropertyNotify:

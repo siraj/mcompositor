@@ -61,7 +61,8 @@ public:
      * Ensures that the corresponding texture reflects the contents of the
      * associated pixmap and schedules a redraw of this item.
      */
-    void updateWindowPixmap(XRectangle *rects = 0, int num = 0);
+    void updateWindowPixmap(XRectangle *rects = 0, int num = 0,
+                            Time when = 0);
 
     /*!
      * Recreates the pixmap id and saves the offscreen buffer that represents
