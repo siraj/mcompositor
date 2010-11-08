@@ -225,6 +225,11 @@ public:
     int desktopView(bool request_only = false);
 
     /*!
+     * Returns value of _MEEGOTOUCH_CUSTOM_REGION.
+     */
+    const QRegion &customRegion(bool request_only = false);
+
+    /*!
      * Called on PropertyNotify for this window.
      * Returns true if we should re-check stacking order.
      */
@@ -260,6 +265,7 @@ signals:
     void meegoDecoratorButtonsChanged(Window w);
     void desktopViewChanged(MWindowPropertyCache *pc);
     void alwaysMappedChanged(MWindowPropertyCache *pc);
+    void customRegionChanged(MWindowPropertyCache *pc);
 
 private:
     int alphaValue(xcb_get_property_cookie_t c);
@@ -291,6 +297,8 @@ private:
     Window window, parent_window;
     int always_mapped, cannot_minimize, desktop_view;
     bool being_mapped, dont_iconify;
+    QRegion *custom_region;
+    bool custom_region_request_fired;
     // geometry is requested only once in the beginning, after that, we
     // use ConfigureNotifys to update the size through setRealGeometry()
     xcb_get_geometry_reply_t *xcb_real_geom;
@@ -309,6 +317,7 @@ private:
     xcb_get_property_cookie_t xcb_net_wm_state_cookie;
     xcb_get_property_cookie_t xcb_always_mapped_cookie;
     xcb_get_property_cookie_t xcb_cannot_minimize_cookie;
+    xcb_get_property_cookie_t xcb_custom_region_cookie;
     xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
     xcb_shape_get_rectangles_cookie_t xcb_shape_rects_cookie;
     QRegion shape_region;
