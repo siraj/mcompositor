@@ -61,6 +61,8 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
       desktop_view(-1),
       being_mapped(false),
       dont_iconify(false),
+      custom_region(0),
+      custom_region_request_fired(false),
       xcb_real_geom(0),
       damage_object(0)
 {
@@ -237,6 +239,11 @@ MWindowPropertyCache::~MWindowPropertyCache()
         r = xcb_get_property_reply(xcb_conn, xcb_wm_protocols_cookie, 0);
         if (r) free(r);
     }
+    if (custom_region_request_fired) {
+        r = xcb_get_property_reply(xcb_conn, xcb_custom_region_cookie, 0);
+        if (r) free(r);
+    } 
+    if (custom_region) delete custom_region;
     if (wm_state_query)
         windowState();
     if (!icon_geometry_valid)
@@ -325,6 +332,44 @@ const QRegion &MWindowPropertyCache::shapeRegion()
     free(r);
     shape_rects_valid = true;
     return shape_region;
+}
+
+const QRegion &MWindowPropertyCache::customRegion(bool request_only)
+{
+    if (!is_valid) {
+        if (!custom_region) custom_region = new QRegion(0, 0, 0, 0);
+        return *custom_region;
+    }
+    if (request_only || (!custom_region && !custom_region_request_fired)) {
+        if (custom_region_request_fired)
+            customRegion(false); // free the old reply
+        xcb_custom_region_cookie = xcb_get_property(xcb_conn, 0, window,
+                                         ATOM(_MEEGOTOUCH_CUSTOM_REGION),
+                                         XCB_ATOM_CARDINAL, 0, 10 * 4);
+        custom_region_request_fired = true;
+    }
+    if (!request_only && custom_region_request_fired) {
+        xcb_get_property_reply_t *r;
+        r = xcb_get_property_reply(xcb_conn, xcb_custom_region_cookie, 0);
+        custom_region_request_fired = false;
+        if (custom_region)
+            delete custom_region;
+        custom_region = new QRegion(0, 0, 0, 0);
+        if (r) {
+            int len = xcb_get_property_value_length(r);
+            if (len >= (int)sizeof(CARD32) * 4) {
+                int n = len / sizeof(CARD32) / 4;
+                CARD32 *p = (CARD32*)xcb_get_property_value(r);
+                for (int i = 0; i < n; ++i) {
+                     int j = i * 4;
+                     QRect tmp(p[j], p[j + 1], p[j + 2], p[j + 3]);
+                     *custom_region += tmp;
+                }
+            }
+            free(r);
+        }
+    }
+    return *custom_region;
 }
 
 Window MWindowPropertyCache::transientFor()
@@ -623,6 +668,8 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         MCompositeManager *m = (MCompositeManager*)qApp;
         m->d->positionWindow(window, true);
         return true;
+    } else if (e->atom == ATOM(_MEEGOTOUCH_CUSTOM_REGION)) {
+        emit customRegionChanged(this);
     }
     return false;
 }
