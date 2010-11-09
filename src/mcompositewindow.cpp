@@ -43,6 +43,8 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       scaleto(1),
       scaled(false),
       zval(1),
+      sent_ping_timestamp(0),
+      received_ping_timestamp(0),
       blur(false),
       iconified(false),
       iconified_final(false),
@@ -62,8 +64,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         is_valid = false;
         anim = 0;
         newly_mapped = false;
-        sent_ping_timestamp = 0;
-        received_ping_timestamp = 0;
         t_ping = 0;
         window_visible = false;
         return;

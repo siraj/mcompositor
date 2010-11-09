@@ -771,6 +771,7 @@ static void setup_key_grabs()
                                  0, 0);    
         XkbFreeControls(xkb_t, 0, True);
         ignored_mod = true;
+        free(xkb_t);
     }
 }
 
@@ -2960,8 +2961,10 @@ void MCompositeManagerPrivate::redirectWindows()
         xcb_get_window_attributes_reply_t *attr;
         attr = xcb_get_window_attributes_reply(xcb_conn,
                      xcb_get_window_attributes(xcb_conn, kids[i]), 0);
-        if (!attr || attr->_class == XCB_WINDOW_CLASS_INPUT_ONLY)
+        if (!attr || attr->_class == XCB_WINDOW_CLASS_INPUT_ONLY) {
+            if (attr) free(attr);
             continue;
+        }
         xcb_get_geometry_reply_t *geom;
         geom = xcb_get_geometry_reply(xcb_conn,
                         xcb_get_geometry(xcb_conn, kids[i]), 0);
