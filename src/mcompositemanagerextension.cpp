@@ -43,6 +43,11 @@ void MCompositeManagerExtension::listenXEventType(long XEventType)
     p->d->installX11EventFilter(XEventType, this);
 }
 
+void MCompositeManagerExtension::dumpState() const
+{
+    /* NOP */
+}
+
 Qt::HANDLE MCompositeManagerExtension::desktopWindow()
 {    
     MCompositeManager *p = (MCompositeManager *) qApp;
