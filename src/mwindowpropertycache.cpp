@@ -773,7 +773,9 @@ int MWindowPropertyCache::alphaValue(xcb_get_property_cookie_t c)
     }
 
     /* Map 0..0xFFFFFFFF -> 0..0xFF. */
-    return *(CARD32*)xcb_get_property_value(r) >> 24;
+    int ret = *(CARD32*)xcb_get_property_value(r) >> 24;
+    free(r);
+    return ret;
 }
 
 int MWindowPropertyCache::globalAlpha()
