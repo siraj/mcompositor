@@ -60,6 +60,10 @@ class MCompositeManagerExtension: public QObject
      */
     void listenXEventType(long XEventType);
 
+    //! qDebug() any state information indented by three spaces you want
+    //! to be included in MCompositeManager::dumpState()'s output.
+    virtual void dumpState() const;
+
  signals:    
     void currentAppChanged(Qt::HANDLE window);
     
@@ -88,7 +92,7 @@ class MCompositeManagerExtension: public QObject
     virtual bool windowRestored(MCompositeWindow* window, bool deferred);
     virtual bool windowShown(MCompositeWindow* window);
     virtual bool windowClosed(MCompositeWindow* window);
-    
+
  private slots:
     void q_currentAppChanged(Window window);
 

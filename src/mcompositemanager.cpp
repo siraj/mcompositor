@@ -3505,6 +3505,7 @@ void MCompositeManager::dumpState(const char *heading)
     QString line;
     const QRect *r;
     MCompositeWindow *cw;
+    QHash<const MCompositeManagerExtension*, QList<int> > extensions;
 
     if (heading)
       qDebug("%s: ", heading);
@@ -3553,7 +3554,7 @@ void MCompositeManager::dumpState(const char *heading)
                                       rect.x(), rect.y());
     } else
         line += " <Empty>";
-    qDebug(line.toLatin1().constData());
+    qDebug() << line.toLatin1().constData();
 
     // Stacking
     qDebug(    "stacking_timer:   %s",
@@ -3582,7 +3583,7 @@ void MCompositeManager::dumpState(const char *heading)
 
     // All MCompositeWindow:s we know about.
     QHash<Window, MCompositeWindow *>::const_iterator cwit;
-    qDebug() << "windows:";
+    qDebug("windows:");
     for (cwit = d->windows.constBegin(); cwit != d->windows.constEnd();
          ++cwit) {
         static const char *winstates[] = {
@@ -3655,7 +3656,7 @@ void MCompositeManager::dumpState(const char *heading)
     for (pcit = d->prop_caches.constBegin();
          pcit != d->prop_caches.constEnd(); ++pcit)
       line += QString().sprintf(" 0x%lx", pcit.key());
-    qDebug(line.toLatin1().constData());
+    qDebug() << line.toLatin1().constData();
 
     // Pending XConfigureRequestEvent:s.
     if (!d->configure_reqs.isEmpty()) {
@@ -3725,6 +3726,46 @@ void MCompositeManager::dumpState(const char *heading)
         qDebug("  %p: %dx%d%+d%+d %s", cw ? (void *)cw : (void *)gi,
                   (int)r.width(), (int)r.height(), (int)r.x(), (int)r.y(),
                   gi->isVisible() ? "visible" : "hidden");
+    }
+
+    // Show the current state of extensions.
+    // @m_extenions is a QMultiHash of X events an extension reacts to
+    // pointing to the object.  Invert the hash so we can iterate over
+    // each extension once.
+    qDebug("plugins:");
+    for (QHash<int, MCompositeManagerExtension*>::const_iterator exit = d->m_extensions.constBegin(); exit != d->m_extensions.constEnd(); ++exit)
+        extensions[*exit].append(exit.key());
+    for (QHash<const MCompositeManagerExtension*, QList<int> >::const_iterator exit = extensions.constBegin(); exit != extensions.constEnd(); ++exit) {
+        int event;
+        bool first;
+        QString events;
+
+        // Print the extension's class name followed by its X events.
+        first = true;
+        foreach (event, *exit) {
+            if (first)
+                first = false;
+            else
+                events += ", ";
+
+            // Translate common event numbers to strings.
+            switch (event) {
+            case ButtonPress:     events += "ButtonPress";    break;
+            case ButtonRelease:   events += "ButtonRelease";  break;
+            case MotionNotify:    events += "Motion";         break;
+            case UnmapNotify:     events += "Unmap";          break;
+            case MapNotify:       events += "Map";            break;
+            case ConfigureNotify: events += "Configure";      break;
+            case PropertyNotify:  events += "Property";       break;
+            default:
+                events += QString().sprintf("%u", event);
+                break;
+            }
+        }
+        qDebug("-- %s for event(s) %s:",
+               exit.key()->metaObject()->className(),
+               events.toLatin1().constData());
+        exit.key()->dumpState();
     }
 }
 
