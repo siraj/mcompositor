@@ -95,7 +95,6 @@ void MTexturePixmapItem::init()
     d->glpixmap = 0;
 
     d->custom_tfp = !hasTextureFromPixmap();
-    saveBackingStore();
 
     if (d->custom_tfp) {
         initCustomTfp();
@@ -158,6 +157,7 @@ void MTexturePixmapItem::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glXBindTexImageEXT(QX11Info::display(), d->glpixmap, GLX_FRONT_LEFT_EXT, NULL);
+    saveBackingStore();
 }
 
 MTexturePixmapItem::MTexturePixmapItem(Window window,
