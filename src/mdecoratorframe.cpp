@@ -152,6 +152,7 @@ MCompositeWindow *MDecoratorFrame::decoratorItem() const
 
 void MDecoratorFrame::destroyDecorator()
 {
+    setDecoratorAvailableRect(QRect());
     decorator_item = 0;
     decorator_window = 0;
 }
