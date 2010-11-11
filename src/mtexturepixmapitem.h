@@ -89,7 +89,7 @@ public:
     void enableDirectFbRendering();
     void enableRedirectedRendering();
 
-    Pixmap windowPixmap() const { return d->windowp; }
+    virtual Pixmap windowPixmap() const { return d->windowp; }
 
 protected:
     void paint(QPainter *painter,

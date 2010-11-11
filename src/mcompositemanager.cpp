@@ -1111,6 +1111,9 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
             win_i = i;
             break;
         }
+        if (cw->isClosing())
+            // this window is unmapped and has unmap animation going on
+            return false;
         if (cw->isMapped() && (cw->propertyCache()->hasAlpha()
                                || cw->needDecoration()
                                || cw->propertyCache()->isDecorator()
@@ -1170,6 +1173,9 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 
 void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 {
+    if (e->event != QX11Info::appRootWindow())
+        // handle root's SubstructureNotifys (top-levels) only
+        return;
     if (configure_reqs.contains(e->window)) {
         QList<XConfigureRequestEvent*> l = configure_reqs.value(e->window);
         while (!l.isEmpty()) {
@@ -1197,6 +1203,7 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->window);
     if (item) {
+        item->closeWindowAnimation();
         item->stopPing();
         item->setIsMapped(false);
         setWindowState(e->window, WithdrawnState);
@@ -2170,6 +2177,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         prop_caches[win] = wpc;
     }
     wpc->setBeingMapped(false);
+    wpc->setIsMapped(true);
 
     FrameData fd = framed_windows.value(win);
     if (fd.frame) {
@@ -2393,12 +2401,8 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
             // use composition due to the transition effect
             activateWindow(event->window, CurrentTime, false);
     } else if (i && event->message_type == ATOM(_NET_CLOSE_WINDOW)) {
-        
-        i->closeWindow();
-        // update stacking list to remove window from switcher
-        if (i->propertyCache()->windowState() != IconicState)
-            checkStacking(false);
-        
+        // save pixmap and delete or kill this window
+        i->closeWindowRequest();
     } else if (event->message_type == ATOM(WM_PROTOCOLS)) {
         if (event->data.l[0] == (long) ATOM(_NET_WM_PING)) {
             MCompositeWindow *ping_source = COMPOSITE_WINDOW(event->data.l[2]);
@@ -2540,7 +2544,8 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
     
     if ((!delete_sent || window->status() == MCompositeWindow::Hung)) {
         kill_window(window->window());
-        MDecoratorFrame::instance()->lower();
+        if (MDecoratorFrame::instance()->managedWindow() == window->window())
+            MDecoratorFrame::instance()->lower();
     }
     /* DO NOT deleteLater() this window yet because
        a) it can remove a mapped window from stacking_list
@@ -2549,6 +2554,7 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
        d) we get UnmapNotify/DestroyNotify anyway when it _really_ closes */
 }
 
+// window iconified or unmapping animation ended
 void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
 {    
     // TODO: (work for more)
@@ -2561,8 +2567,10 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
         if (i)
             i->iconify();
     }
-    // set for roughSort() before raising duihome 
-    setWindowState(window->window(), IconicState);
+    // don't mark unmapped windows iconic (our iconic windows are mapped)
+    if (window->isMapped())
+        // set for roughSort() before raising duihome 
+        setWindowState(window->window(), IconicState);
 
     if (stack[DESKTOP_LAYER]) {
         // redirect windows for the switcher
@@ -3241,7 +3249,8 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
     connect(this, SIGNAL(compositingEnabled()), item, SLOT(startTransition()));
     connect(item, SIGNAL(itemRestored(MCompositeWindow *)), SLOT(restoreHandler(MCompositeWindow *)));
     connect(item, SIGNAL(itemIconified(MCompositeWindow *)), SLOT(lowerHandler(MCompositeWindow *)));
-    connect(item, SIGNAL(windowClosed(MCompositeWindow *)), SLOT(closeHandler(MCompositeWindow *)));
+    connect(item, SIGNAL(closeWindowRequest(MCompositeWindow *)),
+            SLOT(closeHandler(MCompositeWindow *)));
 
 
     // ping protocol
@@ -3361,8 +3370,10 @@ void MCompositeManagerPrivate::enableRedirection()
 {
     for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
             it != windows.end(); ++it) {
-        MCompositeWindow *tp  = it.value();
-        if (tp->windowVisible())
+        MCompositeWindow *tp = it.value();
+        if (tp->isValid() && tp->isDirectRendered() && tp->propertyCache()
+            && (tp->propertyCache()->isMapped()
+                || tp->propertyCache()->beingMapped()))
             ((MTexturePixmapItem *)tp)->enableRedirectedRendering();
         setWindowDebugProperties(it.key());
     }

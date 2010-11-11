@@ -404,7 +404,11 @@ static void print_usage_and_exit(QString& stdOut)
 	 "Usage 7: " PROG " J <XID> N\n"
 	 "J - set _MEEGOTOUCH_ALWAYS_MAPPED of window <XID> to N (>= 0)\n"
 	 "Usage 8: " PROG " X <XID> x y w h\n"
-         "X - set _MEEGOTOUCH_MSTATUSBAR_GEOMETRY of window <XID> to (x y w h)\n";
+         "X - set _MEEGOTOUCH_MSTATUSBAR_GEOMETRY of window <XID> to (x y w h)\n"
+	 "Usage 9: " PROG " CM <XID> <ClientMessage type name> <window>\n"
+	 "CM - send a ClientMessage (where window=<window>) to window <XID> "
+	 "(0 = the root window)\n"
+         ;
 }
 
 static void configure (Display *dpy, char *first, char *second, bool above)
@@ -829,6 +833,28 @@ static bool old_main(QStringList& args, QString& stdOut)
                                 return true;
                         }
                 }
+		if (*p == 'C' && *(p + 1) == 'M') {
+                    if (args.count() != 4) {
+                        print_usage_and_exit(stdOut); return false;
+                    }
+                    Atom a = XInternAtom(dpy, args.at(2).toAscii().data(),
+                                         False);
+                    XEvent ev;
+                    memset(&ev, 0, sizeof(ev));
+                    ev.xclient.type = ClientMessage;
+                    ev.xclient.message_type = a;
+                    ev.xclient.window = strtol(args.at(3).toAscii().data(),
+                                               NULL, 16);
+                    ev.xclient.format = 32;
+                    Window w = strtol(args.at(1).toAscii().data(), NULL, 16);
+                    if (w == 0) {
+                        w = DefaultRootWindow(dpy); 
+                        XSendEvent(dpy, w, False, SubstructureRedirectMask, &ev);
+                    } else
+                        XSendEvent(dpy, w, False, NoEventMask, &ev);
+                    XSync(dpy, False);
+                    return true;
+                }
 		if ((command = strchr("NUFCMTAWHSO", *p))) {
 			if (args.count() != 2) {
 	  			print_usage_and_exit(stdOut);
@@ -978,6 +1004,14 @@ static bool old_main(QStringList& args, QString& stdOut)
 		    /* our window was unmapped */
 	            exit(0);
                 }
+#if 0
+                else if (xev.type == ClientMessage) {
+                  XClientMessageEvent *e = (XClientMessageEvent*)&xev;
+                  printf("0x%lx: ClientMessage %d %ld %ld\n", w,
+                         e->message_type,
+                         e->data.l[0], e->data.l[1]);
+                }
+#endif
                 else if (xev.type == ConfigureNotify) {
                   /*XConfigureEvent *e = (XConfigureEvent*)&xev;*/
                 }

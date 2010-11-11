@@ -252,6 +252,11 @@ public:
     virtual void clearTexture() = 0;
 
     /*!
+      Returns pixmap for the window.
+     */
+    virtual Pixmap windowPixmap() const = 0;
+
+    /*!
       Returns true if the window corresponding to the offscreen pixmap
       is rendering directly to the framebuffer, otherwise return false.
      */
@@ -311,7 +316,10 @@ public slots:
     void setBlurred(bool);
     
     /* Operations with transition animations*/
-    void closeWindow();
+    // set to Closing state and send delete/kill
+    void closeWindowRequest();
+    // start unmap animation
+    void closeWindowAnimation();
     bool showWindow();
 
     /*!
@@ -361,8 +369,8 @@ signals:
     void itemIconified(MCompositeWindow *window);
     /*! Emitted when desktop is raised */
     void desktopActivated(MCompositeWindow *window);
-    /*! Emitted when this window is closed   */
-    void windowClosed(MCompositeWindow *window);
+    /*! Emitted when the user wants to close this window */
+    void closeWindowRequest(MCompositeWindow *window);
 
 protected:
 
