@@ -172,6 +172,7 @@ void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
 {
     if (iconify_state == ManualIconifyState) {
         setIconified(true);
+        window_status = Normal;
         return;
     }
 
@@ -184,6 +185,7 @@ void MCompositeWindow::iconify(const QRectF &icongeometry, bool defer)
     for (int i = 0; i < evlist.size(); ++i) { 
         if (evlist[i]->windowIconified(this, defer)) {
             iconified = true;
+            window_status = Normal;
             return;
         }
     }
@@ -333,7 +335,9 @@ bool MCompositeWindow::showWindow()
 {
     // defer putting this window in the _NET_CLIENT_LIST
     // only after animation is done to prevent the switcher from rendering it
-    if (!isAppWindow())
+    if (!isAppWindow() || !pc || !pc->is_valid
+        // isAppWindow() returns true for system dialogs
+        || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG))
         return false;
     
     findBehindWindow();
@@ -388,19 +392,32 @@ void MCompositeWindow::q_fadeIn()
     restore(fadeRect, false);
 }
 
-void MCompositeWindow::closeWindow()
+void MCompositeWindow::closeWindowRequest()
 {
-    if (!isAppWindow() || propertyCache()->windowState() == IconicState) {
-        setVisible(false);
-        emit windowClosed(this);
+    if (!pc || !pc->is_valid || (!isMapped() && !pc->beingMapped()))
+        return;
+    if (!windowPixmap() && !pc->isInputOnly()) {
+        // get a Pixmap for the possible unmap animation
+        MCompositeManager *p = (MCompositeManager *) qApp;
+        if (!p->isCompositing())
+            p->d->enableCompositing(true);
+        updateWindowPixmap();
+    }
+    emit closeWindowRequest(this);
+}
+
+void MCompositeWindow::closeWindowAnimation()
+{
+    if (!pc || !pc->is_valid || window_status == Closing
+        || pc->isInputOnly() || pc->isOverrideRedirect()
+        || !windowPixmap() || !isAppWindow()
+        // isAppWindow() returns true for system dialogs
+        || pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DIALOG)
+        || propertyCache()->windowState() == IconicState
+        || window_status == MCompositeWindow::Hung) {
         return;
     }
-    if (window_status == MCompositeWindow::Hung) {
-        hide();
-        emit windowClosed(this);
-        return;
-    }
-    window_status = MCompositeWindow::Closing;
+    window_status = Closing; // animating, do not disturb
     
     MCompositeManager *p = (MCompositeManager *) qApp;
     bool defer = false;
@@ -410,13 +427,13 @@ void MCompositeWindow::closeWindow()
         defer = true;
     }
     
-    updateWindowPixmap();
     origPosition = pos();
     
     // Custom close window animation handler    
     QList<MCompositeManagerExtension*> evlist = p->d->m_extensions.values(MapNotify);
     for (int i = 0; i < evlist.size(); ++i) { 
         if (evlist[i]->windowClosed(this)) {
+            window_status = Normal; // can't guarantee that Closing is cleared
             return;
         }
     }
@@ -444,6 +461,8 @@ void MCompositeWindow::finalizeState()
 {
     endAnimation();
 
+    // as far as this window is concerned, it's OK to direct render
+    window_status = Normal;
     if (pc && pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
         emit desktopActivated(this);
 
@@ -454,10 +473,6 @@ void MCompositeWindow::finalizeState()
         hide();
         iconify_state = TransitionIconifyState;
         emit itemIconified(this);
-        if (isClosing()) {
-            emit windowClosed(this);
-            return;
-        }
     } else {
         iconify_state = NoIconifyState;
         iconified_final = false;
@@ -467,7 +482,6 @@ void MCompositeWindow::finalizeState()
         // to allow it)
         q_itemRestored();
     }
-    window_status = Normal;
     
     // item lifetime
     if (destroyed)
@@ -653,7 +667,7 @@ MCompositeWindow *MCompositeWindow::compositeWindow(Qt::HANDLE window)
 
 void MCompositeWindow::beginAnimation()
 {
-    if (!isMapped())
+    if (!isMapped() && window_status != Closing)
         return;
 
     if (!is_transitioning) {
@@ -769,6 +783,8 @@ int MCompositeWindow::indexInStack() const
 
 void MCompositeWindow::setIsMapped(bool mapped) 
 { 
+    if (mapped)
+        window_status = Normal; // make sure Closing -> Normal when remapped
     if (pc) pc->setIsMapped(mapped); 
 }
 
