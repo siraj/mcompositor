@@ -307,7 +307,11 @@ static Window create_window(Display *dpy, int width, int height,
                             visual,
                             attr_mask | CWColormap | CWBorderPixel, &attrs);
         } else {
-	  attrs.background_pixel = BlackPixel (dpy, 0);
+          XColor color;
+          if (!XParseColor(dpy, DefaultColormap(dpy, 0), "red", &color))
+              attrs.background_pixel = BlackPixel(dpy, 0);
+          else
+	      attrs.background_pixel = color.pixel;
           w = XCreateWindow(dpy, DefaultRootWindow (dpy), 0, 0,
                             width, height, 0, input_only ? 0 : CopyFromParent,
                             input_only ? InputOnly : InputOutput,
