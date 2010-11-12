@@ -106,7 +106,6 @@ static QRect windowRectFromGraphicsItem(const QGraphicsView &view,
 MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     : MWindow(parent)
 {
-    XSelectInput(QX11Info::display(), winId(), PropertyChangeMask);
     onlyStatusbarAtom = XInternAtom(QX11Info::display(),
                                     "_MDECORATOR_ONLY_STATUSBAR", False);
     managedWindowAtom = XInternAtom(QX11Info::display(),
@@ -247,21 +246,23 @@ void MDecoratorWindow::setInputRegion()
 {
     static XRectangle prev_rect = {0, 0, 0, 0};
     QRegion region;
-    QRect r = statusBar->boundingRect().toRect();
-    region += r;
+    region += statusBar->geometry().toRect();
     if (!only_statusbar) {
-        QRect r2 = navigationBar->boundingRect().toRect();
-        QRegion tmp(0, r.height(), r2.width(), r2.height());
-        region += tmp;
-        r2 = homeButtonPanel->boundingRect().toRect();
-        tmp = QRegion(0, r.height(), r2.width(), r2.height());
-        region += tmp;
-        r2 = escapeButtonPanel->boundingRect().toRect();
-        tmp = QRegion(0, r.height(), r2.width(), r2.height());
-        region += tmp;
+        region += navigationBar->geometry().toRect();
+        region += homeButtonPanel->geometry().toRect();
+        region += escapeButtonPanel->geometry().toRect();
     }
+
+    const QRect fs(QApplication::desktop()->screenGeometry());
     decoratorRect = region.boundingRect();
 
+    if (!only_statusbar && decoratorRect.width() > fs.width() / 2
+        && decoratorRect.height() > fs.height() / 2) {
+        // decorator is so big that it is probably in more than one part
+        // (which is not yet supported)
+        setOnlyStatusbar(true);
+        region = decoratorRect = statusBar->geometry().toRect();
+    }
     XRectangle rect = itemRectToScreenRect(decoratorRect);
     if (memcmp(&prev_rect, &rect, sizeof(XRectangle))) {
         Display *dpy = QX11Info::display();
