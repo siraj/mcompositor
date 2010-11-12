@@ -131,12 +131,7 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
 
 void MDecoratorFrame::setDecoratorWindow(Qt::HANDLE window)
 {
-    unsigned char one = 1;
     decorator_window = window;
-    XChangeProperty(QX11Info::display(), decorator_window,
-                    XInternAtom(QX11Info::display(),
-                                "_MDECORATOR_ONLY_STATUSBAR", False),
-                    XA_CARDINAL, 32, PropModeReplace, &one, 1);
     XMapWindow(QX11Info::display(), window);
 }
 
@@ -215,4 +210,19 @@ void MDecoratorFrame::setAutoRotation(bool mode)
 {
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetAutoRotation", mode);
+}
+
+void MDecoratorFrame::setOnlyStatusbar(bool mode)
+{
+    if (decorator_window) {
+        long val = mode;
+        Atom a = XInternAtom(QX11Info::display(),
+                             "_MDECORATOR_ONLY_STATUSBAR", False);
+        XChangeProperty(QX11Info::display(), decorator_window, a, XA_CARDINAL,
+                        32, PropModeReplace, (unsigned char *)&val, 1);
+    }
+    /* FIXME: replaced with a window property due to reliability problems
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemoteSetOnlyStatusbar", mode);
+                             */
 }
