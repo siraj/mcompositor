@@ -2978,8 +2978,10 @@ void MCompositeManagerPrivate::redirectWindows()
         xcb_get_geometry_reply_t *geom;
         geom = xcb_get_geometry_reply(xcb_conn,
                         xcb_get_geometry(xcb_conn, kids[i]), 0);
-        if (!geom)
+        if (!geom) {
+            free(attr);
             continue;
+        }
         // Pre-create MWindowPropertyCache for likely application windows
         if (localwin != kids[i] && (attr->map_state == XCB_MAP_STATE_VIEWABLE
             || (geom->width == xres && geom->height == yres))
@@ -2989,6 +2991,8 @@ void MCompositeManagerPrivate::redirectWindows()
                                                                attr, geom);
             if (!p->is_valid) {
                 delete p;
+                free(attr);
+                free(geom);
                 continue;
             }
             prop_caches[kids[i]] = p;
