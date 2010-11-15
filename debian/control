@@ -34,7 +34,7 @@ Description: commandline tools for testing mcompositor
 
 Package: mcompositor-functional-tests
 Architecture: any
-Depends: libmeegotouchcore0, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils, aegis-dss-tools [arm armel], mcompositor-utils, ${shlibs:Depends}
+Depends: libmeegotouchcore0, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils, aegis-dss-tools [arm armel], x11-utils, mcompositor-utils, ${shlibs:Depends}
 XB-Maemo-CI-Packages:  mcompositor
 XB-Maemo-CI-Stage: fast
 Description: mcompositor functional testcases
