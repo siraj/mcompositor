@@ -80,6 +80,11 @@ public:
     void setAutoRotation(bool mode);
 
     /*!
+     * Sets the "only statusbar" mode.
+     */
+    void setOnlyStatusbar(bool mode);
+
+    /*!
      * Sets the decorator window and maps that window if it is unmapped.
      */
     void setDecoratorWindow(Qt::HANDLE window);
