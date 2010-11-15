@@ -812,7 +812,7 @@ static bool old_main(QStringList& args, QString& stdOut)
                                 set_always_mapped(dpy,
                                     strtol(args.at(1).toAscii().data(), 0, 16),
                                     atoi(args.at(2).toAscii().data()));
-                                break;
+                                return true;
                         }
                 }
 		if (*p == 'E') {
