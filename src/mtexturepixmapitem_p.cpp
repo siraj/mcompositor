@@ -433,6 +433,9 @@ MTexturePixmapPrivate::~MTexturePixmapPrivate()
 
     if (windowp)
         XFreePixmap(QX11Info::display(), windowp);
+
+    if (pastDamages)
+        delete pastDamages;
 }
 
 void MTexturePixmapPrivate::saveBackingStore()

@@ -246,15 +246,24 @@ void MDecoratorWindow::setInputRegion()
 {
     static XRectangle prev_rect = {0, 0, 0, 0};
     QRegion region;
-    region += statusBar->geometry().toRect();
+    QRect r_tmp(statusBar->geometry().toRect());
+    region += statusBar->mapToScene(r_tmp).boundingRect().toRect();
     if (!only_statusbar) {
-        region += navigationBar->geometry().toRect();
-        region += homeButtonPanel->geometry().toRect();
-        region += escapeButtonPanel->geometry().toRect();
+        r_tmp = QRect(navigationBar->geometry().toRect());
+        region += navigationBar->mapToScene(r_tmp).boundingRect().toRect();
+        r_tmp = QRect(homeButtonPanel->geometry().toRect());
+        region += homeButtonPanel->mapToScene(r_tmp).boundingRect().toRect();
+        r_tmp = QRect(escapeButtonPanel->geometry().toRect());
+        region += escapeButtonPanel->mapToScene(r_tmp).boundingRect().toRect();
     }
 
     const QRect fs(QApplication::desktop()->screenGeometry());
     decoratorRect = region.boundingRect();
+    // crop it to fullscreen to work around a weird issue
+    if (decoratorRect.width() > fs.width())
+        decoratorRect.setWidth(fs.width());
+    if (decoratorRect.height() > fs.height())
+        decoratorRect.setHeight(fs.height());
 
     if (!only_statusbar && decoratorRect.width() > fs.width() / 2
         && decoratorRect.height() > fs.height() / 2) {
