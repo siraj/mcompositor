@@ -72,7 +72,7 @@ public:
     GLuint depth_buffer;
     
     bool valid;
-    QList<MTexturePixmapItem*> item_groups;
+    QList<MTexturePixmapItem*> item_list;
     MTexturePixmapPrivate* renderer;
 };
 
@@ -111,6 +111,8 @@ MCompositeWindowGroup::~MCompositeWindowGroup()
     
     GLuint texture = d->texture;
     glDeleteTextures(1, &texture);
+    GLuint depth_buffer = d->depth_buffer;
+    glDeleteRenderbuffers(1, &depth_buffer);
     GLuint fbo = d->fbo;
     glDeleteFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -185,12 +187,12 @@ void MCompositeWindowGroup::addChildWindow(MTexturePixmapItem* window)
     Q_D(MCompositeWindowGroup);
     window->d->current_window_group = this;
     connect(window, SIGNAL(destroyed()), SLOT(q_removeWindow()));
-    d->item_groups.append(window);
+    d->item_list.append(window);
     
     // ensure group windows are already stacked in proper order in advance
     // for back to front rendering. Could use depth buffer attachment at some 
     // point so this might be unecessary
-    qSort(d->item_groups.begin(), d->item_groups.end(), behindCompare);
+    qSort(d->item_list.begin(), d->item_list.end(), behindCompare);
     updateWindowPixmap();
 }
 
@@ -201,7 +203,7 @@ void MCompositeWindowGroup::removeChildWindow(MTexturePixmapItem* window)
 {
     Q_D(MCompositeWindowGroup);
     window->d->current_window_group = 0;
-    d->item_groups.removeAll(window);
+    d->item_list.removeAll(window);
 }
 
 void MCompositeWindowGroup::q_removeWindow()
@@ -209,7 +211,7 @@ void MCompositeWindowGroup::q_removeWindow()
     Q_D(MCompositeWindowGroup);
     MTexturePixmapItem* w = qobject_cast<MTexturePixmapItem*>(sender());
     if (w) 
-        d->item_groups.removeAll(w);
+        d->item_list.removeAll(w);
 }
 
 void MCompositeWindowGroup::saveBackingStore() {}
@@ -284,8 +286,8 @@ void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
     d->main_window->d->inverted_texture = false;
     d->main_window->renderTexture(d->main_window->sceneTransform());
     d->main_window->d->inverted_texture = true;
-    for (int i = 0; i < d->item_groups.size(); ++i) {
-        MTexturePixmapItem* item = d->item_groups[i];
+    for (int i = 0; i < d->item_list.size(); ++i) {
+        MTexturePixmapItem* item = d->item_list[i];
         item->d->inverted_texture = false;
         item->renderTexture(item->sceneTransform());
         item->d->inverted_texture = true;
