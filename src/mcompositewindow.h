@@ -309,7 +309,7 @@ public:
      *  Returns a pointer to this window's group if it belongs to a group and 0
      * if 0 if not a member
      */
-    MCompositeWindowGroup* windowGroup() const;
+    MCompositeWindowGroup* group() const;
     
     /*! Disabled alpha-blending for a dim-effect instead */
     void setDimmedEffect(bool dimmed) { dimmed_effect = dimmed; }

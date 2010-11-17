@@ -794,7 +794,7 @@ bool MCompositeWindow::isMapped() const
     return pc ? pc->isMapped() : false;
 }
 
-MCompositeWindowGroup* MCompositeWindow::windowGroup() const
+MCompositeWindowGroup* MCompositeWindow::group() const
 {
     return renderer()->current_window_group;
 }

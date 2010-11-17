@@ -48,8 +48,10 @@
 
 #ifdef GLES2_VERSION
 #define FORMAT GL_RGBA
+#define DEPTH GL_DEPTH_COMPONENT16
 #else
 #define FORMAT GL_RGBA8
+#define DEPTH GL_DEPTH_COMPONENT
 #endif
 
 class MCompositeWindowGroupPrivate
@@ -59,14 +61,15 @@ public:
         :main_window(mainWindow),
          texture(0),
          fbo(0),
+         depth_buffer(0),
          valid(false),
          renderer(new MTexturePixmapPrivate(0, mainWindow))            
-    {
-       
+    {       
     }
     MTexturePixmapItem* main_window;
     GLuint texture;
     GLuint fbo;
+    GLuint depth_buffer;
     
     bool valid;
     QList<MTexturePixmapItem*> item_groups;
@@ -88,7 +91,7 @@ MCompositeWindowGroup::MCompositeWindowGroup(MTexturePixmapItem* mainWindow)
     connect(mainWindow, SIGNAL(destroyed()), SLOT(deleteLater()));
     init();
     updateWindowPixmap();
-    setZValue(mainWindow->zValue() - 1);
+    setZValue(mainWindow->zValue());
     stackBefore(mainWindow);
 }
 
@@ -126,9 +129,9 @@ void MCompositeWindowGroup::init()
         return;
     }
     d->renderer->current_window_group = this;
-
-    // no renderbuffer because we dont need the stencil and depthbuffer attachment
+    
     glGenFramebuffers(1, &d->fbo);
+    glGenRenderbuffers(1, &d->depth_buffer);
     glBindFramebuffer(GL_RENDERBUFFER, d->fbo);
     
     glGenTextures(1, &d->texture);
@@ -139,9 +142,17 @@ void MCompositeWindowGroup::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
+    glBindRenderbuffer(GL_RENDERBUFFER, d->depth_buffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, DEPTH, 
+                          d->main_window->boundingRect().width(), 
+                          d->main_window->boundingRect().height());
+
     glBindFramebuffer(GL_FRAMEBUFFER, d->fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                            GL_TEXTURE_2D, d->texture, 0);
+
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                              GL_RENDERBUFFER, d->depth_buffer);
     
     glBindTexture(GL_TEXTURE_2D, d->texture);
     glTexImage2D(GL_TEXTURE_2D, 0, FORMAT, 

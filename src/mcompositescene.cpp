@@ -127,7 +127,7 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         if (!cw->isWindowTransitioning()
             && !cw->propertyCache()->hasAlpha() 
             && cw->opacity() == 1.0
-            && !cw->windowGroup()) // window is renderered off-screen)
+            && !cw->group()) // window is not renderered off-screen)
             visible -= r;
     }
     if (size > 0) {
