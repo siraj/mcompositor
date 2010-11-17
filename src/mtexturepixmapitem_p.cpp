@@ -441,7 +441,8 @@ MTexturePixmapPrivate::~MTexturePixmapPrivate()
 void MTexturePixmapPrivate::saveBackingStore()
 {
     if ((item->propertyCache()->is_valid && !item->propertyCache()->isMapped())
-        || item->propertyCache()->isInputOnly())
+        || item->propertyCache()->isInputOnly()
+        || !window)
         return;
 
     if (windowp)
@@ -452,11 +453,15 @@ void MTexturePixmapPrivate::saveBackingStore()
 
 void MTexturePixmapPrivate::windowRaised()
 {
-    XRaiseWindow(QX11Info::display(), item->window());
+    if (item->window())
+        XRaiseWindow(QX11Info::display(), item->window());
 }
 
 void MTexturePixmapPrivate::resize(int w, int h)
 {
+    if (!window)
+        return;
+    
     if (!brect.isEmpty() && !item->isDirectRendered() && (brect.width() != w || brect.height() != h)) {
         item->saveBackingStore();
         item->updateWindowPixmap();

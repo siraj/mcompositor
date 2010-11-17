@@ -43,6 +43,7 @@ class QGLContext;
 class QTransform;
 class MGLResourceManager;
 class MCompositeWindowShaderEffect;
+class MCompositeWindowGroup;
 
 /*! Internal private implementation of MTexturePixmapItem
   Warning! Interface here may change at any time!
@@ -87,6 +88,7 @@ public:
 
     MTexturePixmapItem *item;
     QPointer<MCompositeWindowShaderEffect> current_effect;
+    QPointer<MCompositeWindowGroup> current_window_group;
     const MCompositeWindowShaderEffect *prev_effect;
 
     // Contains a limited number of server times we received damage

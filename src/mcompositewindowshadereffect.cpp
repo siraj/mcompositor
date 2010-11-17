@@ -35,6 +35,7 @@
 #include "mtexturepixmapitem.h"
 #include "mcompositewindowshadereffect.h"
 #include "mtexturepixmapitem_p.h"
+#include "mcompositewindowgroup.h"
 #include <QByteArray>
 
 static const char default_frag[] = "\
@@ -110,8 +111,12 @@ GLuint MCompositeWindowShaderEffect::installShaderFragment(const QByteArray& cod
 GLuint MCompositeWindowShaderEffect::texture() const
 {
     // TODO: This assumes we have always have hadware TFP support 
-    if (d->priv_render)
-        return d->priv_render->textureId;
+    if (d->priv_render) {
+        if (!d->priv_render->current_window_group)
+            return d->priv_render->textureId;
+        else
+            return d->priv_render->current_window_group->texture();
+    }
     return 0;
 }
 
@@ -172,13 +177,12 @@ void MCompositeWindowShaderEffect::drawSource(const QTransform &transform,
 */
 void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 {
-    if (!window->isValid())
+    if (!window->isValid() && (window->type() != MCompositeWindowGroup::Type))
         return;
 
     // only happens with GL. sorry n800 guys :p
 #ifdef QT_OPENGL_LIB
-    MTexturePixmapItem* item = (MTexturePixmapItem*) window;
-    item->d->installEffect(this);    
+    window->renderer()->installEffect(this);    
 #endif
 }
 
@@ -188,12 +192,11 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 */
 void MCompositeWindowShaderEffect::removeEffect(MCompositeWindow* window)
 {
-    if (!window->isValid())
+    if (!window->isValid() && (window->type() != MCompositeWindowGroup::Type))
         return;
 
 #ifdef QT_OPENGL_LIB
-    MTexturePixmapItem* item = (MTexturePixmapItem*) window;
-    item->d->installEffect(0);    
+    window->renderer()->installEffect(0);    
 #endif
 }
 

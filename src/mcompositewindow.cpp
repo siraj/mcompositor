@@ -24,6 +24,7 @@
 #include "mtexturepixmapitem.h"
 #include "mdecoratorframe.h"
 #include "mcompositemanagerextension.h"
+#include "mcompositewindowgroup.h"
 
 #include <QX11Info>
 #include <QGraphicsScene>
@@ -791,4 +792,9 @@ void MCompositeWindow::setIsMapped(bool mapped)
 bool MCompositeWindow::isMapped() const 
 {
     return pc ? pc->isMapped() : false;
+}
+
+MCompositeWindowGroup* MCompositeWindow::windowGroup() const
+{
+    return renderer()->current_window_group;
 }

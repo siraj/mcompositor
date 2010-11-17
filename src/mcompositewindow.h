@@ -27,6 +27,8 @@
 #include "mwindowpropertycache.h"
 
 class MCompWindowAnimator;
+class MTexturePixmapPrivate;
+class MCompositeWindowGroup;
 
 /*!
  * This is the base class for composited window items. It provided general
@@ -302,6 +304,12 @@ public:
      * Returns whatever window is directly behind this window. 0 if there is none.
      */
     MCompositeWindow* behind() const { return behind_window; }
+
+    /*!
+     *  Returns a pointer to this window's group if it belongs to a group and 0
+     * if 0 if not a member
+     */
+    MCompositeWindowGroup* windowGroup() const;
     
     /*! Disabled alpha-blending for a dim-effect instead */
     void setDimmedEffect(bool dimmed) { dimmed_effect = dimmed; }
@@ -379,8 +387,11 @@ protected:
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
     virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);    
     virtual QPainterPath shape() const;
-    
+        
 private:
+    /* re-implemented in GL/GLES2 backends for internal interaction
+      between shader effects */
+    virtual MTexturePixmapPrivate* renderer() const = 0;
     void findBehindWindow();
 
     QPointer<MWindowPropertyCache> pc;
@@ -421,6 +432,7 @@ private:
     Qt::HANDLE win_id;
 
     friend class MTexturePixmapPrivate;
+    friend class MCompositeWindowShaderEffect;
 };
 
 #endif

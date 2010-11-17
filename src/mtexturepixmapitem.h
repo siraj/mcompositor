@@ -41,6 +41,7 @@ class MTexturePixmapPrivate;
  */
 class MTexturePixmapItem: public MCompositeWindow
 {
+    Q_OBJECT
 public:
     /*!
      * Constructs a MTexturePixmapItem
@@ -101,16 +102,19 @@ protected:
     virtual void windowRaised();
 
 private:
+    virtual MTexturePixmapPrivate* renderer() const;
     void init();
     void initCustomTfp();
     void cleanup();
     void rebindPixmap();
     void doTFP();
+    void renderTexture(const QTransform& transform);
 
     MTexturePixmapPrivate *const d;
     friend class MTexturePixmapPrivate;
     friend class MCompositeManagerPrivate;
     friend class MCompositeWindowShaderEffect;
+    friend class MCompositeWindowGroupPrivate;
     friend class MCompositeWindowGroup;
 };
 

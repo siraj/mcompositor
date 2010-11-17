@@ -19,6 +19,7 @@
 
 #include "mtexturepixmapitem.h"
 #include "mtexturepixmapitem_p.h"
+#include "mcompositewindowgroup.h"
 
 #include <QPainterPath>
 #include <QRect>
@@ -309,8 +310,8 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
 }
 
 void MTexturePixmapItem::paint(QPainter *painter,
-                                 const QStyleOptionGraphicsItem *option,
-                                 QWidget *widget)
+                               const QStyleOptionGraphicsItem *option,
+                               QWidget *widget)
 {
     Q_UNUSED(option)
     Q_UNUSED(widget)
@@ -332,6 +333,14 @@ void MTexturePixmapItem::paint(QPainter *painter,
     if (!d->ctx)
         d->ctx = const_cast<QGLContext *>(gl->context());
 
+    if (!d->current_window_group) 
+        renderTexture(painter->combinedTransform());
+    else
+        d->current_window_group->updateWindowPixmap();
+}
+
+void MTexturePixmapItem::renderTexture(const QTransform& transform)
+{    
     if (propertyCache()->hasAlpha() || (opacity() < 1.0f && !dimmedEffect()) ) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -357,7 +366,7 @@ void MTexturePixmapItem::paint(QPainter *painter,
                        d->damageRegion.rects().at(i).height()),
                       d->damageRegion.rects().at(i).width(),
                       d->damageRegion.rects().at(i).height());
-            d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());        
+            d->drawTexture(transform, boundingRect(), opacity());        
         }
     } else if (shape_on) {
         // draw a shaped window using glScissor
@@ -368,11 +377,10 @@ void MTexturePixmapItem::paint(QPainter *painter,
                        shape.rects().at(i).height()),
                       shape.rects().at(i).width(),
                       shape.rects().at(i).height());
-            d->drawTexture(painter->combinedTransform(),
-                           boundingRect(), opacity());
+            d->drawTexture(transform, boundingRect(), opacity());
         }
     } else
-        d->drawTexture(painter->combinedTransform(), boundingRect(), opacity());
+        d->drawTexture(transform, boundingRect(), opacity());
     
     if (scissor_on)
         glDisable(GL_SCISSOR_TEST);
@@ -441,4 +449,9 @@ void MTexturePixmapItem::doTFP()
             glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, d->egl_image);
         }
     }
+}
+
+MTexturePixmapPrivate* MTexturePixmapItem::renderer() const
+{
+    return d;
 }

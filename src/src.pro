@@ -40,7 +40,8 @@ HEADERS += \
     mdecoratorframe.h \
     mcompositemanagerextension.h \
     mcompositewindowshadereffect.h \
-    mcompmgrextensionfactory.h
+    mcompmgrextensionfactory.h \
+    mcompositewindowgroup.h
 
 SOURCES += \
     mtexturepixmapitem_p.cpp \
@@ -53,7 +54,8 @@ SOURCES += \
     mdevicestate.cpp \
     mdecoratorframe.cpp \
     mcompositemanagerextension.cpp \
-    mcompositewindowshadereffect.cpp
+    mcompositewindowshadereffect.cpp \
+    mcompositewindowgroup.cpp
 
 RESOURCES = tools.qrc
 

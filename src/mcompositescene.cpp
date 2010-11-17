@@ -27,6 +27,7 @@
 
 #include "mcompositewindow.h"
 #include "mcompositescene.h"
+#include "mcompositewindowgroup.h"
 
 #include <X11/extensions/Xfixes.h>
 #ifdef HAVE_SHAPECONST
@@ -87,20 +88,22 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
     for (int i = numItems - 1; i >= 0; --i) {
         MCompositeWindow *cw = (MCompositeWindow *) items[i];
 
-        if (!cw->propertyCache()) // this window is dead
-            continue;
-        if (cw->hasTransitioningWindow() && cw->propertyCache()->isDecorator())
-            // if we have a transition animation, don't draw the decorator
-            // lest we can have it drawn with the transition (especially
-            // when desktop window is not yet shown, NB#192454)
-            continue;
-        if (cw->isDirectRendered() || !cw->isVisible()
-            || !(cw->propertyCache()->isMapped() || cw->isWindowTransitioning())
-            || cw->propertyCache()->isInputOnly())
-            continue;
-        if (visible.isEmpty())
-            // nothing below is visible anymore
-            break;
+        if (cw->type() != MCompositeWindowGroup::Type) {
+            if (!cw->propertyCache())  // this window is dead
+                continue;
+            if (cw->hasTransitioningWindow() && cw->propertyCache()->isDecorator())
+                // if we have a transition animation, don't draw the decorator
+                // lest we can have it drawn with the transition (especially
+                // when desktop window is not yet shown, NB#192454)
+                continue;
+            if (cw->isDirectRendered() || !cw->isVisible()
+                || !(cw->propertyCache()->isMapped() || cw->isWindowTransitioning())
+                || cw->propertyCache()->isInputOnly())
+                    continue;            
+            if (visible.isEmpty())
+                // nothing below is visible anymore
+                break;
+        }
 
         // Ensure that intersects() still work, otherwise, painting a window
         // is skipped when another window above it is scaled or moved to an 
@@ -110,7 +113,8 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
         
         // transitioning window can be smaller than shapeRegion(), so paint
         // all transitioning windows
-        if (cw->isWindowTransitioning() || visible.intersects(r)) {
+        if (cw->isWindowTransitioning() || visible.intersects(r)
+            || cw->type() == MCompositeWindowGroup::Type) {
             if (size >= 9)
                 to_paint.resize(to_paint.size()+1);
             to_paint[size++] = i;
@@ -121,7 +125,9 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
 
         // subtract opaque regions
         if (!cw->isWindowTransitioning()
-            && !cw->propertyCache()->hasAlpha() && cw->opacity() == 1.0)
+            && !cw->propertyCache()->hasAlpha() 
+            && cw->opacity() == 1.0
+            && !cw->windowGroup()) // window is renderered off-screen)
             visible -= r;
     }
     if (size > 0) {
