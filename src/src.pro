@@ -2,7 +2,9 @@ include(../meegotouch_config.pri)
 
 contains(QT_CONFIG, opengles2) {
      message("building Makefile for EGL/GLES2 version")
-     SOURCES += mtexturepixmapitem_egl.cpp
+     SOURCES += mtexturepixmapitem_egl.cpp mcompositewindowgroup.cpp
+     HEADERS += mcompositewindowgroup.h
+     publicHeaders.files +=  mcompositewindowgroup.h
 } else {
      # Qt wasn't built with EGL/GLES2 support but EGL is present
      # ensure we still use the EGL back-end 
@@ -40,8 +42,7 @@ HEADERS += \
     mdecoratorframe.h \
     mcompositemanagerextension.h \
     mcompositewindowshadereffect.h \
-    mcompmgrextensionfactory.h \
-    mcompositewindowgroup.h
+    mcompmgrextensionfactory.h
 
 SOURCES += \
     mtexturepixmapitem_p.cpp \
@@ -54,8 +55,7 @@ SOURCES += \
     mdevicestate.cpp \
     mdecoratorframe.cpp \
     mcompositemanagerextension.cpp \
-    mcompositewindowshadereffect.cpp \
-    mcompositewindowgroup.cpp
+    mcompositewindowshadereffect.cpp
 
 RESOURCES = tools.qrc
 
@@ -64,7 +64,7 @@ PKGCONFIG += contextsubscriber-1.0
 QT += core gui opengl
 
 # TODO: refactor the headers to exclude private stuff
-publicHeaders.files = mcompositewindow.h \
+publicHeaders.files += mcompositewindow.h \
                       mcompositemanager.h \
                       mcompositewindowshadereffect.h \
                       mcompositemanagerextension.h \

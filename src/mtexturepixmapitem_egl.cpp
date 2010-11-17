@@ -305,8 +305,12 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
         saveBackingStore();
         new_image = true;
     }    
-    if (new_image || !d->damageRegion.isEmpty())
-        d->glwidget->update();
+    if (new_image || !d->damageRegion.isEmpty()) {
+        if (!d->current_window_group) 
+            d->glwidget->update();
+        else
+            d->current_window_group->updateWindowPixmap();
+    }
 }
 
 void MTexturePixmapItem::paint(QPainter *painter,
@@ -335,8 +339,6 @@ void MTexturePixmapItem::paint(QPainter *painter,
 
     if (!d->current_window_group) 
         renderTexture(painter->combinedTransform());
-    else
-        d->current_window_group->updateWindowPixmap();
 }
 
 void MTexturePixmapItem::renderTexture(const QTransform& transform)

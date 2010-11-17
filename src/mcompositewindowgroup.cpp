@@ -40,7 +40,6 @@
 */
 
 #include <QtOpenGL> 
-#include <QGLFramebufferObject>
 #include <QList>
 #include <mcompositewindowgroup.h>
 
@@ -70,7 +69,7 @@ public:
     GLuint fbo;
     
     bool valid;
-    QList<MTexturePixmapItem*> win_groups;
+    QList<MTexturePixmapItem*> item_groups;
     MTexturePixmapPrivate* renderer;
 };
 
@@ -175,12 +174,12 @@ void MCompositeWindowGroup::addChildWindow(MTexturePixmapItem* window)
     Q_D(MCompositeWindowGroup);
     window->d->current_window_group = this;
     connect(window, SIGNAL(destroyed()), SLOT(q_removeWindow()));
-    d->win_groups.append(window);
+    d->item_groups.append(window);
     
     // ensure group windows are already stacked in proper order in advance
     // for back to front rendering. Could use depth buffer attachment at some 
     // point so this might be unecessary
-    qSort(d->win_groups.begin(), d->win_groups.end(), behindCompare);
+    qSort(d->item_groups.begin(), d->item_groups.end(), behindCompare);
     updateWindowPixmap();
 }
 
@@ -191,7 +190,7 @@ void MCompositeWindowGroup::removeChildWindow(MTexturePixmapItem* window)
 {
     Q_D(MCompositeWindowGroup);
     window->d->current_window_group = 0;
-    d->win_groups.removeAll(window);
+    d->item_groups.removeAll(window);
 }
 
 void MCompositeWindowGroup::q_removeWindow()
@@ -199,7 +198,7 @@ void MCompositeWindowGroup::q_removeWindow()
     Q_D(MCompositeWindowGroup);
     MTexturePixmapItem* w = qobject_cast<MTexturePixmapItem*>(sender());
     if (w) 
-        d->win_groups.removeAll(w);
+        d->item_groups.removeAll(w);
 }
 
 void MCompositeWindowGroup::saveBackingStore() {}
@@ -274,8 +273,8 @@ void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
     d->main_window->d->inverted_texture = false;
     d->main_window->renderTexture(d->main_window->sceneTransform());
     d->main_window->d->inverted_texture = true;
-    for (int i = 0; i < d->win_groups.size(); ++i) {
-        MTexturePixmapItem* item = d->win_groups[i];
+    for (int i = 0; i < d->item_groups.size(); ++i) {
+        MTexturePixmapItem* item = d->item_groups[i];
         item->d->inverted_texture = false;
         item->renderTexture(item->sceneTransform());
         item->d->inverted_texture = true;
