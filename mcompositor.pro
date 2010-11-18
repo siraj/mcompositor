@@ -5,6 +5,7 @@ SUBDIRS = \
     src \
     mcompositor\
     tests \
+    translations
 
 src.depends=decorators
 

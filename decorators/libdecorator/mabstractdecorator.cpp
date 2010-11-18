@@ -137,7 +137,19 @@ void MAbstractDecorator::setAvailableGeometry(const QRect& rect)
     d->remote_compositor->invoke("MCompositeManager", "decoratorRectChanged", rect);
 }
 
+void MAbstractDecorator::queryDialogAnswer(unsigned int w, bool a)
+{
+    Q_D(MAbstractDecorator);
+
+    d->remote_compositor->invoke("MCompositeManager", "queryDialogAnswer", w, a);
+}
+
 void MAbstractDecorator::RemoteSetOnlyStatusbar(bool mode)
 {
     setOnlyStatusbar(mode);
+}
+
+void MAbstractDecorator::RemoteShowQueryDialog(bool visible)
+{
+    showQueryDialog(visible);
 }

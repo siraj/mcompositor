@@ -23,7 +23,9 @@
 #include <MHomeButtonPanel>
 #include <MEscapeButtonPanel>
 #include <MNavigationBar>
+#include <MMessageBox>
 #include <mstatusbar.h>
+#include <mlocale.h>
 
 #include <X11/Xlib.h>
 #ifdef HAVE_SHAPECONST
@@ -48,7 +50,7 @@ public:
     const QRect availableClientRect() const;
     bool x11Event(XEvent *e);
     void setWindowTitle(const QString& title);
-    void setOnlyStatusbar(bool mode);
+    void setOnlyStatusbar(bool mode, bool temporary = false);
     /*!
      * \brief Sets the region of the window that can receive input events.
      *
@@ -56,6 +58,8 @@ public:
      * to the windows below.
      */
     void setInputRegion();
+    void managedWindowChanged(Qt::HANDLE);
+    void showQueryDialog(bool visible);
 
 protected:
     virtual void closeEvent(QCloseEvent * event );
@@ -63,6 +67,8 @@ protected:
 private slots:
 
     void screenRotated(const M::Orientation &orientation);
+    void yesButtonClicked();
+    void noButtonClicked();
 
 signals:
 
@@ -78,10 +84,13 @@ private:
     MEscapeButtonPanel *escapeButtonPanel;
     MNavigationBar *navigationBar;
     MStatusBar *statusBar;
+    MMessageBox *messageBox;
+    Window managed_window;
     QRect decoratorRect;
-    bool only_statusbar;
+    bool only_statusbar, requested_only_statusbar;
     Atom onlyStatusbarAtom, managedWindowAtom;
     MDecorator *d;
+    MLocale locale;
 
     Q_DISABLE_COPY(MDecoratorWindow);
 };

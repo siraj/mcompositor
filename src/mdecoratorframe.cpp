@@ -104,13 +104,6 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
     client = cw;
 
     qulonglong winid = client ? client->window() : 0;
-    if (decorator_window) {
-        long val = winid;
-        Atom a = XInternAtom(QX11Info::display(),
-                             "_MDECORATOR_MANAGED_WINDOW", False);
-        XChangeProperty(QX11Info::display(), decorator_window, a, XA_WINDOW,
-                        32, PropModeReplace, (unsigned char *)&val, 1);
-    }
     if (!decorator_item)
         return;
     
@@ -120,10 +113,8 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
                                  cw->propertyCache()->requestedGeometry());
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetAutoRotation", false);
-    /* FIXME: replaced with a window property due to reliability problems
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetManagedWinId", winid);
-                             */
     
     if (cw)
         connect(cw, SIGNAL(destroyed()), SLOT(destroyClient()));
@@ -214,15 +205,12 @@ void MDecoratorFrame::setAutoRotation(bool mode)
 
 void MDecoratorFrame::setOnlyStatusbar(bool mode)
 {
-    if (decorator_window) {
-        long val = mode;
-        Atom a = XInternAtom(QX11Info::display(),
-                             "_MDECORATOR_ONLY_STATUSBAR", False);
-        XChangeProperty(QX11Info::display(), decorator_window, a, XA_CARDINAL,
-                        32, PropModeReplace, (unsigned char *)&val, 1);
-    }
-    /* FIXME: replaced with a window property due to reliability problems
     remote_decorator->invoke("MAbstractDecorator",
                              "RemoteSetOnlyStatusbar", mode);
-                             */
+}
+
+void MDecoratorFrame::showQueryDialog(bool visible)
+{
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemoteShowQueryDialog", visible);
 }

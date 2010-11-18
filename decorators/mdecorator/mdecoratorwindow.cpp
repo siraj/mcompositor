@@ -38,7 +38,8 @@
 #include <X11/extensions/shape.h>
 
 #include <mabstractdecorator.h>
-
+#include <mdesktopentry.h>
+#include <mbuttonmodel.h>
 
 class MDecorator: public MAbstractDecorator
 {
@@ -64,6 +65,7 @@ public:
                 XFree(p.value);
             }
         }
+        decorwindow->managedWindowChanged(window);
         decorwindow->setInputRegion();
         setAvailableGeometry(decorwindow->availableClientRect());
         decorwindow->setWindowTitle(title);
@@ -71,6 +73,10 @@ public:
 
 protected:
     virtual void activateEvent() {
+    }
+
+    virtual void showQueryDialog(bool visible) {
+        decorwindow->showQueryDialog(visible);
     }
 
     virtual void setAutoRotation(bool mode)
@@ -104,8 +110,14 @@ static QRect windowRectFromGraphicsItem(const QGraphicsView &view,
 #endif
 
 MDecoratorWindow::MDecoratorWindow(QWidget *parent)
-    : MWindow(parent)
+    : MWindow(parent),
+      messageBox(0),
+      managed_window(0)
 {
+    locale.addTranslationPath(TRANSLATION_INSTALLDIR);
+    locale.installTrCatalog("recovery");
+    locale.setDefault(locale);
+
     onlyStatusbarAtom = XInternAtom(QX11Info::display(),
                                     "_MDECORATOR_ONLY_STATUSBAR", False);
     managedWindowAtom = XInternAtom(QX11Info::display(),
@@ -123,6 +135,7 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
 
     sceneManager()->appearSceneWindowNow(statusBar);
     setOnlyStatusbar(false);
+    requested_only_statusbar = false;
 
     d = new MDecorator(this);
     connect(this, SIGNAL(homeClicked()), d, SLOT(minimize()));
@@ -132,12 +145,32 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
             this,
             SLOT(screenRotated(M::Orientation)));
 
+    setTranslucentBackground(true); // for translucent messageBox
     setFocusPolicy(Qt::NoFocus);
     setSceneSize();
     setMDecoratorWindowProperty();
 
     setInputRegion();
     setProperty("followsCurrentApplicationWindowOrientation", true);
+}
+
+void MDecoratorWindow::yesButtonClicked()
+{
+    d->queryDialogAnswer(managed_window, true);
+    showQueryDialog(false);
+}
+
+void MDecoratorWindow::noButtonClicked()
+{
+    d->queryDialogAnswer(managed_window, false);
+    showQueryDialog(false);
+}
+
+void MDecoratorWindow::managedWindowChanged(Qt::HANDLE w)
+{
+    if (w != managed_window && messageBox)
+        showQueryDialog(false);
+    managed_window = w;
 }
 
 void MDecoratorWindow::setWindowTitle(const QString& title)
@@ -184,17 +217,61 @@ bool MDecoratorWindow::x11Event(XEvent *e)
     return false;
 }
 
-void MDecoratorWindow::setOnlyStatusbar(bool mode)
+void MDecoratorWindow::showQueryDialog(bool visible)
+{
+    if (visible && !messageBox) {
+        char name[100];
+        snprintf(name, 100, "window 0x%lx", managed_window);
+        XClassHint cls = {0, 0};
+        XGetClassHint(QX11Info::display(), managed_window, &cls);
+        if (cls.res_name) {
+            strncpy(name, cls.res_name, 100);
+            MDesktopEntry de(QString("/usr/share/applications/")
+                             + name + ".desktop");
+            if (de.isValid() && !de.name().isEmpty())
+                strncpy(name, de.name().toAscii().data(), 100);
+        }
+        if (cls.res_class) XFree(cls.res_class);
+        if (cls.res_name) XFree(cls.res_name);
+
+        XSetTransientForHint(QX11Info::display(), winId(), managed_window);
+        requested_only_statusbar = only_statusbar;
+        setOnlyStatusbar(true, true);
+        messageBox = new MMessageBox(
+                         qtTrId("qtn_reco_app_not_responding").replace("%1", name),
+                         qtTrId("qtn_reco_close_app_question"),
+                         M::NoStandardButton);
+        MButtonModel *yes = messageBox->addButton(qtTrId("qtn_comm_command_yes"),
+                                                  M::AcceptRole);
+        MButtonModel *no = messageBox->addButton(qtTrId("qtn_comm_command_no"),
+                                                 M::RejectRole);
+        connect(yes, SIGNAL(clicked()), this, SLOT(yesButtonClicked()));
+        connect(no, SIGNAL(clicked()), this, SLOT(noButtonClicked()));
+        sceneManager()->appearSceneWindowNow(messageBox);
+    } else if (!visible && messageBox) {
+        XSetTransientForHint(QX11Info::display(), winId(), None);
+        sceneManager()->disappearSceneWindowNow(messageBox);
+        delete messageBox;
+        messageBox = 0;
+        setOnlyStatusbar(requested_only_statusbar);
+    }
+    setInputRegion();
+    update();
+}
+
+void MDecoratorWindow::setOnlyStatusbar(bool mode, bool temporary)
 {
     if (mode) {
         sceneManager()->disappearSceneWindowNow(navigationBar);
         sceneManager()->disappearSceneWindowNow(homeButtonPanel);
         sceneManager()->disappearSceneWindowNow(escapeButtonPanel);
-    } else {
+    } else if (!messageBox) {
         sceneManager()->appearSceneWindowNow(navigationBar);
         sceneManager()->appearSceneWindowNow(homeButtonPanel);
         sceneManager()->appearSceneWindowNow(escapeButtonPanel);
     }
+    if (!temporary)
+        requested_only_statusbar = mode;
     only_statusbar = mode;
 }
 
@@ -246,34 +323,42 @@ void MDecoratorWindow::setInputRegion()
 {
     static XRectangle prev_rect = {0, 0, 0, 0};
     QRegion region;
-    QRect r_tmp(statusBar->geometry().toRect());
-    region += statusBar->mapToScene(r_tmp).boundingRect().toRect();
-    if (!only_statusbar) {
-        r_tmp = QRect(navigationBar->geometry().toRect());
-        region += navigationBar->mapToScene(r_tmp).boundingRect().toRect();
-        r_tmp = QRect(homeButtonPanel->geometry().toRect());
-        region += homeButtonPanel->mapToScene(r_tmp).boundingRect().toRect();
-        r_tmp = QRect(escapeButtonPanel->geometry().toRect());
-        region += escapeButtonPanel->mapToScene(r_tmp).boundingRect().toRect();
-    }
-
     const QRect fs(QApplication::desktop()->screenGeometry());
-    decoratorRect = region.boundingRect();
-    // crop it to fullscreen to work around a weird issue
-    if (decoratorRect.width() > fs.width())
-        decoratorRect.setWidth(fs.width());
-    if (decoratorRect.height() > fs.height())
-        decoratorRect.setHeight(fs.height());
+    XRectangle rect;
+    if (messageBox) {
+        region = decoratorRect = fs;
+        rect.x = fs.x();
+        rect.y = fs.y();
+        rect.width = fs.width();
+        rect.height = fs.height();
+    } else {
+        QRect r_tmp(statusBar->geometry().toRect());
+        region += statusBar->mapToScene(r_tmp).boundingRect().toRect();
+        if (!only_statusbar) {
+            r_tmp = QRect(navigationBar->geometry().toRect());
+            region += navigationBar->mapToScene(r_tmp).boundingRect().toRect();
+            r_tmp = QRect(homeButtonPanel->geometry().toRect());
+            region += homeButtonPanel->mapToScene(r_tmp).boundingRect().toRect();
+            r_tmp = QRect(escapeButtonPanel->geometry().toRect());
+            region += escapeButtonPanel->mapToScene(r_tmp).boundingRect().toRect();
+        }
 
-    if (!only_statusbar && decoratorRect.width() > fs.width() / 2
-        && decoratorRect.height() > fs.height() / 2) {
-        // decorator is so big that it is probably in more than one part
-        // (which is not yet supported)
-        setOnlyStatusbar(true);
-        r_tmp = statusBar->geometry().toRect();
-        region = decoratorRect = statusBar->mapToScene(r_tmp).boundingRect().toRect();
+        decoratorRect = region.boundingRect();
+        // crop it to fullscreen to work around a weird issue
+        if (decoratorRect.width() > fs.width())
+            decoratorRect.setWidth(fs.width());
+        if (decoratorRect.height() > fs.height())
+            decoratorRect.setHeight(fs.height());
+
+        if (!only_statusbar && decoratorRect.width() > fs.width() / 2
+            && decoratorRect.height() > fs.height() / 2) {
+            // decorator is so big that it is probably in more than one part
+            // (which is not yet supported)
+            setOnlyStatusbar(true);
+            region = decoratorRect = statusBar->geometry().toRect();
+        }
+        rect = itemRectToScreenRect(decoratorRect);
     }
-    XRectangle rect = itemRectToScreenRect(decoratorRect);
     if (memcmp(&prev_rect, &rect, sizeof(XRectangle))) {
         Display *dpy = QX11Info::display();
         XserverRegion shapeRegion = XFixesCreateRegion(dpy, &rect, 1);
@@ -283,13 +368,6 @@ void MDecoratorWindow::setInputRegion()
         XFixesDestroyRegion(dpy, shapeRegion);
         XSync(dpy, False);
         prev_rect = rect;
-    }
-
-    // selective compositing
-    if (isVisible() && region.isEmpty()) {
-        hide();
-    } else if (!isVisible() && !region.isEmpty()) {
-        show();
     }
 }
 

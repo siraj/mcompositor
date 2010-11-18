@@ -52,6 +52,14 @@ public:
      */ 
     void setAvailableGeometry(const QRect& rect);
 
+    /*!
+     * Informs the compositor what was the answer to the query dialog.
+     *
+     * \param window managed window that the answer concerns.
+     * \param yes_answer true if the answer was 'yes'.
+     */ 
+    void queryDialogAnswer(unsigned int window, bool yes_answer);
+
 public slots:
 
     /*!
@@ -72,6 +80,7 @@ public slots:
     void RemoteSetAutoRotation(bool mode);
     void RemoteSetClientGeometry(const QRect& rect);
     void RemoteSetOnlyStatusbar(bool mode);
+    void RemoteShowQueryDialog(bool visible);
 
 protected:
 
@@ -96,6 +105,11 @@ protected:
       * Pure virtual function to set "only statusbar" mode.
       */
     virtual void setOnlyStatusbar(bool mode) = 0;
+
+     /*!
+      * Pure virtual function to show the "not responding" query dialog.
+      */
+    virtual void showQueryDialog(bool visible) = 0;
 
 private:
     

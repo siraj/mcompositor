@@ -345,6 +345,11 @@ public slots:
      * or on timeout.
      */
     void damageReceived(bool timeout);
+
+    /*!
+     * Called to start a reappearance timer for the application hung dialog.
+     */
+    void startDialogReappearTimer();
     
 private slots:
 
@@ -354,6 +359,7 @@ private slots:
     void finalizeState();
 
     void pingTimeout();
+    void reappearTimeout();
     void damageTimeout();
     void pingWindow();
     void q_itemRestored();
@@ -420,7 +426,7 @@ private:
     QPointF origPosition;
 
     // Main ping timer
-    QTimer *t_ping;
+    QTimer *t_ping, *t_reappear;
     QTimer *damage_timer;
     Qt::HANDLE win_id;
 

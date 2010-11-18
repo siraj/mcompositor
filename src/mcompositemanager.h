@@ -158,6 +158,8 @@ public:
 public slots:
     void enableCompositing(bool forced = false);
     void disableCompositing();
+    // called with the answer to mdecorator's dialog
+    void queryDialogAnswer(unsigned int window, bool yes_answer);
 
     /*! Invoked remotely by MRmiClient to show a launch indicator
      *

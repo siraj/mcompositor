@@ -32,6 +32,7 @@ contains(QT_CONFIG, opengles2) {
          DEFINES += DESKTOP_VERSION
      }
 } 
+DEFINES += TRANSLATION_INSTALLDIR=\\\"\"$$M_TRANSLATION_DIR\"\\\"
 
 # Compositor components only
 VERSION = 0.7.9

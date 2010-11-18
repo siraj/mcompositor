@@ -85,6 +85,11 @@ public:
     void setOnlyStatusbar(bool mode);
 
     /*!
+     * Show/hide the query dialog.
+     */
+    void showQueryDialog(bool visible);
+
+    /*!
      * Sets the decorator window and maps that window if it is unmapped.
      */
     void setDecoratorWindow(Qt::HANDLE window);

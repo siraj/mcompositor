@@ -39,3 +39,9 @@ XB-Maemo-CI-Packages:  mcompositor
 XB-Maemo-CI-Stage: fast
 Description: mcompositor functional testcases
  . 
+
+Package: mcompositor-l10n-engineering-english
+Section: devel
+Architecture: any
+Enhances: mcompositor
+Description: Engineering English translations for mcompositor

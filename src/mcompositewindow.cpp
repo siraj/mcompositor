@@ -78,6 +78,8 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 
     t_ping = new QTimer(this);
     connect(t_ping, SIGNAL(timeout()), SLOT(pingTimeout()));
+    t_reappear = new QTimer(this);
+    connect(t_reappear, SIGNAL(timeout()), SLOT(reappearTimeout()));
 
     damage_timer = new QTimer(this);
     damage_timer->setSingleShot(true);
@@ -119,9 +121,9 @@ MCompositeWindow::~MCompositeWindow()
     MCompositeManager *p = (MCompositeManager *) qApp;
     p->d->removeWindow(window());
 
-    if (window() && t_ping) {
+    if (window() && (t_ping || t_reappear)) {
         stopPing();
-        t_ping = 0;
+        t_ping = t_reappear = 0;
     }
     endAnimation();
     
@@ -561,6 +563,26 @@ void MCompositeWindow::stopPing()
     pinging_enabled = false;
     if (t_ping)
         t_ping->stop();
+    if (t_reappear)
+        t_reappear->stop();
+}
+
+void MCompositeWindow::startDialogReappearTimer()
+{
+    if (!t_reappear || window_status != Hung)
+        return;
+    if (t_reappear->isActive())
+        t_reappear->stop();
+    t_reappear->setSingleShot(true);
+    t_reappear->setInterval(30 * 1000);
+    t_reappear->start();
+}
+
+void MCompositeWindow::reappearTimeout()
+{
+    if (window_status == Hung)
+        // show "application not responding" UI again
+        emit windowHung(this);
 }
 
 void MCompositeWindow::receivedPing(ulong serverTimeStamp)
@@ -571,14 +593,15 @@ void MCompositeWindow::receivedPing(ulong serverTimeStamp)
         window_status = Normal;
     if (blurred())
         setBlurred(false);
+    if (t_reappear->isActive())
+        t_reappear->stop();
 }
 
 void MCompositeWindow::pingTimeout()
 {
     if (pinging_enabled && received_ping_timestamp < sent_ping_timestamp
-        && window_status != Hung
+        && pc && pc->isMapped() && window_status != Hung
         && window_status != Minimizing && window_status != Closing) {
-        setBlurred(true);
         window_status = Hung;
         emit windowHung(this);
     }
@@ -589,6 +612,10 @@ void MCompositeWindow::pingTimeout()
 
 void MCompositeWindow::pingWindow()
 {
+    if (window_status == Hung)
+        // don't send a new ping before the window responds, otherwise we may
+        // queue up too many of them
+        return;
     ulong t = QDateTime::currentDateTime().toTime_t();
     sent_ping_timestamp = t;
     Window w = window();
