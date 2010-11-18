@@ -964,6 +964,9 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
     pc = prop_caches.value(e->window);
 
     if (pc->propertyEvent(e) && pc->isMapped()) {
+        if (pc->isDecorator())
+            // in case decorator's transiency changes, make us update the value
+            pc->transientFor();
         dirtyStacking(false, e->time);
         MCompositeWindow *cw = COMPOSITE_WINDOW(e->window);
         if (cw && !cw->isNewlyMapped()) {
@@ -2182,7 +2185,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 setWindowState(cw->window(), NormalState);
         }
     }
-    setCurrentApp(set_as_current_app, order_changed);
+    // FIXME: should be true only when order_changed or e.g. transiency changes
+    setCurrentApp(set_as_current_app, true);
 }
 
 void MCompositeManagerPrivate::stackingTimeout()
