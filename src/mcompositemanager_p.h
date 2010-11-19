@@ -157,6 +157,7 @@ public:
 
     bool compositing;
     bool overlay_mapped;
+    bool changed_properties;
     MDeviceState *device_state;
 
     xcb_connection_t *xcb_conn;

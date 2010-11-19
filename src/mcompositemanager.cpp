@@ -711,6 +711,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
       buttoned_win(0),
       glwidget(0),
       compositing(true),
+      changed_properties(false),
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime)
 {
@@ -964,6 +965,7 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
     pc = prop_caches.value(e->window);
 
     if (pc->propertyEvent(e) && pc->isMapped()) {
+        changed_properties = true; // property change can affect stacking order
         if (pc->isDecorator())
             // in case decorator's transiency changes, make us update the value
             pc->transientFor();
@@ -2128,11 +2130,12 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                         (unsigned char *)no_decors.toVector().data(),
                         no_decors.size());
         prev_only_mapped = QList<Window>(only_mapped);
-
+    }
+    if (order_changed || changed_properties) {
         if (!device_state->displayOff())
             pingTopmost();
+        checkInputFocus(timestamp);
     }
-    checkInputFocus(timestamp); // WM_HINTS can change even if the order didn't
     if (order_changed || force_visibility_check) {
         static int xres = ScreenOfDisplay(QX11Info::display(),
                                    DefaultScreen(QX11Info::display()))->width;
@@ -2190,8 +2193,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                 setWindowState(cw->window(), NormalState);
         }
     }
-    // FIXME: should be true only when order_changed or e.g. transiency changes
-    setCurrentApp(set_as_current_app, true);
+    setCurrentApp(set_as_current_app, order_changed || changed_properties);
+    changed_properties = false;
 }
 
 void MCompositeManagerPrivate::stackingTimeout()
