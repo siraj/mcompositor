@@ -1146,6 +1146,10 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
     }
 
     if (top && cw && !MCompositeWindow::hasTransitioningWindow()) {
+        if (compositing) {
+            showOverlayWindow(false);
+            compositing = false;
+        }
         // unredirect the chosen window and any docks and OR windows above it
         // TODO: what else should be unredirected?
         if (!((MTexturePixmapItem *)cw)->isDirectRendered()) {
@@ -1163,10 +1167,6 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
                     setWindowDebugProperties(w);
                 }
             }
-        }
-        if (compositing) {
-            showOverlayWindow(false);
-            compositing = false;
         }
         ret = true;
     }
@@ -1211,10 +1211,6 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         setWindowState(e->window, WithdrawnState);
         if (item->isVisible() && !item->isClosing())
             item->setVisible(false);
-        if (!item->isClosing())
-            // mark it direct-rendered so we create damage object etc.
-            // in case it is re-mapped
-            ((MTexturePixmapItem *)item)->enableDirectFbRendering();
 
         if (MDecoratorFrame::instance()->managedWindow() == e->window) {
             // decorate next window in the stack if any
@@ -3450,6 +3446,8 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
             return;
     }
 
+    showOverlayWindow(false);
+
     for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
             it != windows.end(); ++it) {
         MCompositeWindow *tp  = it.value();
@@ -3459,8 +3457,6 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
             ((MTexturePixmapItem *)tp)->enableDirectFbRendering();
         setWindowDebugProperties(it.key());
     }
-
-    showOverlayWindow(false);
 
     if (MDecoratorFrame::instance()->decoratorItem())
         MDecoratorFrame::instance()->lower();
