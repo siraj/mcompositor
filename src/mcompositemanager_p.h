@@ -95,7 +95,7 @@ public:
     
     void redirectWindows();
     void showOverlayWindow(bool show);
-    void enableRedirection();
+    void enableRedirection(bool emit_signal);
     void setExposeDesktop(bool exposed);
     void checkStacking(bool force_visibility_check,
                        Time timestamp = CurrentTime);
