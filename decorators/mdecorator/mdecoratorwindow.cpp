@@ -282,92 +282,97 @@ void MDecoratorWindow::screenRotated(const M::Orientation &orientation)
     d->setAvailableGeometry(availableClientRect());
 }
 
-XRectangle MDecoratorWindow::itemRectToScreenRect(const QRect& r)
+// NOTE: this works with fullscreen-width rects only
+QRect MDecoratorWindow::itemRectToScreenRect(const QRect& r)
 {
-    XRectangle rect;
+    QRect rect;
     Display *dpy = QX11Info::display();
     int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
     int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
     switch (sceneManager()->orientationAngle()) {
     case 0:
-            rect.x = r.x();
-            rect.y = r.y();
-            rect.width = r.width();
-            rect.height = r.height();
+            rect = r;
             break;
     case 90:
-            rect.x = xres - r.height();
-            rect.y = 0;
-            rect.width = r.height();
-            rect.height = r.width();
+            rect = QRect(xres - r.height(), 0, r.height(), r.width());
             break;
     case 270:
-            rect.x = rect.y = 0;
-            rect.width = r.height();
-            rect.height = r.width();
+            rect = QRect(0, 0, r.height(), r.width());
             break;
     case 180:
-            rect.x = 0;
-            rect.y = yres - r.height();
-            rect.width = r.width();
-            rect.height = r.height();
+            rect = QRect(0, yres - r.height(), r.width(), r.height());
             break;
     default:
-            memset(&rect, 0, sizeof(rect));
             break;
     }
     return rect;
 }
 
+static void set_shape(Window win, XRectangle *r, int n)
+{
+    static XRectangle *prev_rects = 0;
+    static int prev_n = 0;
+    if (prev_n != n ||
+        (prev_rects && memcmp(prev_rects, r, sizeof(XRectangle[n])))) {
+        Display *dpy = QX11Info::display();
+        XserverRegion shapeRegion = XFixesCreateRegion(dpy, r, n);
+        XShapeCombineRectangles(dpy, win, ShapeBounding, 0, 0, r, n,
+                                ShapeSet, Unsorted);
+        XFixesSetWindowShapeRegion(dpy, win, ShapeInput, 0, 0, shapeRegion);
+        XFixesDestroyRegion(dpy, shapeRegion);
+    } else
+        return;
+    if (prev_rects && prev_n != n) {
+        delete[] prev_rects;
+        prev_rects = new XRectangle[n];
+    }
+    prev_n = n;
+    if (prev_rects)
+        memcpy(prev_rects, r, sizeof(XRectangle[n]));
+}
+
 void MDecoratorWindow::setInputRegion()
 {
-    static XRectangle prev_rect = {0, 0, 0, 0};
     QRegion region;
     const QRect fs(QApplication::desktop()->screenGeometry());
-    XRectangle rect;
     if (messageBox) {
-        region = decoratorRect = fs;
+        XRectangle rect;
+        region = fs;
         rect.x = fs.x();
         rect.y = fs.y();
         rect.width = fs.width();
         rect.height = fs.height();
+        availableRect = QRect(0, 0, 0, 0);
+        set_shape(winId(), &rect, 1);
     } else {
-        QRect r_tmp(statusBar->geometry().toRect());
-        region += statusBar->mapToScene(r_tmp).boundingRect().toRect();
+        region += statusBar->geometry().toRect();
         if (!only_statusbar) {
-            r_tmp = QRect(navigationBar->geometry().toRect());
-            region += navigationBar->mapToScene(r_tmp).boundingRect().toRect();
-            r_tmp = QRect(homeButtonPanel->geometry().toRect());
-            region += homeButtonPanel->mapToScene(r_tmp).boundingRect().toRect();
-            r_tmp = QRect(escapeButtonPanel->geometry().toRect());
-            region += escapeButtonPanel->mapToScene(r_tmp).boundingRect().toRect();
+            region += navigationBar->geometry().toRect();
+            region += homeButtonPanel->geometry().toRect();
+            region += escapeButtonPanel->geometry().toRect();
         }
 
-        decoratorRect = region.boundingRect();
-        // crop it to fullscreen to work around a weird issue
-        if (decoratorRect.width() > fs.width())
-            decoratorRect.setWidth(fs.width());
-        if (decoratorRect.height() > fs.height())
-            decoratorRect.setHeight(fs.height());
-
-        if (!only_statusbar && decoratorRect.width() > fs.width() / 2
-            && decoratorRect.height() > fs.height() / 2) {
-            // decorator is so big that it is probably in more than one part
-            // (which is not yet supported)
-            setOnlyStatusbar(true);
-            region = decoratorRect = statusBar->geometry().toRect();
+        const QVector<QRect> rects = region.rects();
+        QRegion screen_region;
+        XRectangle *xrects = new XRectangle[rects.count()];
+        int count = 0;
+        for (int i = 0; i < rects.count(); ++i) {
+            QRect r = itemRectToScreenRect(rects[i]);
+            if (r.x() || (r.width() != fs.width() && r.width() != fs.height()))
+                // only fullscreen-width components supported
+                continue;
+            screen_region += r;
+            xrects[count].x = r.x();
+            xrects[count].y = r.y();
+            xrects[count].width = r.width();
+            xrects[count].height = r.height();
+            ++count;
         }
-        rect = itemRectToScreenRect(decoratorRect);
-    }
-    if (memcmp(&prev_rect, &rect, sizeof(XRectangle))) {
-        Display *dpy = QX11Info::display();
-        XserverRegion shapeRegion = XFixesCreateRegion(dpy, &rect, 1);
-        XShapeCombineRectangles(dpy, winId(), ShapeBounding, 0, 0, &rect, 1,
-                            ShapeSet, Unsorted);
-        XFixesSetWindowShapeRegion(dpy, winId(), ShapeInput, 0, 0, shapeRegion);
-        XFixesDestroyRegion(dpy, shapeRegion);
-        XSync(dpy, False);
-        prev_rect = rect;
+        set_shape(winId(), xrects, count);
+        delete[] xrects;
+
+        // NOTE: assumes that the available region is a single rectangle
+        availableRect = QRegion(QRegion(fs) - screen_region).boundingRect();
     }
 }
 
@@ -397,7 +402,7 @@ void MDecoratorWindow::setMDecoratorWindowProperty()
 
 const QRect MDecoratorWindow::availableClientRect() const
 {
-    return decoratorRect;
+    return availableRect;
 }
 
 void MDecoratorWindow::closeEvent(QCloseEvent * event )

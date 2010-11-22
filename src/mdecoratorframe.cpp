@@ -80,17 +80,8 @@ void MDecoratorFrame::raise()
 
 void MDecoratorFrame::updateManagedWindowGeometry()
 {
-    if (client && client->needDecoration()) {
-#if 0
-        Display *dpy = QX11Info::display();
-        XWindowAttributes a;
-        if (!XGetWindowAttributes(dpy, decorator_window, &a)) {
-            qWarning("%s: invalid window 0x%lx", __func__, decorator_window);
-            return;
-        }
-#endif
-        setDecoratorAvailableRect(decorator_rect);
-    }
+    if (client && client->needDecoration())
+        setDecoratorAvailableRect(available_rect);
 }
 
 void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
@@ -163,7 +154,7 @@ void MDecoratorFrame::visualizeDecorator(bool visible)
         decorator_item->setVisible(visible);
 }
 
-void MDecoratorFrame::setDecoratorAvailableRect(const QRect& decorect)
+void MDecoratorFrame::setDecoratorAvailableRect(const QRect& r)
 {    
     if (!client || no_resize || !decorator_item
         || !decorator_item->propertyCache())
@@ -171,30 +162,11 @@ void MDecoratorFrame::setDecoratorAvailableRect(const QRect& decorect)
     
     Display* dpy = QX11Info::display();
     
-    int actual_decor_ypos = decorator_item->propertyCache()->realGeometry().y();
+    available_rect = r;    
 
-    decorator_rect = decorect;    
-
-    // if window is not same width as screen, stretch it.
-    QRect appgeometry = client->propertyCache()->requestedGeometry();
-    if(appgeometry.width() < decorect.width())
-        appgeometry = QApplication::desktop()->screenGeometry();
-    
-    // region of decorator + statusbar window. remove this once we removed the statubar
-    QRect actual_decorect = decorect;
-    actual_decorect.setHeight(decorect.height() + actual_decor_ypos);
-    QRect r = (QRegion(appgeometry) - actual_decorect).boundingRect();
-    
-    int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
-    int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
-    int excess = r.y() + r.height() - yres;
-    if (excess > 0)
-        r.setHeight(r.height() - excess);
-    excess = r.x() + r.width() - xres;
-    if (excess > 0)
-        r.setWidth(r.width() - excess);
-
-    XMoveResizeWindow(dpy, client->window(), r.x(), r.y(), r.width(), r.height());
+    if (client->propertyCache()->realGeometry() != available_rect)
+      // resize app window to occupy the free area
+      XMoveResizeWindow(dpy, client->window(), r.x(), r.y(), r.width(), r.height());
 }
 
 void MDecoratorFrame::setAutoRotation(bool mode)

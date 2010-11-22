@@ -97,7 +97,7 @@ public:
     void setDecoratorItem(MCompositeWindow *window);
 
     MCompositeWindow *decoratorItem() const;
-    const QRect &decoratorRect() const { return decorator_rect; }
+    const QRect &availableRect() const { return available_rect; }
 
 public slots:
     void setDecoratorAvailableRect(const QRect& r);
@@ -117,7 +117,7 @@ private:
     MRmiClient *remote_decorator;
     int top_offset;
     bool no_resize;
-    QRect decorator_rect;
+    QRect available_rect;
 };
 
 #endif // DUIDECORATORFRAME_H

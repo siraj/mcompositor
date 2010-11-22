@@ -3406,9 +3406,9 @@ void MCompositeManager::positionWindow(Window w,
     d->positionWindow(w, pos == MCompositeManager::STACK_TOP ? true : false);
 }
 
-const QRect &MCompositeManager::decoratorRect() const
+const QRect &MCompositeManager::availableRect() const
 {
-    return MDecoratorFrame::instance()->decoratorRect();
+    return MDecoratorFrame::instance()->availableRect();
 }
 
 const QList<Window> &MCompositeManager::stackingList() const

@@ -175,9 +175,9 @@ public slots:
     void exposeSwitcher();
 
     /*!
-     * Area the decorator occupies.
+     * Area that is free after the area that decorator occupies.
      */
-    const QRect &decoratorRect() const;
+    const QRect &availableRect() const;
 
 #ifdef WINDOW_DEBUG
     void remoteControl(int fd);

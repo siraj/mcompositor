@@ -686,14 +686,23 @@ QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant 
         findBehindWindow();
         p->d->setWindowDebugProperties(window());
     }
-    
-    /* disabled to avoid glSwapBuffers call without painting any item (Qt bug)
-     * see NB#189519
-    if (zvalChanged || change == ItemVisibleHasChanged || change == ItemParentHasChanged)
-    {
+
+    // Be careful that there is a changed visible item, to not reopen NB#189519.
+    // Update is needed if visibility changes for a visible item
+    // (other visible items get redrawn also)
+    QList<QGraphicsItem*> l;
+    if (scene())
+        l = scene()->items();
+    int highest_visible_z = -1000;
+    for (QList<QGraphicsItem*>::const_iterator i = l.begin(); i != l.end(); ++i)
+        if ((*i)->isVisible()) {
+            highest_visible_z = (*i)->zValue();     
+            break;
+        }
+
+    // case requiring this: status menu closed on top of decorated FieldTest app
+    if (zValue() >= highest_visible_z && change == ItemVisibleHasChanged)
         p->d->glwidget->update();
-    }
-    */
 
     return QGraphicsItem::itemChange(change, value);
 }

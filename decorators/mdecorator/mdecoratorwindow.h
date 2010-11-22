@@ -78,7 +78,7 @@ signals:
 private:
     void setSceneSize();
     void setMDecoratorWindowProperty();
-    XRectangle itemRectToScreenRect(const QRect& r);
+    QRect itemRectToScreenRect(const QRect& r);
 
     MHomeButtonPanel *homeButtonPanel;
     MEscapeButtonPanel *escapeButtonPanel;
@@ -86,7 +86,7 @@ private:
     MStatusBar *statusBar;
     MMessageBox *messageBox;
     Window managed_window;
-    QRect decoratorRect;
+    QRect availableRect; // available area for the managed window
     bool only_statusbar, requested_only_statusbar;
     Atom onlyStatusbarAtom, managedWindowAtom;
     MDecorator *d;
