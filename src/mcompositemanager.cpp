@@ -2257,10 +2257,13 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             && !pc->alwaysMapped() && e->send_event == False
             && !pc->isInputOnly()) {
             // remapped/prestarted apps should also have startup animation
+            // FIXME: assumes this window is on top
             item->requestZValue(scene()->items().count() + 1);
             item->setNewlyMapped(true);
-            if (!item->showWindow())
+            if (!item->showWindow()) {
                 item->setNewlyMapped(false);
+                item->setVisible(true);
+            }
         } else {
             item->setNewlyMapped(false);
             item->setVisible(true);
@@ -2283,9 +2286,12 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         const XWMHints &h = pc->getWMHints();
         if ((!(h.flags & StateHint) || h.initial_state != IconicState)
             && !pc->alwaysMapped() && e->send_event == False
-            && !pc->isInputOnly() && item->isAppWindow())
-            item->showWindow();
-        else {
+            && !pc->isInputOnly() && item->isAppWindow()) {
+            if (!item->showWindow()) {
+                item->setNewlyMapped(false);
+                item->setVisible(true);
+            }
+        } else {
             item->setNewlyMapped(false);
             item->setVisible(true);
         }
