@@ -1,6 +1,6 @@
-mcompositor (0.7.9~1) unstable; urgency=low
+mcompositor (0.7.9-1) unstable; urgency=low
 
-  * New version [UNRELEASED]
+  * Fixes: NB#205707 - System dialogs are not shown
 
  -- Abdiel Janulgue <abj@codefuassasin.research.nokia.com>  Wed, 17 Nov 2010 14:54:49 +0200
 
