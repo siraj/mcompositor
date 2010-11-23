@@ -2231,11 +2231,9 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
     }
     // Compositing is always assumed to be enabled at this point if a window
     // has alpha channels
-    if (!compositing && (pc && pc->hasAlpha())) {
-        qWarning("mapEvent(): compositing not enabled!");
+    if (!compositing && (pc && pc->hasAlpha()))
         enableCompositing(true);
-    }
-    
+
     if (item && pc) {
         if (wtype == MCompAtoms::NORMAL)
             pc->setWindowTypeAtom(ATOM(_NET_WM_WINDOW_TYPE_NORMAL));
