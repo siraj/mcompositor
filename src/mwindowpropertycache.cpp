@@ -34,68 +34,78 @@
 
 xcb_connection_t *MWindowPropertyCache::xcb_conn;
 
-MWindowPropertyCache::MWindowPropertyCache(Window w,
-                        xcb_get_window_attributes_reply_t *wa,
-                        xcb_get_geometry_reply_t *geom)
-    : transient_for((Window)-1),
-      wm_protocols_valid(false),
-      icon_geometry_valid(false),
-      decor_buttons_valid(false),
-      shape_rects_valid(false),
-      real_geom_valid(false),
-      net_wm_state_valid(false),
-      wm_state_query(true),
-      has_alpha(-1),
-      global_alpha(-1),
-      video_global_alpha(-1),
-      is_decorator(-1),
-      wmhints(0),
-      attrs(0),
-      meego_layer(-1),
-      window_state(-1),
-      window_type(MCompAtoms::INVALID),
-      window(w),
-      parent_window(RootWindow(QX11Info::display(), 0)),
-      always_mapped(-1),
-      cannot_minimize(-1),
-      desktop_view(-1),
-      being_mapped(false),
-      dont_iconify(false),
-      custom_region(0),
-      custom_region_request_fired(false),
-      xcb_real_geom(0),
-      damage_object(0)
+void MWindowPropertyCache::init()
 {
+    transient_for = -1,
+    wm_protocols_valid = false;
+    icon_geometry_valid = false;
+    decor_buttons_valid = false;
+    shape_rects_valid = false;
+    real_geom_valid = false;
+    net_wm_state_valid = false;
+    wm_state_query = true;
+    has_alpha = -1;
+    global_alpha = -1;
+    video_global_alpha = -1;
+    is_decorator = -1;
+    wmhints = 0;
+    attrs = 0;
+    meego_layer = -1;
+    window_state = -1;
+    window_type = MCompAtoms::INVALID;
+    parent_window = QX11Info::appRootWindow();
+    always_mapped = -1;
+    cannot_minimize = -1;
+    desktop_view = -1;
+    being_mapped = false;
+    dont_iconify = false;
+    custom_region = 0;
+    custom_region_request_fired = false;
+    xcb_real_geom = 0;
+    damage_object = 0;
+
     memset(&req_geom, 0, sizeof(req_geom));
     memset(&home_button_geom, 0, sizeof(home_button_geom));
     memset(&close_button_geom, 0, sizeof(close_button_geom));
     window_type_atom = 0;
     memset(&xcb_real_geom_cookie, 0, sizeof(xcb_real_geom_cookie));
+}
 
+void MWindowPropertyCache::init_invalid()
+{
+    is_valid = false;
+    memset(&xcb_transient_for_cookie, 0,
+           sizeof(xcb_transient_for_cookie));
+    memset(&xcb_meego_layer_cookie, 0, sizeof(xcb_meego_layer_cookie));
+    memset(&xcb_is_decorator_cookie, 0, sizeof(xcb_is_decorator_cookie));
+    memset(&xcb_window_type_cookie, 0, sizeof(xcb_window_type_cookie));
+    memset(&xcb_decor_buttons_cookie, 0, sizeof(xcb_decor_buttons_cookie));
+    memset(&xcb_wm_protocols_cookie, 0, sizeof(xcb_wm_protocols_cookie));
+    memset(&xcb_wm_state_cookie, 0, sizeof(xcb_wm_state_cookie));
+    memset(&xcb_wm_hints_cookie, 0, sizeof(xcb_wm_hints_cookie));
+    memset(&xcb_icon_geom_cookie, 0, sizeof(xcb_icon_geom_cookie));
+    memset(&xcb_global_alpha_cookie, 0, sizeof(xcb_global_alpha_cookie));
+    memset(&xcb_video_global_alpha_cookie, 0,
+           sizeof(xcb_video_global_alpha_cookie));
+    memset(&xcb_net_wm_state_cookie, 0, sizeof(xcb_net_wm_state_cookie));
+    memset(&xcb_always_mapped_cookie, 0, sizeof(xcb_always_mapped_cookie));
+    memset(&xcb_cannot_minimize_cookie, 0, sizeof(xcb_always_mapped_cookie));
+    memset(&xcb_pict_formats_cookie, 0, sizeof(xcb_pict_formats_cookie));
+    memset(&xcb_shape_rects_cookie, 0, sizeof(xcb_shape_rects_cookie));
+}
+
+MWindowPropertyCache::MWindowPropertyCache(Window w,
+                        xcb_get_window_attributes_reply_t *wa,
+                        xcb_get_geometry_reply_t *geom)
+    : window(w)
+{
+    init();
     if (!wa) {
         attrs = xcb_get_window_attributes_reply(xcb_conn,
                         xcb_get_window_attributes(xcb_conn, window), 0);
         if (!attrs) {
             qWarning("%s: invalid window 0x%lx", __func__, window);
-            is_valid = false;
-            memset(&xcb_transient_for_cookie, 0,
-                   sizeof(xcb_transient_for_cookie));
-            memset(&xcb_meego_layer_cookie, 0, sizeof(xcb_meego_layer_cookie));
-            memset(&xcb_is_decorator_cookie, 0, sizeof(xcb_is_decorator_cookie));
-            memset(&xcb_window_type_cookie, 0, sizeof(xcb_window_type_cookie));
-            memset(&xcb_decor_buttons_cookie, 0, sizeof(xcb_decor_buttons_cookie));
-            memset(&xcb_wm_protocols_cookie, 0, sizeof(xcb_wm_protocols_cookie));
-            memset(&xcb_wm_state_cookie, 0, sizeof(xcb_wm_state_cookie));
-            memset(&xcb_wm_hints_cookie, 0, sizeof(xcb_wm_hints_cookie));
-            memset(&xcb_icon_geom_cookie, 0, sizeof(xcb_icon_geom_cookie));
-            memset(&xcb_global_alpha_cookie, 0, sizeof(xcb_global_alpha_cookie));
-            memset(&xcb_video_global_alpha_cookie, 0,
-                   sizeof(xcb_video_global_alpha_cookie));
-            memset(&xcb_net_wm_state_cookie, 0, sizeof(xcb_net_wm_state_cookie));
-            memset(&xcb_always_mapped_cookie, 0, sizeof(xcb_always_mapped_cookie));
-            memset(&xcb_cannot_minimize_cookie, 0, sizeof(xcb_always_mapped_cookie));
-            memset(&xcb_pict_formats_cookie, 0, sizeof(xcb_pict_formats_cookie));
-            memset(&xcb_shape_rects_cookie, 0, sizeof(xcb_shape_rects_cookie));
+            init_invalid();
             return;
         }
     } else
@@ -169,6 +179,13 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     }
     connect(this, SIGNAL(meegoDecoratorButtonsChanged(Window)),
             m->d, SLOT(setupButtonWindows(Window)));
+}
+
+MWindowPropertyCache::MWindowPropertyCache()
+    : window(None)
+{
+    init();
+    init_invalid();
 }
 
 MWindowPropertyCache::~MWindowPropertyCache()
@@ -890,3 +907,19 @@ MCompAtoms::Type MWindowPropertyCache::windowType()
     return window_type;
 }
 
+// MWindowDummyPropertyCache
+MWindowDummyPropertyCache *MWindowDummyPropertyCache::singleton;
+
+MWindowDummyPropertyCache *MWindowDummyPropertyCache::get()
+{
+    if (!singleton)
+        singleton = new MWindowDummyPropertyCache();
+    return singleton;
+}
+
+bool MWindowDummyPropertyCache::event(QEvent *e)
+{
+    // Ignore deleteLater().
+    return e->type() == QEvent::DeferredDelete
+        ? true : MWindowPropertyCache::event(e);
+}

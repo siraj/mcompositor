@@ -81,7 +81,7 @@ public:
   with \a mainWindow
  */
 MCompositeWindowGroup::MCompositeWindowGroup(MTexturePixmapItem* mainWindow)
-    :MCompositeWindow(0, new MWindowPropertyCache(0)),
+    :MCompositeWindow(0, MWindowDummyPropertyCache::get()),
      d_ptr(new MCompositeWindowGroupPrivate(mainWindow))
 {
     MCompositeManager *p = (MCompositeManager *) qApp;

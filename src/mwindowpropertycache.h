@@ -40,7 +40,9 @@ public:
 
     /*! Construct a MWindowPropertyCache
      * \param window id to the window whose properties are cached
+     *        Without one constructs a placeholder object.
      */
+    MWindowPropertyCache();
     MWindowPropertyCache(Window window,
                          xcb_get_window_attributes_reply_t *attrs = 0,
                          xcb_get_geometry_reply_t *geom = 0);
@@ -268,6 +270,8 @@ signals:
     void customRegionChanged(MWindowPropertyCache *pc);
 
 private:
+    void init();
+    void init_invalid();
     int alphaValue(xcb_get_property_cookie_t c);
     void buttonGeometryHelper();
 
@@ -324,6 +328,18 @@ private:
 
     static xcb_connection_t *xcb_conn;
     Damage damage_object;
+};
+
+// Non-deletable dummy MWindowPropertyCache.
+class MWindowDummyPropertyCache: public MWindowPropertyCache
+{
+public:
+    static MWindowDummyPropertyCache *get();
+
+private:
+    virtual bool event(QEvent *e);
+
+    static MWindowDummyPropertyCache *singleton;
 };
 
 #endif
