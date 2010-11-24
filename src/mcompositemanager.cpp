@@ -1936,6 +1936,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
      * there is no active application */
     STACKING("checkStacking: desktop_up: %d, active_app: 0x%lx, app_i: %d",
              desktop_up, active_app, app_i);
+    setExposeDesktop(desktop_up);
     if (!desktop_up && active_app && app_i >= 0 && aw) {
 	/* raise application windows belonging to the same group */
 	XID group;
