@@ -518,45 +518,6 @@ void MCompositeWindow::setScaled(bool s)
     scaled = s;
 }
 
-void MCompositeWindow::hoverEnterEvent(QGraphicsSceneHoverEvent *e)
-{
-    if (thumb_mode) {
-        zval = zValue();
-        setZValue(scene()->items().count() + 1);
-        setZValue(100);
-        anim->translateScale(scalefrom, scalefrom, scaleto, scaleto, pos());
-
-    }
-    return QGraphicsItem::hoverEnterEvent(e);
-}
-
-void MCompositeWindow::hoverLeaveEvent(QGraphicsSceneHoverEvent   *e)
-{
-    if (thumb_mode) {
-        setZValue(zval);
-        anim->translateScale(scalefrom, scalefrom, scaleto, scaleto, pos(), true);
-    }
-    return QGraphicsItem::hoverLeaveEvent(e);
-}
-
-void MCompositeWindow::mouseReleaseEvent(QGraphicsSceneMouseEvent *m)
-{
-    anim->restore();
-    setThumbMode(false);
-    setScaled(false);
-    setZValue(100);
-
-    emit acceptingInput();
-    windowRaised();
-    QGraphicsItem::mouseReleaseEvent(m);
-}
-
-void MCompositeWindow::manipulationEnabled(bool isEnabled)
-{
-    setFlag(QGraphicsItem::ItemIsMovable, isEnabled);
-    setFlag(QGraphicsItem::ItemIsSelectable, isEnabled);
-}
-
 void MCompositeWindow::setVisible(bool visible)
 {
     if ((pc && pc->isInputOnly())

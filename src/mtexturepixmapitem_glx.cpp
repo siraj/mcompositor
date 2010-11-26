@@ -278,6 +278,7 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
 {
     Q_UNUSED(rects);
     Q_UNUSED(num);
+    Q_UNUSED(when);
 
     if (isWindowTransitioning() || d->direct_fb_render || !windowVisible())
         return;
@@ -370,11 +371,6 @@ void MTexturePixmapItem::paint(QPainter *painter,
     painter->endNativePainting();
 #endif
 
-}
-
-void MTexturePixmapItem::windowRaised()
-{
-    d->windowRaised();
 }
 
 void MTexturePixmapItem::resize(int w, int h)

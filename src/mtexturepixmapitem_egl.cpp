@@ -393,11 +393,6 @@ void MTexturePixmapItem::renderTexture(const QTransform& transform)
     glDisable(GL_BLEND);
 }
 
-void MTexturePixmapItem::windowRaised()
-{
-    d->windowRaised();
-}
-
 void MTexturePixmapItem::resize(int w, int h)
 {
     d->resize(w, h);

@@ -233,8 +233,6 @@ public:
 
     static MCompositeWindow *compositeWindow(Qt::HANDLE window);
 
-    virtual void windowRaised() = 0;
-
     /*!
      * Ensures that the corresponding texture reflects the contents of the
      * associated pixmap and schedules a redraw of this item.
@@ -320,7 +318,6 @@ public slots:
 
     void updateIconGeometry();
     void startTransition();
-    void manipulationEnabled(bool isEnabled);
     void setBlurred(bool);
     
     /* Operations with transition animations*/
@@ -368,7 +365,6 @@ signals:
      */
     void windowHung(MCompositeWindow *window);
 
-    void acceptingInput();
     void visualized(bool);
 
     /*! Emitted when this window gets restored from an iconified state */
@@ -382,9 +378,6 @@ signals:
 
 protected:
 
-    virtual void hoverEnterEvent(QGraphicsSceneHoverEvent *);
-    virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *);
-    virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
     virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);    
     virtual QPainterPath shape() const;
         

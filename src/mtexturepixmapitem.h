@@ -99,7 +99,6 @@ protected:
 
     QSizeF sizeHint(Qt::SizeHint, const QSizeF &) const;
     QRectF boundingRect() const;
-    virtual void windowRaised();
 
 private:
     virtual MTexturePixmapPrivate* renderer() const;

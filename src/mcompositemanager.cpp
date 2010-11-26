@@ -3265,8 +3265,6 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
         return item;
     }
 
-    item->manipulationEnabled(true);
-
     // the decorator got mapped. this is here because the compositor
     // could be restarted at any point
     if (pc->isDecorator() && !MDecoratorFrame::instance()->decoratorItem()) {

@@ -350,7 +350,7 @@ void MTexturePixmapPrivate::removeEffect()
         prev_effect = 0;
     for (int i=0; i < e->fragmentIds().size(); ++i) {
         GLuint id = e->fragmentIds()[i];
-        QGLShaderProgram* frag = glresource->customShaders.value(i,0);
+        QGLShaderProgram* frag = glresource->customShaders.value(id, 0);
         if (frag)
             delete frag;
         glresource->customShaders.remove(id);
@@ -449,12 +449,6 @@ void MTexturePixmapPrivate::saveBackingStore()
         XFreePixmap(QX11Info::display(), windowp);
     windowp = XCompositeNameWindowPixmap(QX11Info::display(), item->window());
     item->rebindPixmap(); // windowp == 0 is also handled here
-}
-
-void MTexturePixmapPrivate::windowRaised()
-{
-    if (item->window())
-        XRaiseWindow(QX11Info::display(), item->window());
 }
 
 void MTexturePixmapPrivate::resize(int w, int h)

@@ -60,7 +60,6 @@ public:
     void clearTexture();
     bool isDirectRendered() const;
     void resize(int w, int h);
-    void windowRaised();
     void drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
     
     void q_drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
