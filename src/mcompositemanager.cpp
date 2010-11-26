@@ -843,18 +843,18 @@ void MCompositeManagerPrivate::loadPlugins()
     QDir pluginsDir = QDir(PDIR);
    
     foreach (QString fileName, pluginsDir.entryList(QDir::Files)) {
-         QPluginLoader loader(pluginsDir.absoluteFilePath(fileName));
-         QObject *plugin = loader.instance();
-         if (plugin) {
-             MCompmgrExtensionFactory* p = qobject_cast<MCompmgrExtensionFactory *>(plugin);
-             if (p) 
-                 p->create();
-         } else {
-             QString msg;
-             QDebug dbg(&msg);
-             dbg << "didnt load" << loader.fileName() << loader.errorString();
-             ((MCompositeManager*)qApp)->debug(msg);
-         }
+        QObject *plugin;
+        MCompmgrExtensionFactory* factory;
+
+        QPluginLoader loader(pluginsDir.absoluteFilePath(fileName));
+        if (!(plugin = loader.instance()))
+            qFatal("couldn't load %s: %s",
+                   loader.fileName().toLatin1().constData(),
+                   loader.errorString().toLatin1().constData());
+        if (!(factory = qobject_cast<MCompmgrExtensionFactory *>(plugin)))
+            qFatal("%s is not a MCompmgrExtensionFactory",
+                   loader.fileName().toLatin1().constData());
+        factory->create();
      }
 }
 
