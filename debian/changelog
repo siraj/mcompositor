@@ -1,3 +1,10 @@
+mcompositor (0.7.10-1~unreleased) unstable; urgency=low
+
+  * unreleased
+  * New: MCompositeWindowGroup to render several windows in one texture.
+
+ -- Kimmo Hämäläinen <kimmo.hamalainen@nokia.com>  Mon, 29 Nov 2010 16:09:44 +0200
+
 mcompositor (0.7.9-1) unstable; urgency=low
 
   * Fixes: NB#205707 - System dialogs are not shown
