@@ -160,6 +160,10 @@ public:
     bool changed_properties;
     MDeviceState *device_state;
 
+    // Indicates whether MCompositeManager::prepare() has finished.
+    // Used by the destructor.
+    bool prepared;
+
     xcb_connection_t *xcb_conn;
 
     // mechanism for lazy stacking

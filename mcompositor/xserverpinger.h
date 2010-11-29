@@ -20,6 +20,7 @@ protected:
 public slots:
     void xInput(int);
     void tick();
+    void die(int);
 };
 
 #endif // ! XSERVERPINGER_H

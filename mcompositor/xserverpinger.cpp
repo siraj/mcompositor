@@ -14,11 +14,13 @@
 
 #include <signal.h>
 #include <sys/prctl.h>
+#include <sys/signalfd.h>
 
 // Ping X in @pingInterval miliseconds.
 XServerPinger::XServerPinger(int pingInterval)
 {
     Display *dpy;
+    sigset_t sigs;
 
     // Open a separate connection to X.
     dpy = XOpenDisplay(NULL);
@@ -33,6 +35,15 @@ XServerPinger::XServerPinger(int pingInterval)
     timer = new QTimer();
     connect(timer, SIGNAL(timeout()), SLOT(tick()));
     timer->start(pingInterval);
+
+    // die() if we get SIGINT or SIGTERM.
+    sigemptyset(&sigs);
+    sigaddset(&sigs, SIGINT);
+    sigaddset(&sigs, SIGTERM);
+    connect(new QSocketNotifier(signalfd(-1, &sigs, 0),
+                                QSocketNotifier::Read),
+            SIGNAL(activated(int)), SLOT(die(int)));
+    sigprocmask(SIG_BLOCK, &sigs, NULL);
 }
 
 void XServerPinger::xInput(int)
@@ -68,6 +79,22 @@ void XServerPinger::tick()
         qWarning("X is on holidays");
 }
 
+void XServerPinger::die(int)
+{
+    const char *wmcheck = "_NET_SUPPORTING_WM_CHECK";
+
+    xcb_delete_property(xcb,
+                        xcb_setup_roots_iterator(xcb_get_setup(xcb)).data->root,
+                        xcb_intern_atom_reply(xcb,
+                                              xcb_intern_atom(xcb,
+                                                              False,
+                                                              strlen(wmcheck),
+                                                              wmcheck),
+                                              NULL)->atom);
+    xcb_flush(xcb);
+    QCoreApplication::quit();
+}
+
 // Start XServerPinger in a separate process if it's not running yet.
 static void altmain() __attribute__((constructor));
 static void altmain()
@@ -82,7 +109,7 @@ static void altmain()
         return;
 
     // Die with the parent.
-    prctl(PR_SET_PDEATHSIG, SIGKILL);
+    prctl(PR_SET_PDEATHSIG, SIGTERM);
 
     int meh = 0;
     QCoreApplication app(meh, 0);

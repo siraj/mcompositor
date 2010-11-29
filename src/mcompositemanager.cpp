@@ -712,6 +712,7 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
       glwidget(0),
       compositing(true),
       changed_properties(false),
+      prepared(false),
       stacking_timeout_check_visibility(false),
       stacking_timeout_timestamp(CurrentTime)
 {
@@ -734,6 +735,11 @@ MCompositeManagerPrivate::MCompositeManagerPrivate(QObject *p)
 
 MCompositeManagerPrivate::~MCompositeManagerPrivate()
 {
+    if (prepared)
+        // Advertise the world we're gone.
+        XDeleteProperty(QX11Info::display(), QX11Info::appRootWindow(),
+                        ATOM(_NET_SUPPORTING_WM_CHECK));
+
     delete watch;
     delete atom;
     watch   = 0;
@@ -834,6 +840,8 @@ void MCompositeManagerPrivate::prepare()
     XSelectInput(QX11Info::display(), home_button_win,
                  ButtonReleaseMask | ButtonPressMask);
     XMapWindow(QX11Info::display(), home_button_win);
+
+    prepared = true;
 }
 
 void MCompositeManagerPrivate::loadPlugins()
@@ -3940,6 +3948,9 @@ void MCompositeManager::remoteControl(int cmdfd)
         const char **argv;
         unsigned i;
 
+        delete d;
+        XFlush(QX11Info::display());
+
         // Convert the QStringList of args into a char *[].
         i = 0;
         argv = new const char *[args.count()+1];
@@ -3953,6 +3964,8 @@ void MCompositeManager::remoteControl(int cmdfd)
         qDebug("Gothca!");
     } else if (!strcmp(cmd, "exit") || !strcmp(cmd, "quit")) {
         // exit() deadlocks, go the fast route
+        delete d;
+        XFlush(QX11Info::display());
         _exit(0);
     } else if (!strcmp(cmd, "help")) {
         qDebug("Commands i understand:");
