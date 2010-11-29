@@ -88,7 +88,12 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
     for (int i = numItems - 1; i >= 0; --i) {
         MCompositeWindow *cw = (MCompositeWindow *) items[i];
 
-        if (cw->type() != MCompositeWindowGroup::Type) {
+#ifdef GLES2_VERSION
+        static int item_type = MCompositeWindowGroup::Type;
+#else
+        static int item_type = QGraphicsItem::Type + 2;
+#endif
+        if (cw->type() != item_type) {
             if (!cw->propertyCache())  // this window is dead
                 continue;
             if (cw->hasTransitioningWindow() && cw->propertyCache()->isDecorator())

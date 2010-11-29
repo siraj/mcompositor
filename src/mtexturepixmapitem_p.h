@@ -88,7 +88,9 @@ public:
 
     MTexturePixmapItem *item;
     QPointer<MCompositeWindowShaderEffect> current_effect;
+#ifdef GLES2_VERSION
     QPointer<MCompositeWindowGroup> current_window_group;
+#endif
     const MCompositeWindowShaderEffect *prev_effect;
 
     // Contains a limited number of server times we received damage

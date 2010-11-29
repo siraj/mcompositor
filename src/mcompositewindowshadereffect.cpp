@@ -112,10 +112,14 @@ GLuint MCompositeWindowShaderEffect::texture() const
 {
     // TODO: This assumes we have always have hadware TFP support 
     if (d->priv_render) {
+#ifdef GLES2_VERSION
         if (!d->priv_render->current_window_group)
             return d->priv_render->textureId;
         else
             return d->priv_render->current_window_group->texture();
+#else
+        return d->priv_render->textureId;
+#endif
     }
     return 0;
 }
