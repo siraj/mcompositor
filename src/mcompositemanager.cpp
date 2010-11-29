@@ -1036,7 +1036,8 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
             GTA("  has _MEEGOTOUCH_ALWAYS_MAPPED");
             continue;
         }
-        // NOTE: this WILL pass transient application window (this is intended!)
+        // NOTE: this WILL pass transient application window and non-transient
+        // menu (this is intended!)
         if ((pc->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_MENU)
              && getLastVisibleParent(pc))
             || (pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
@@ -2017,13 +2018,17 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
          MCompositeWindow *cw;
          Window w = stacking_list.at(i);
-         if (w == stack[DESKTOP_LAYER])
+         if (w == stack[DESKTOP_LAYER]) {
+             set_as_current_app = w;
              break;
+         }
          if (!(cw = COMPOSITE_WINDOW(w)))
              continue;
-         if (cw->isMapped() && cw->isAppWindow(true)) {
+         if (cw->propertyCache() && cw->isMapped() && cw->isAppWindow(true)) {
              topmost = cw;
              top_i = i;
+             // topmost does not include menus, better suited as current app
+             set_as_current_app = topmost->propertyCache()->winId();
              break;
          }
     }
