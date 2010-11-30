@@ -98,6 +98,7 @@ static bool debug_mode = false;
 
 // Enable to see the decisions of the stacker.
 #if 0
+# define STACKING_DEBUGGING
 # define STACKING(fmt, args...)                     \
     qDebug("line:%u: " fmt, __LINE__ ,##args)
 # define STACKING_MOVE(from, to)                    \
@@ -111,10 +112,10 @@ static bool debug_mode = false;
 # define STACKING_MOVE(...)                         /* NOP */
 #endif
 
-// Enable to see what and why getTopApplication() chooses
+// Enable to see what and why getTopmostApp() chooses
 // as a toplevel window.
 #if 0
-# define GTA(...)   qDebug("getTopApplication: " __VA_ARGS__)
+# define GTA(...)   qDebug("getTopmostApp: " __VA_ARGS__)
 #else
 # define GTA(...)                                   /* NOP */
 #endif
@@ -2074,6 +2075,19 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         for (int i = last_i; i >= 0; --i)
             reverse.append(stacking_list.at(i));
 
+#ifdef STACKING_DEBUGGING
+        // Log the actual arguments of XRestackWindows().
+        QList<Window>::const_iterator winit;
+        QString line;
+        for (winit = reverse.constBegin(); winit != reverse.constEnd();
+             ++winit) {
+            if (winit != reverse.constBegin())
+                line += ", ";
+            line += QString().sprintf("0x%lx", *winit);
+        }
+        STACKING("XRestackWindows([%s])", line.toLatin1().constData());
+#endif
+
         // Watch out for errors, there may be BadWin:s in @reverse.
         XSync(QX11Info::display(), False);
         int (*xerr)(Display *dpy, XErrorEvent *);
@@ -3679,6 +3693,18 @@ void MCompositeManager::dumpState(const char *heading)
         qDebug("    stack index: %d, behind window: 0x%lx, "
                    "last visible parent: 0x%lx", cw->indexInStack(),
                    behind ? behind->window() : 0, cw->lastVisibleParent());
+
+        // MWindowPropertyCache::transientFor() can change state,
+        // transientWindows() doesn't.
+        QList<Window> const &transients = cw->propertyCache()->transientWindows();
+        if (!transients.empty()) {
+            line = "    transients:";
+            QList<Window>::const_iterator trit;
+            for (trit = transients.constBegin();
+                 trit != transients.constEnd(); ++trit)
+                line += QString().sprintf(" 0x%lx", *trit);
+            qDebug() << line.toLatin1().constData();
+        }
 
         if (name)
             XFree(name);
