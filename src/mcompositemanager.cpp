@@ -2432,16 +2432,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         if (event->window == stack[DESKTOP_LAYER]) {
             // Mark normal applications on top of home Iconic to make our
             // qsort() function to work
-            for (int wi = stacking_list.size() - 1; wi >= 0; --wi) {
-                 Window w = stacking_list.at(wi);
-                 if (w == stack[DESKTOP_LAYER])
-                     break;
-                 MCompositeWindow *cw = COMPOSITE_WINDOW(w);
-                 if (cw && cw->isMapped() &&
-                     !cw->propertyCache()->meegoStackingLayer()
-                     && cw->isAppWindow(true))
-                     setWindowState(cw->window(), IconicState);
-            }
+            iconifyApps();
             activateWindow(event->window, CurrentTime, true);
         } else
             // use composition due to the transition effect
@@ -3322,6 +3313,20 @@ void MCompositeManagerPrivate::updateWinList()
     dirtyStacking(false);
 }
 
+// mark application windows iconic (except those that shouldn't be)
+void MCompositeManagerPrivate::iconifyApps()
+{
+    for (int wi = stacking_list.size() - 1; wi >= 0; --wi) {
+        Window w = stacking_list.at(wi);
+        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+        if (cw && cw->propertyCache() && cw->propertyCache()->isMapped()
+            && !cw->propertyCache()->cannotMinimize()
+            && !cw->propertyCache()->meegoStackingLayer()
+            && cw->isAppWindow(true))
+            setWindowState(cw->window(), IconicState);
+    }
+}
+
 /*!
    Helper function to arrange arrange the order of the windows
    in the _NET_CLIENT_LIST_STACKING
@@ -3338,6 +3343,9 @@ void MCompositeManagerPrivate::positionWindow(Window w, bool on_top)
     if (on_top) {
         //qDebug() << __func__ << "to top:" << w;
         setWindowState(w, NormalState);
+        if (w == stack[DESKTOP_LAYER])
+            // iconify apps for roughSort()
+            iconifyApps();
         STACKING_MOVE(wp, stacking_list.size()-1);
         safe_move(stacking_list, wp, stacking_list.size() - 1);
         // needed so that checkStacking() finds the current application

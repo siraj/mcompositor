@@ -77,6 +77,7 @@ public:
     void updateWinList();
     void setWindowState(Window , int);
     void setWindowDebugProperties(Window w);
+    void iconifyApps();
     void positionWindow(Window w, bool on_top);
     void addItem(MCompositeWindow *item);
     void damageEvent(XDamageNotifyEvent *);
