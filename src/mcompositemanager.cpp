@@ -42,6 +42,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xmd.h>
 #include <X11/XKBlib.h>
+#include <X11/Xproto.h>
 #include "mcompatoms_p.h"
 
 #include <unistd.h>
@@ -1846,6 +1847,19 @@ void MCompositeManagerPrivate::setCurrentApp(Window w,
     prev = w;
 }
 
+// XSetErrorHandler() function, used exclusively to catch errors
+// with XRestackWindows().
+static bool xrestackwindows_error;
+static int xrestackwindows_error_handler(Display *dpy, XErrorEvent *err)
+{
+    Q_UNUSED(dpy);
+
+    // XRestackWindows() is actually a series of XConfigureWindow()s.
+    if (err->request_code == X_ConfigureWindow)
+        xrestackwindows_error = true;
+    return 0;
+}
+
 #define RAISE_MATCHING(X) { \
     first_moved = 0; \
     for (int i = 0; i < last_i;) { \
@@ -2055,12 +2069,24 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
              witem->requestZValue(i);
     }
     bool order_changed = prev_only_mapped != only_mapped;
-    if (order_changed) {
+    if (xrestackwindows_error || order_changed) {
         QList<Window> reverse;
         for (int i = last_i; i >= 0; --i)
             reverse.append(stacking_list.at(i));
+
+        // Watch out for errors, there may be BadWin:s in @reverse.
+        XSync(QX11Info::display(), False);
+        int (*xerr)(Display *dpy, XErrorEvent *);
+        xrestackwindows_error = false;
+        xerr = XSetErrorHandler(xrestackwindows_error_handler);
         XRestackWindows(QX11Info::display(), reverse.toVector().data(),
                         reverse.size());
+        XSync(QX11Info::display(), False);
+        XSetErrorHandler(xerr);
+        if (xrestackwindows_error) {
+            STACKING("XRestackWindows() failed, retry later");
+            dirtyStacking(false);
+        }
 
         // decorator and OR windows are not included to the property
         QList<Window> no_decors = only_mapped;
