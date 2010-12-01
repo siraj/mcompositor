@@ -1909,8 +1909,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         stacking_timer.stop();
         stacking_timeout_timestamp = CurrentTime;
     }
-    Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved,
-           set_as_current_app = 0;
+    Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved;
     int last_i = stacking_list.size() - 1;    
     bool desktop_up = false, fs_app = false;
     int app_i = -1;
@@ -1920,11 +1919,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     active_app = getTopmostApp(&app_i);
     if (!active_app || app_i < 0) {
         desktop_up = true;
-        if (duihome)
-            set_as_current_app = duihome;
     } else {
         aw = COMPOSITE_WINDOW(active_app);
-        set_as_current_app = active_app;
         if (aw) {
             // getTopmostApp() can return a transient now
             Window parent = getLastVisibleParent(aw->propertyCache());
@@ -2020,17 +2016,13 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
          MCompositeWindow *cw;
          Window w = stacking_list.at(i);
-         if (w == stack[DESKTOP_LAYER]) {
-             set_as_current_app = w;
+         if (w == duihome)
              break;
-         }
          if (!(cw = COMPOSITE_WINDOW(w)))
              continue;
          if (cw->propertyCache() && cw->isMapped() && cw->isAppWindow(true)) {
              topmost = cw;
              top_i = i;
-             // topmost does not include menus, better suited as current app
-             set_as_current_app = topmost->propertyCache()->winId();
              break;
          }
     }
@@ -2191,6 +2183,23 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             }
             if (!duihome || (duihome && i >= home_i))
                 setWindowState(cw->window(), NormalState);
+        }
+    }
+    // current app has different semantics from getTopmostApp and pure isAppWindow
+    Window set_as_current_app = duihome;
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+        Window w = stacking_list.at(i);        
+        if (!w) continue;
+        MCompositeWindow *cw = COMPOSITE_WINDOW(w);
+        if (!cw || !cw->propertyCache() || !cw->propertyCache()->is_valid)
+            continue;
+        if (cw->propertyCache()->winId() == duihome)
+            break;
+        Atom type = cw->propertyCache()->windowTypeAtom();
+        if (type != ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
+            type != ATOM(_NET_WM_WINDOW_TYPE_MENU) && cw->isAppWindow(true)) {
+            set_as_current_app = w;
+            break;
         }
     }
     setCurrentApp(set_as_current_app, order_changed || changed_properties);
