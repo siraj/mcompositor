@@ -283,8 +283,10 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
         d->pastDamages = NULL;
     }
 
-    if (d->direct_fb_render || !windowVisible()
-        || propertyCache()->isInputOnly())
+    // we want to update the pixmap even if the item is not visible because
+    // certain animations require up-to-date pixmap (alternatively we could mark
+    // it dirty and update it before the animation starts...)
+    if (d->direct_fb_render || propertyCache()->isInputOnly())
         return;
 
     QRegion r;

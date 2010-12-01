@@ -2625,17 +2625,13 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
         if (i)
             i->iconify();
     }
-    // don't mark unmapped windows iconic (our iconic windows are mapped)
-    if (window->isMapped())
-        // set for roughSort() before raising duihome 
+    if (window->isMapped()) {
+        // set for roughSort()
         setWindowState(window->window(), IconicState);
-
-    if (stack[DESKTOP_LAYER]) {
-        // redirect windows for the switcher
-        enableCompositing();
-        positionWindow(stack[DESKTOP_LAYER], true);
-        dirtyStacking(false);
+        roughSort();
     }
+    // checkStacking() will redirect windows for the switcher
+    dirtyStacking(false);
 
     // Reset the global alpha on minimize
     reset_global_alpha();
@@ -3341,7 +3337,7 @@ void MCompositeManagerPrivate::iconifyApps()
         Window w = stacking_list.at(wi);
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         if (cw && cw->propertyCache() && cw->propertyCache()->isMapped()
-            && !cw->propertyCache()->cannotMinimize()
+            && !cw->propertyCache()->dontIconify()
             && !cw->propertyCache()->meegoStackingLayer()
             && cw->isAppWindow(true))
             setWindowState(cw->window(), IconicState);
