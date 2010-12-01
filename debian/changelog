@@ -1,4 +1,4 @@
-mcompositor (0.7.10-1~unreleased) unstable; urgency=low
+mcompositor (0.8.0-1~unreleased) unstable; urgency=low
 
   * unreleased
   * New: MCompositeWindowGroup to render several windows in one texture.
