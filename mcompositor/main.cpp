@@ -26,6 +26,12 @@ int main(int argc, char *argv[])
 {
     // We don't need meego graphics system
     setenv("QT_GRAPHICSSYSTEM", "raster", 1);
+
+#ifdef WINDOW_DEBUG
+    // React to context-commander's fake events; required by test20.py
+    // to be able to fake a phone call.
+    setenv("CONTEXT_COMMANDING", "1", 1);
+#endif
     
     // Don't load any Qt plugins
     QCoreApplication::setLibraryPaths(QStringList());
