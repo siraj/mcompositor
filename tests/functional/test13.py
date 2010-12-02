@@ -25,7 +25,8 @@ def get_window_size(w):
       break
   return ret
 
-(fs_w, fs_h) = (864, 480)
+(fs_w, fs_h) = [ int(x) for x in os.popen("windowctl D").readline().split() ]
+
 
 # map non-fullscreen application window
 fd = os.popen('windowctl n')

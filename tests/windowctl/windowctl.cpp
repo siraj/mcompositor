@@ -22,8 +22,7 @@
 #include <signal.h>
 #include <sys/prctl.h>
 
-#define WIN_W 864
-#define WIN_H 480
+static int WIN_W, WIN_H;
 
 static Atom win_type_atom, trans_for_atom, workarea_atom;
 static int xerror_happened;
@@ -411,7 +410,9 @@ static void print_usage_and_exit(QString& stdOut)
          "X - set _MEEGOTOUCH_MSTATUSBAR_GEOMETRY of window <XID> to (x y w h)\n"
 	 "Usage 9: " PROG " CM <XID> <ClientMessage type name> <window>\n"
 	 "CM - send a ClientMessage (where window=<window>) to window <XID> "
-	 "(0 = the root window)\n"
+	 "(0 assumed that = the root window)\n"
+	 "Usage 10: " PROG " D\n"
+	 "D - print the display resolution\n"
          ;
 }
 
@@ -657,6 +658,9 @@ static bool old_main(QStringList& args, QString& stdOut)
         /* catch X errors */
         XSetErrorHandler (error_handler);
 
+        WIN_W = DisplayWidth(dpy, DefaultScreen(dpy));
+        WIN_H = DisplayHeight(dpy, DefaultScreen(dpy));
+
         win_type_atom = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
 	/*trans_for_atom = XInternAtom(dpy, "WM_TRANSIENT_FOR", False);*/
 	workarea_atom = XInternAtom(dpy, "_NET_WORKAREA", False);
@@ -857,6 +861,10 @@ static bool old_main(QStringList& args, QString& stdOut)
                     } else
                         XSendEvent(dpy, w, False, NoEventMask, &ev);
                     XSync(dpy, False);
+                    return true;
+                }
+                if (*p == 'D') {
+                    printf("%u %u\n", WIN_W, WIN_H);
                     return true;
                 }
 		if ((command = strchr("NUFCMTAWHSO", *p))) {
