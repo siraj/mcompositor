@@ -1947,7 +1947,6 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
      * there is no active application */
     STACKING("checkStacking: desktop_up: %d, active_app: 0x%lx, app_i: %d",
              desktop_up, active_app, app_i);
-    setExposeDesktop(desktop_up);
     if (!desktop_up && active_app && app_i >= 0 && aw) {
 	/* raise application windows belonging to the same group */
 	XID group;
@@ -2289,8 +2288,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
                 && (wpc->parentWindow() == RootWindow(QX11Info::display(), 0))
                 && (e->event == QX11Info::appRootWindow())) {
             hideLaunchIndicator();
-
-            setExposeDesktop(false);
         }
     }
 
@@ -2546,7 +2543,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                     lower = topmost;
                 else
                     lower = event->window;
-                setExposeDesktop(false);
+                setExposeDesktop(false); // don't update thumbnails now
 
                 bool needComp = false;
                 if (i->isDirectRendered() || d_item->isDirectRendered()) {
@@ -2621,8 +2618,6 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
         
         XSendEvent(QX11Info::display(), window->window(), False,
                    NoEventMask, &ev);
-        // FIXME: we should check if desktop is exposed or not
-        setExposeDesktop(true);
         delete_sent = true;
     }
     
@@ -2696,26 +2691,10 @@ void MCompositeManagerPrivate::onDesktopActivated(MCompositeWindow *window)
 
 void MCompositeManagerPrivate::setExposeDesktop(bool exposed)
 {
-    if (stack[DESKTOP_LAYER]) {
-        XVisibilityEvent desk_notify;
-        desk_notify.type       = VisibilityNotify;
-        desk_notify.send_event = True;
-        desk_notify.window     = stack[DESKTOP_LAYER];
-        desk_notify.state      = exposed ? VisibilityUnobscured :
-                                 VisibilityFullyObscured;
-        XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER], true,
-                   VisibilityChangeMask, (XEvent *)&desk_notify);
-    }
-    if (stack[DOCK_LAYER]) {
-        XVisibilityEvent desk_notify;
-        desk_notify.type       = VisibilityNotify;
-        desk_notify.send_event = True;
-        desk_notify.window     = stack[DOCK_LAYER];
-        desk_notify.state      = exposed ? VisibilityUnobscured :
-                                 VisibilityFullyObscured;
-        XSendEvent(QX11Info::display(), stack[DESKTOP_LAYER], true,
-                   VisibilityChangeMask, (XEvent *)&desk_notify);
-    }
+    MCompositeWindow *cw;
+    if (!stack[DESKTOP_LAYER] || !(cw = COMPOSITE_WINDOW(stack[DESKTOP_LAYER])))
+        return;
+    cw->setWindowObscured(!exposed);
 }
 
 // Visibility notification to desktop window. Ensure this is called once
@@ -2735,7 +2714,6 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
     if (pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DESKTOP) &&
         pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_DOCK) &&
         !pc->isDecorator()) {
-        setExposeDesktop(false);
         // if this is a transient window, raise the "parent" instead
         Window last = getLastVisibleParent(pc);
         MCompositeWindow *to_stack = cw;
@@ -2764,7 +2742,6 @@ void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
         // if decorator crashes and reappears, stack it to bottom, raise later
         positionWindow(w, false);
     } else if (w == stack[DESKTOP_LAYER]) {
-        setExposeDesktop(true);
         positionWindow(w, true);
     } else
         checkInputFocus(timestamp);
@@ -3338,7 +3315,6 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
         return;
     }
 
-    connect(item, SIGNAL(itemIconified(MCompositeWindow *)), SLOT(exposeDesktop()));
     connect(this, SIGNAL(compositingEnabled()), item, SLOT(startTransition()));
     connect(item, SIGNAL(itemRestored(MCompositeWindow *)), SLOT(restoreHandler(MCompositeWindow *)));
     connect(item, SIGNAL(itemIconified(MCompositeWindow *)), SLOT(lowerHandler(MCompositeWindow *)));
