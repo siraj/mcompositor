@@ -2206,7 +2206,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             break;
         Atom type = cw->propertyCache()->windowTypeAtom();
         if (type != ATOM(_NET_WM_WINDOW_TYPE_DIALOG) &&
-            type != ATOM(_NET_WM_WINDOW_TYPE_MENU) && cw->isAppWindow(true)) {
+            type != ATOM(_NET_WM_WINDOW_TYPE_MENU) &&
+            cw->isMapped() && cw->isAppWindow(true)) {
             set_as_current_app = w;
             break;
         }
