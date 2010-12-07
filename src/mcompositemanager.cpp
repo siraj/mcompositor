@@ -2410,9 +2410,21 @@ stack_and_return:
     if (pc->windowState() == NormalState &&
         (stack[DESKTOP_LAYER] != win || !getTopmostApp(0, win, true)))
         activateWindow(win, CurrentTime, false);
-    else
+    else {
         // desktop is stacked below the active application
         positionWindow(win, false);
+        if (win == stack[DESKTOP_LAYER]) {
+            // lower always mapped windows below the desktop
+            for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
+                 it != windows.end(); ++it) {
+                 MCompositeWindow *i = it.value();
+                 if (i->propertyCache() && i->propertyCache()->isMapped()
+                     && i->propertyCache()->alwaysMapped() > 0)
+                     setWindowState(i->window(), IconicState);
+            }
+            roughSort();
+        }
+    }
     
     dirtyStacking(false);
 }
