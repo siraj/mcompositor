@@ -3309,7 +3309,8 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
     updateWinList();
     setWindowDebugProperties(item->window());
 
-    if (atom->windowType(item->window()) == MCompAtoms::DESKTOP) {
+    if (item->propertyCache() && item->propertyCache()->windowType()
+                                               == MCompAtoms::DESKTOP) {
         connect(item, SIGNAL(desktopActivated(MCompositeWindow *)),
                 SLOT(onDesktopActivated(MCompositeWindow *)));
         return;
