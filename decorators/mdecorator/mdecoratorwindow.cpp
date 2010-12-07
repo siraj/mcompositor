@@ -270,7 +270,8 @@ void MDecoratorWindow::setInputRegion()
         // decorator is so big that it is probably in more than one part
         // (which is not yet supported)
         setOnlyStatusbar(true);
-        region = decoratorRect = statusBar->geometry().toRect();
+        r_tmp = statusBar->geometry().toRect();
+        region = decoratorRect = statusBar->mapToScene(r_tmp).boundingRect().toRect();
     }
     XRectangle rect = itemRectToScreenRect(decoratorRect);
     if (memcmp(&prev_rect, &rect, sizeof(XRectangle))) {
