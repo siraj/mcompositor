@@ -2,8 +2,30 @@ mcompositor (0.8.0-1) unstable; urgency=low
 
   * New: MCompositeWindowGroup to render several windows in one texture.
   * Fixes: NB#206365 - Device freeze if Application Crash
+  * Remove a bunch of deprecated functions
+  * Fixes: NB#202713 - New implementation for fullscreen switching
+  * more fixes for NB#202713 + fix status menu stacking issue
+  * Limit xoverlay changes for NB#202713 to the EGL backend only
+  * Fixes: NB#202667 - Search application launches automatically
+  * fix transiency detection for the decorator
+  * add MCompositeManagerPrivate::changed_properties to signify when we should
+    check stacking/focus/etc
+  * Fixes: NB#206347 - Status indicator menu is opened on top of home, not the topmost 
+  * Fixes: NB#207947 - System dialog opens in wrong orientation
+  * Fixes: NB#208395 - Lock ui is revealing another copy of it
+  * don't set_as_current_app !isMapped() windows
+  * delete bogus "compositing not enabled!" warning
+  * debugging enhancements for stacking
+  * make test13.py and test14.py pass
+  * try to make test20.py pass
+  * tighten package dependencies
+  * Fixes: NB#202389 - mcompositor is wasting time printing stuff to console
+  * exposee desktop in checkStacking()
+  * die if plugins are unloadable
+  * delete rootWindow::_NET_SUPPORTING_WM_CHECK on exit
+  * set right decoratorRect in case it's too large
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Wed, 01 Dec 2010 20:50:19 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 07 Dec 2010 13:54:46 +0200
 
 mcompositor (0.7.9-1) unstable; urgency=low
 
