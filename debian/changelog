@@ -1,8 +1,8 @@
-mcompositor (0.8.1-1~unreleased) unstable; urgency=low
+mcompositor (0.8.0-2) unstable; urgency=low
 
-  * unreleased
+  * rebuild mcompositor-dev for all architectures
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Wed, 08 Dec 2010 13:28:31 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Wed, 08 Dec 2010 15:01:17 +0200
 
 mcompositor (0.8.0-1) unstable; urgency=low
 
