@@ -20,7 +20,7 @@ Description: MeeGo Touch UI Compositing Window Manager debug symbols
  MeeGo Touch UI Compositor debug symbols
 
 Package: mcompositor-dev
-Architecture: all
+Architecture: any
 Depends: mcompositor (=${Source-Version})
 Description: MeeGo Touch UI Compositing Window Manager header files
  MeeGo Touch UI Compositor header files for plugins.
