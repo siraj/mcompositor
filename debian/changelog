@@ -1,3 +1,9 @@
+mcompositor (0.8.1-1~unreleased) unstable; urgency=low
+
+  * unreleased
+
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Wed, 08 Dec 2010 13:28:31 +0200
+
 mcompositor (0.8.0-1) unstable; urgency=low
 
   * New: MCompositeWindowGroup to render several windows in one texture.
