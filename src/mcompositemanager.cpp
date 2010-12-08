@@ -80,8 +80,6 @@
 Atom MCompAtoms::atoms[MCompAtoms::ATOMS_TOTAL];
 Window MCompositeManagerPrivate::stack[TOTAL_LAYERS];
 MCompAtoms *MCompAtoms::d = 0;
-static bool hasDock  = false;
-static QRect availScreenRect = QRect();
 static KeyCode switcher_key = 0;
 
 // temporary launch indicator. will get replaced later
@@ -174,8 +172,6 @@ MCompAtoms::MCompAtoms()
         "WM_CHANGE_STATE",
 
         "_MEEGOTOUCH_DECORATOR_WINDOW",
-        // TODO: remove this when statusbar in-scene approach is done
-        "_DUI_STATUSBAR_OVERLAY",
         "_MEEGOTOUCH_GLOBAL_ALPHA",
         "_MEEGOTOUCH_VIDEO_ALPHA",
         "_MEEGO_STACKING_LAYER",
@@ -253,12 +249,6 @@ MCompAtoms::Type MCompAtoms::windowType(Window w)
 bool MCompAtoms::isDecorator(Window w)
 {
     return (cardValueProperty(w, atoms[_MEEGOTOUCH_DECORATOR_WINDOW]) == 1);
-}
-
-// Remove this when statusbar in-scene approach is done
-bool MCompAtoms::statusBarOverlayed(Window w)
-{
-    return (cardValueProperty(w, atoms[_DUI_STATUSBAR_OVERLAY]) == 1);
 }
 
 int MCompAtoms::getPid(Window w)
@@ -444,17 +434,6 @@ static void skiptaskbar_wm_state(int toggle, Window window)
     }
 }
 
-static bool need_geometry_modify(Window window)
-{
-    MCompAtoms *atom = MCompAtoms::instance();
-
-    if (atom->hasState(window, ATOM(_NET_WM_STATE_FULLSCREEN)) ||
-            (atom->statusBarOverlayed(window)))
-        return false;
-
-    return true;
-}
-
 static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
                                 int toggle, Window window,
                                 QVector<Atom> *net_wm_state = 0)
@@ -490,10 +469,6 @@ static void fullscreen_wm_state(MCompositeManagerPrivate *priv,
             MDecoratorFrame::instance()->setManagedWindow(win);
             MDecoratorFrame::instance()->setOnlyStatusbar(false);
             MDecoratorFrame::instance()->raise();
-        } else if (win && need_geometry_modify(window) &&
-                   !availScreenRect.isEmpty()) {
-            QRect r = availScreenRect;
-            XMoveResizeWindow(dpy, window, r.x(), r.y(), r.width(), r.height());
         }
         if (win && win->propertyCache()->isMapped())
             priv->dirtyStacking(false);
@@ -1446,7 +1421,7 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
         pc = prop_caches.value(e->window);
 
     // sandbox these windows. we own them
-    if ((pc && pc->isDecorator()) || atom->isDecorator(e->window))
+    if ((pc && pc->isDecorator()) || (!pc && atom->isDecorator(e->window)))
         return;
 
     /*qDebug() << __func__ << "CONFIGURE REQUEST FOR:" << e->window
@@ -1519,23 +1494,12 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 
     MCompAtoms::Type wtype = pc->windowType();
     QRect a = pc->realGeometry();
-    if (!hasDock) {
-        hasDock = (wtype == MCompAtoms::DOCK);
-        if (hasDock)
-            dock_region = QRegion(a.x(), a.y(), a.width(), a.height());
-    }
     int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
     int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
 
     if (wtype == MCompAtoms::FRAMELESS || wtype == MCompAtoms::DESKTOP
         || wtype == MCompAtoms::INPUT) {
-        if (hasDock) {
-            QRect r = (QRegion(QApplication::desktop()->screenGeometry()) - dock_region).boundingRect();
-            if (availScreenRect != r)
-                availScreenRect = r;
-            if (need_geometry_modify(e->window))
-                XMoveResizeWindow(dpy, e->window, r.x(), r.y(), r.width(), r.height());
-        } else if (a.width() != xres && a.height() != yres) {
+        if (a.width() != xres && a.height() != yres) {
             XResizeWindow(dpy, e->window, xres, yres);
         }
     }
@@ -3630,9 +3594,6 @@ void MCompositeManager::dumpState(const char *heading)
     qDebug(    "composition:      %s", isCompositing() ? "on"  : "off");
     qDebug(    "xoverlay:         0x%lx, %s", d->xoverlay,
                d->overlay_mapped ? "mapped" : "unmapped");
-    qDebug(    "avail screen:     %dx%d%+d%+d",
-               availScreenRect.width(), availScreenRect.height(),
-               availScreenRect.x(), availScreenRect.y());
 
     qDebug(    "current_app:      0x%lx", d->current_app);
     qDebug(    "topmostApp:       0x%lx (index: %d)",
@@ -3657,16 +3618,6 @@ void MCompositeManager::dumpState(const char *heading)
     qDebug(    "close button:     0x%lx (%dx%d%+d%+d)",
                d->close_button_win,
                r->width(), r->height(), r->x(), r->y());
-
-    line = "dock_region:     ";
-    if (!d->dock_region.isEmpty()) {
-        foreach (const QRect &rect, d->dock_region.rects())
-            line += QString().sprintf(" %dx%d%+d%+d",
-                                      rect.width(), rect.height(),
-                                      rect.x(), rect.y());
-    } else
-        line += " <Empty>";
-    qDebug() << line.toLatin1().constData();
 
     // Stacking
     qDebug(    "stacking_timer:   %s",

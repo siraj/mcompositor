@@ -150,7 +150,6 @@ public:
     QHash<Window, QList<XConfigureRequestEvent*> > configure_reqs;
     QHash<Window, MWindowPropertyCache*> prop_caches;
     QMultiHash<int, MCompositeManagerExtension* > m_extensions;
-    QRegion dock_region;
 
     int damage_event;
     int damage_error;

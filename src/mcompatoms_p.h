@@ -86,9 +86,8 @@ public:
         _NET_CLIENT_LIST_STACKING,
         WM_CHANGE_STATE,
 
-        // DUI-specific
+        // MEEGO(TOUCH)-specific
         _MEEGOTOUCH_DECORATOR_WINDOW,
-        _DUI_STATUSBAR_OVERLAY,
         _MEEGOTOUCH_GLOBAL_ALPHA,
         _MEEGOTOUCH_VIDEO_ALPHA,
         _MEEGO_STACKING_LAYER,
@@ -124,7 +123,6 @@ public:
     static MCompAtoms *instance();
     Type windowType(Window w);
     bool isDecorator(Window w);
-    bool statusBarOverlayed(Window w);
     int getPid(Window w);
     bool hasState(Window w, Atom a);
     QVector<Atom> getAtomArray(Window w, Atom array_atom);
