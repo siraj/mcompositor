@@ -681,9 +681,11 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         xcb_meego_layer_cookie = xcb_get_property(xcb_conn, 0, window,
                                                   ATOM(_MEEGO_STACKING_LAYER),
                                                   XCB_ATOM_CARDINAL, 0, 1);
-        // raise it so that it becomes on top of same-leveled windows
-        MCompositeManager *m = (MCompositeManager*)qApp;
-        m->d->positionWindow(window, true);
+        if (window_state == NormalState) {
+            // raise it so that it becomes on top of same-leveled windows
+            MCompositeManager *m = (MCompositeManager*)qApp;
+            m->d->positionWindow(window, true);
+        }
         return true;
     } else if (e->atom == ATOM(_MEEGOTOUCH_CUSTOM_REGION)) {
         emit customRegionChanged(this);
