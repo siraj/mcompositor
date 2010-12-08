@@ -21,6 +21,7 @@
 #include "mcompositewindow.h"
 #include "mtexturepixmapitem.h"
 #include "mcompositemanager.h"
+#include "mcompositordebug.h"
 
 #include <mrmiclient.h>
 #include <QX11Info>
@@ -164,9 +165,11 @@ void MDecoratorFrame::setDecoratorAvailableRect(const QRect& r)
     
     available_rect = r;    
 
-    if (client->propertyCache()->realGeometry() != available_rect)
+    if (client->propertyCache()->realGeometry() != available_rect) {
       // resize app window to occupy the free area
       XMoveResizeWindow(dpy, client->window(), r.x(), r.y(), r.width(), r.height());
+      MOVE_RESIZE(client->window(), r.x(), r.y(), r.width(), r.height());
+    }
 }
 
 void MDecoratorFrame::setAutoRotation(bool mode)
