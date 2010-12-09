@@ -3976,9 +3976,10 @@ void MCompositeManager::xtrace(const char *fun, const char *msg, int lmsg)
     // X request.  Unfortunately this makes this function a synchronisation
     // point (it has to wait for the reply).  Use xcb rather than libx11
     // because the latter maintains a hashtable of known Atom:s.
-    xcb_intern_atom_reply(p->d->xcb_conn,
-                          xcb_intern_atom(p->d->xcb_conn, False, lmsg, msg),
-                          NULL);
+    free(xcb_intern_atom_reply(p->d->xcb_conn,
+                               xcb_intern_atom(p->d->xcb_conn, False,
+                                               lmsg, msg),
+                               NULL));
 }
 
 void MCompositeManager::xtracef(const char *fun, const char *fmt, ...)
