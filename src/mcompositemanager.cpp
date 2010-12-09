@@ -3509,33 +3509,33 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w)
 
 void MCompositeManagerPrivate::exposeSwitcher()
 {    
-    Display* dpy =  QX11Info::display();
-
-    for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
-         it != windows.end(); ++it) {
-        MCompositeWindow *i  = it.value();
-        if (!i->isAppWindow(true) ||
-            i->propertyCache()->windowState() == IconicState ||
+    MCompositeWindow *i = 0;
+    for (int j = stacking_list.size() - 1; j >= 0; --j) {
+        Window w = stacking_list.at(j);        
+        if (!(i = COMPOSITE_WINDOW(w)) || !i->propertyCache() ||
+            !i->propertyCache()->isMapped() ||
+            i->propertyCache()->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP)
+            || i->propertyCache()->windowState() == IconicState ||
             // skip devicelock and screenlock windows
-            i->propertyCache()->dontIconify() ||
-
-            i->propertyCache()->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP))
+            i->propertyCache()->dontIconify() || !i->isAppWindow(true))
             continue;
-        
-        XEvent e;
-        e.xclient.type = ClientMessage;
-        e.xclient.message_type = ATOM(WM_CHANGE_STATE);
-        e.xclient.display = dpy;
-        e.xclient.window = i->window();
-        e.xclient.format = 32;
-        e.xclient.data.l[0] = IconicState;
-        e.xclient.data.l[1] = 0;
-        e.xclient.data.l[2] = 0;
-        e.xclient.data.l[3] = 0;
-        e.xclient.data.l[4] = 0;
-        XSendEvent(dpy, RootWindow(dpy, 0),
-                   False, (SubstructureNotifyMask|SubstructureRedirectMask), &e);
+        break;
     }
+    if (!i) return;
+
+    XEvent e;
+    e.xclient.type = ClientMessage;
+    e.xclient.message_type = ATOM(WM_CHANGE_STATE);
+    e.xclient.display = QX11Info::display();
+    e.xclient.window = i->window();
+    e.xclient.format = 32;
+    e.xclient.data.l[0] = IconicState;
+    e.xclient.data.l[1] = 0;
+    e.xclient.data.l[2] = 0;
+    e.xclient.data.l[3] = 0;
+    e.xclient.data.l[4] = 0;
+    // no need to send to X server first, also avoids NB#210587
+    clientMessageEvent(&(e.xclient));
 }
 
 void MCompositeManagerPrivate::installX11EventFilter(long xevent, 

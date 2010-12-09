@@ -45,6 +45,7 @@
 
 #include <mtexturepixmapitem.h>
 #include <mcompositemanager.h>
+#include <mcompositemanager_p.h>
 
 #ifdef GLES2_VERSION
 #define FORMAT GL_RGBA
@@ -117,7 +118,11 @@ MCompositeWindowGroup::~MCompositeWindowGroup()
     glDeleteFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    update();
+    // if stacking is dirty, stack windows now, otherwise we paint the scene
+    // according to the old stacking
+    MCompositeManager *p = (MCompositeManager*)qApp;
+    if (p->d->stacking_timer.isActive())
+        p->d->stackingTimeout();
 }
 
 void MCompositeWindowGroup::init()
@@ -193,7 +198,7 @@ void MCompositeWindowGroup::addChildWindow(MTexturePixmapItem* window)
     // for back to front rendering. Could use depth buffer attachment at some 
     // point so this might be unecessary
     qSort(d->item_list.begin(), d->item_list.end(), behindCompare);
-    updateWindowPixmap();
+    updateWindowPixmap(); // FIXME: don't do this for each added child
 }
 
 /*!

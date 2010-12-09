@@ -101,10 +101,13 @@ void MCompositeScene::drawItems(QPainter *painter, int numItems, QGraphicsItem *
                 // lest we can have it drawn with the transition (especially
                 // when desktop window is not yet shown, NB#192454)
                 continue;
+            if (cw->group())
+                // items that belong to a group are drawn by the group
+                continue;
             if (cw->isDirectRendered() || !cw->isVisible()
                 || !(cw->propertyCache()->isMapped() || cw->isWindowTransitioning())
                 || cw->propertyCache()->isInputOnly())
-                    continue;            
+                continue;            
             if (visible.isEmpty())
                 // nothing below is visible anymore
                 break;
