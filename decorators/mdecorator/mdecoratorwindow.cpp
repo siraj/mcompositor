@@ -282,98 +282,72 @@ void MDecoratorWindow::screenRotated(const M::Orientation &orientation)
     d->setAvailableGeometry(availableClientRect());
 }
 
-// NOTE: this works with fullscreen-width rects only
-QRect MDecoratorWindow::itemRectToScreenRect(const QRect& r)
-{
-    QRect rect;
-    Display *dpy = QX11Info::display();
-    int xres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->width;
-    int yres = ScreenOfDisplay(dpy, DefaultScreen(dpy))->height;
-    switch (sceneManager()->orientationAngle()) {
-    case 0:
-            rect = r;
-            break;
-    case 90:
-            rect = QRect(xres - r.height(), 0, r.height(), r.width());
-            break;
-    case 270:
-            rect = QRect(0, 0, r.height(), r.width());
-            break;
-    case 180:
-            rect = QRect(0, yres - r.height(), r.width(), r.height());
-            break;
-    default:
-            break;
-    }
-    return rect;
-}
-
-static void set_shape(Window win, XRectangle *r, int n)
-{
-    static XRectangle *prev_rects = 0;
-    static int prev_n = 0;
-    if (prev_n != n ||
-        (prev_rects && memcmp(prev_rects, r, sizeof(XRectangle[n])))) {
-        Display *dpy = QX11Info::display();
-        XserverRegion shapeRegion = XFixesCreateRegion(dpy, r, n);
-        XShapeCombineRectangles(dpy, win, ShapeBounding, 0, 0, r, n,
-                                ShapeSet, Unsorted);
-        XFixesSetWindowShapeRegion(dpy, win, ShapeInput, 0, 0, shapeRegion);
-        XFixesDestroyRegion(dpy, shapeRegion);
-    } else
-        return;
-    if (prev_rects && prev_n != n) {
-        delete[] prev_rects;
-        prev_rects = new XRectangle[n];
-    }
-    prev_n = n;
-    if (prev_rects)
-        memcpy(prev_rects, r, sizeof(XRectangle[n]));
-}
-
 void MDecoratorWindow::setInputRegion()
 {
+    static QRegion prev_region;
     QRegion region;
-    const QRect fs(QApplication::desktop()->screenGeometry());
+    const QRegion fs(QApplication::desktop()->screenGeometry());
+
+    // region := decoration region
     if (messageBox) {
-        XRectangle rect;
+        // Occupy all space.
         region = fs;
-        rect.x = fs.x();
-        rect.y = fs.y();
-        rect.width = fs.width();
-        rect.height = fs.height();
-        availableRect = QRect(0, 0, 0, 0);
-        set_shape(winId(), &rect, 1);
     } else {
-        region += statusBar->geometry().toRect();
+        // Decoration includes the status bar, and possibly other elements.
+        region = statusBar->geometry().toRect();
         if (!only_statusbar) {
             region += navigationBar->geometry().toRect();
             region += homeButtonPanel->geometry().toRect();
             region += escapeButtonPanel->geometry().toRect();
         }
 
-        const QVector<QRect> rects = region.rects();
-        QRegion screen_region;
-        XRectangle *xrects = new XRectangle[rects.count()];
-        int count = 0;
-        for (int i = 0; i < rects.count(); ++i) {
-            QRect r = itemRectToScreenRect(rects[i]);
-            if (r.x() || (r.width() != fs.width() && r.width() != fs.height()))
-                // only fullscreen-width components supported
-                continue;
-            screen_region += r;
-            xrects[count].x = r.x();
-            xrects[count].y = r.y();
-            xrects[count].width = r.width();
-            xrects[count].height = r.height();
-            ++count;
-        }
-        set_shape(winId(), xrects, count);
-        delete[] xrects;
+        // The coordinates we receive from libmeegotouch are rotated
+        // by @angle.  Map @retion back to screen coordinates.
+        int angle = sceneManager()->orientationAngle();
+        if (angle != 0) {
+            QTransform trans;
+            const QRect fs(QApplication::desktop()->screenGeometry());
 
-        // NOTE: assumes that the available region is a single rectangle
-        availableRect = QRegion(QRegion(fs) - screen_region).boundingRect();
+            trans.rotate(angle);
+            if (angle == 270)
+                trans.translate(-fs.height(), 0);
+            else if (angle == 180)
+                trans.translate(-fs.width(), -fs.height());
+            else if (angle == 90)
+                trans.translate(0, -fs.width());
+            region = trans.map(region);
+        }
     }
+
+    // Set our input and bounding shape to @region if changed.
+    if (prev_region != region) {
+        prev_region = region;
+
+        // Convert @region to @xrects.
+        const QVector<QRect> rects = region.rects();
+        int nxrects = rects.count();
+        XRectangle *xrects = new XRectangle[nxrects];
+        for (int i = 0; i < nxrects; ++i) {
+            xrects[i].x = rects[i].x();
+            xrects[i].y = rects[i].y();
+            xrects[i].width = rects[i].width();
+            xrects[i].height = rects[i].height();
+        }
+
+        Display *dpy = QX11Info::display();
+        XserverRegion shapeRegion = XFixesCreateRegion(dpy, xrects, nxrects);
+        XFixesSetWindowShapeRegion(dpy, winId(), ShapeInput,
+                                   0, 0, shapeRegion);
+        XFixesSetWindowShapeRegion(dpy, winId(), ShapeBounding,
+                                   0, 0, shapeRegion);
+
+        XFixesDestroyRegion(dpy, shapeRegion);
+        delete[] xrects;
+    }
+
+    // The rectangle available for the application is the largest square
+    // on the screen not covered by decoration completely.
+    availableRect = (fs - region).boundingRect();
 }
 
 void MDecoratorWindow::setSceneSize()
