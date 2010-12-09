@@ -220,25 +220,28 @@ bool MDecoratorWindow::x11Event(XEvent *e)
 void MDecoratorWindow::showQueryDialog(bool visible)
 {
     if (visible && !messageBox) {
-        char name[100];
-        snprintf(name, 100, "window 0x%lx", managed_window);
+        QString name;
+
         XClassHint cls = {0, 0};
         XGetClassHint(QX11Info::display(), managed_window, &cls);
         if (cls.res_name) {
-            strncpy(name, cls.res_name, 100);
+            name = QString(cls.res_name);
             MDesktopEntry de(QString("/usr/share/applications/")
                              + name + ".desktop");
             if (de.isValid() && !de.name().isEmpty())
-                strncpy(name, de.name().toAscii().data(), 100);
-        }
-        if (cls.res_class) XFree(cls.res_class);
-        if (cls.res_name) XFree(cls.res_name);
+                name = de.name();
+            XFree(cls.res_name);
+        } else
+            name.sprintf("window 0x%lx", managed_window);
+
+        if (cls.res_class)
+            XFree(cls.res_class);
 
         XSetTransientForHint(QX11Info::display(), winId(), managed_window);
         requested_only_statusbar = only_statusbar;
         setOnlyStatusbar(true, true);
         messageBox = new MMessageBox(
-                         qtTrId("qtn_reco_app_not_responding").replace("%1", name),
+                         qtTrId("qtn_reco_app_not_responding").arg(name),
                          qtTrId("qtn_reco_close_app_question"),
                          M::NoStandardButton);
         MButtonModel *yes = messageBox->addButton(qtTrId("qtn_comm_command_yes"),
