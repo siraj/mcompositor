@@ -27,6 +27,7 @@
 class QGraphicsScene;
 class MCompositeManagerPrivate;
 class MCompAtoms;
+class MCompositeWindow;
 
 /*!
  * MCompositeManager is responsible for managing window events.
@@ -173,6 +174,11 @@ public slots:
      * Invoke to show the desktop window, possibly with switcher contents
      */
     void exposeSwitcher();
+
+    /*!
+     * Returns the decorator window or NULL.
+     */
+    MCompositeWindow *decoratorWindow() const;
 
     /*!
      * Area that is free after the area that decorator occupies.

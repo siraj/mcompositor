@@ -3366,6 +3366,11 @@ void MCompositeManager::positionWindow(Window w,
     d->positionWindow(w, pos == MCompositeManager::STACK_TOP ? true : false);
 }
 
+MCompositeWindow *MCompositeManager::decoratorWindow() const
+{
+    return MDecoratorFrame::instance()->decoratorItem();
+}
+
 const QRect &MCompositeManager::availableRect() const
 {
     return MDecoratorFrame::instance()->availableRect();
