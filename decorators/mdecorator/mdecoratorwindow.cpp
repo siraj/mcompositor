@@ -123,15 +123,19 @@ MDecoratorWindow::MDecoratorWindow(QWidget *parent)
     managedWindowAtom = XInternAtom(QX11Info::display(),
                                     "_MDECORATOR_MANAGED_WINDOW", False);
 
-    homeButtonPanel = new MHomeButtonPanel();
-    escapeButtonPanel = new MEscapeButtonPanel();
-    navigationBar = new MNavigationBar();
     statusBar = new MStatusBar();
+    navigationBar = new MNavigationBar();
+    QVariant hasclose = navigationBar->property("hasCloseButton");
+    if (hasclose.isValid() && hasclose.toBool()) {
+        escapeButtonPanel = new MEscapeButtonPanel();
+        connect(escapeButtonPanel, SIGNAL(buttonClicked()), this,
+                SIGNAL(escapeClicked()));
+    } else // The current theme doesn't want an escape button.
+        escapeButtonPanel = NULL;
 
+    homeButtonPanel = new MHomeButtonPanel();
     connect(homeButtonPanel, SIGNAL(buttonClicked()), this,
             SIGNAL(homeClicked()));
-    connect(escapeButtonPanel, SIGNAL(buttonClicked()), this,
-            SIGNAL(escapeClicked()));
 
     sceneManager()->appearSceneWindowNow(statusBar);
     setOnlyStatusbar(false);
@@ -267,11 +271,13 @@ void MDecoratorWindow::setOnlyStatusbar(bool mode, bool temporary)
     if (mode) {
         sceneManager()->disappearSceneWindowNow(navigationBar);
         sceneManager()->disappearSceneWindowNow(homeButtonPanel);
-        sceneManager()->disappearSceneWindowNow(escapeButtonPanel);
+        if (escapeButtonPanel)
+            sceneManager()->disappearSceneWindowNow(escapeButtonPanel);
     } else if (!messageBox) {
         sceneManager()->appearSceneWindowNow(navigationBar);
         sceneManager()->appearSceneWindowNow(homeButtonPanel);
-        sceneManager()->appearSceneWindowNow(escapeButtonPanel);
+        if (escapeButtonPanel)
+            sceneManager()->appearSceneWindowNow(escapeButtonPanel);
     }
     if (!temporary)
         requested_only_statusbar = mode;
@@ -301,7 +307,8 @@ void MDecoratorWindow::setInputRegion()
         if (!only_statusbar) {
             region += navigationBar->geometry().toRect();
             region += homeButtonPanel->geometry().toRect();
-            region += escapeButtonPanel->geometry().toRect();
+            if (escapeButtonPanel)
+                region += escapeButtonPanel->geometry().toRect();
         }
 
         // The coordinates we receive from libmeegotouch are rotated
