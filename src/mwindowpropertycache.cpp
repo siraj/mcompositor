@@ -61,6 +61,7 @@ void MWindowPropertyCache::init()
     dont_iconify = false;
     custom_region = 0;
     custom_region_request_fired = false;
+    orientation_angle = 0;
     xcb_real_geom = 0;
     damage_object = 0;
 
@@ -80,6 +81,8 @@ void MWindowPropertyCache::init_invalid()
     memset(&xcb_is_decorator_cookie, 0, sizeof(xcb_is_decorator_cookie));
     memset(&xcb_window_type_cookie, 0, sizeof(xcb_window_type_cookie));
     memset(&xcb_decor_buttons_cookie, 0, sizeof(xcb_decor_buttons_cookie));
+    memset(&xcb_orientation_angle_cookie, 0,
+           sizeof(xcb_orientation_angle_cookie));
     memset(&xcb_wm_protocols_cookie, 0, sizeof(xcb_wm_protocols_cookie));
     memset(&xcb_wm_state_cookie, 0, sizeof(xcb_wm_state_cookie));
     memset(&xcb_wm_hints_cookie, 0, sizeof(xcb_wm_hints_cookie));
@@ -142,6 +145,9 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
     xcb_decor_buttons_cookie = xcb_get_property(xcb_conn, 0, window,
                                        ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
                                        XCB_ATOM_CARDINAL, 0, 8);
+    xcb_orientation_angle_cookie = xcb_get_property(xcb_conn, 0, window,
+                                    ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE),
+                                    XCB_ATOM_CARDINAL, 0, 8);
     xcb_wm_protocols_cookie = xcb_get_property(xcb_conn, 0, window,
                                                ATOM(WM_PROTOCOLS),
                                                XCB_ATOM_ATOM, 0, 100);
@@ -260,6 +266,7 @@ MWindowPropertyCache::~MWindowPropertyCache()
         r = xcb_get_property_reply(xcb_conn, xcb_custom_region_cookie, 0);
         if (r) free(r);
     } 
+    xcb_discard_reply(xcb_conn, xcb_orientation_angle_cookie.sequence);
     if (custom_region) delete custom_region;
     if (wm_state_query)
         windowState();
@@ -649,6 +656,11 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
                                        ATOM(_MEEGOTOUCH_DECORATOR_BUTTONS),
                                        XCB_ATOM_CARDINAL, 0, 8);
         emit meegoDecoratorButtonsChanged(window);
+    } else if (e->atom == ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE)) {
+        xcb_discard_reply(xcb_conn, xcb_orientation_angle_cookie.sequence);
+        xcb_orientation_angle_cookie = xcb_get_property(xcb_conn, 0, window,
+                                    ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE),
+                                    XCB_ATOM_CARDINAL, 0, 8);
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
         if (!wm_protocols_valid)
             // collect the old reply
@@ -755,6 +767,25 @@ const QRect &MWindowPropertyCache::closeButtonGeometry()
         return close_button_geom;
     buttonGeometryHelper();
     return close_button_geom;
+}
+
+unsigned MWindowPropertyCache::orientationAngle()
+{
+    xcb_get_property_reply_t *r;
+
+    if (!xcb_orientation_angle_cookie.sequence)
+        return orientation_angle;
+
+    orientation_angle = 0;
+    r = xcb_get_property_reply(xcb_conn, xcb_orientation_angle_cookie, 0);
+    if (r != NULL) {
+        if (xcb_get_property_value_length(r) == sizeof(CARD32))
+            orientation_angle = *((CARD32*)xcb_get_property_value(r));
+        free(r);
+    }
+    xcb_orientation_angle_cookie.sequence = 0;
+
+    return orientation_angle;
 }
 
 const QList<Atom>& MWindowPropertyCache::supportedProtocols()

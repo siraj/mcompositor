@@ -183,6 +183,7 @@ MCompAtoms::MCompAtoms()
         "_MEEGOTOUCH_CANNOT_MINIMIZE",
         "_MEEGOTOUCH_MSTATUSBAR_GEOMETRY",
         "_MEEGOTOUCH_CUSTOM_REGION",
+        "_MEEGOTOUCH_ORIENTATION_ANGLE",
 
 #ifdef WINDOW_DEBUG
         // custom properties for CITA
