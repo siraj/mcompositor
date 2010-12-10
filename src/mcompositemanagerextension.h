@@ -39,7 +39,7 @@ class MCompositeManagerExtension: public QObject
     /*
      * Returns the desktop window
      */
-    Qt::HANDLE desktopWindow();
+    Qt::HANDLE desktopWindow() const;
 
     /*
      * Returns the current application window

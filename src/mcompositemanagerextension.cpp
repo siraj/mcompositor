@@ -48,7 +48,7 @@ void MCompositeManagerExtension::dumpState() const
     /* NOP */
 }
 
-Qt::HANDLE MCompositeManagerExtension::desktopWindow()
+Qt::HANDLE MCompositeManagerExtension::desktopWindow() const
 {    
     MCompositeManager *p = (MCompositeManager *) qApp;
     return p->d->stack[DESKTOP_LAYER];
