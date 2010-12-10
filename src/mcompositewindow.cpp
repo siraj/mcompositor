@@ -119,17 +119,20 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
 MCompositeWindow::~MCompositeWindow()
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
-    p->d->removeWindow(window());
 
     if (window() && (t_ping || t_reappear)) {
         stopPing();
+        delete t_ping;
+        delete t_reappear;
         t_ping = t_reappear = 0;
     }
     endAnimation();
     
     anim = 0;
+    delete damage_timer;
     
     if (pc) {
+        pc->damageTracking(false);
         p->d->prop_caches.remove(window());
         pc->deleteLater();
     }    

@@ -280,6 +280,7 @@ MWindowPropertyCache::~MWindowPropertyCache()
         shapeRegion();
     if (!net_wm_state_valid)
         netWmState();
+    damageTracking(false);
 }
 
 bool MWindowPropertyCache::hasAlpha()

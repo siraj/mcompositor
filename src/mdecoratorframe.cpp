@@ -92,7 +92,8 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
 
     if (client == cw)
         return;
-    disconnect(this, SLOT(destroyClient()));
+    if (client)
+        disconnect(client, SIGNAL(destroyed()), this, SLOT(destroyClient()));
     client = cw;
 
     qulonglong winid = client ? client->window() : 0;

@@ -926,7 +926,10 @@ void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
     if (item) {
         item->deleteLater();
         removeWindow(item->window());
-        // PC deleted with the MCompositeWindow
+        prop_caches.remove(item->window());
+        // PC deleted with the MCompositeWindow.  Till then we've made sure
+        // that we can't reuse it, even if a window with the same XID is
+        // created before @item is actually destroyed.
     } else {
         // We got a destroy event from a framed window (or a window that was
         // never mapped)
