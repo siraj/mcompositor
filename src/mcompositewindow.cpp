@@ -684,28 +684,30 @@ bool MCompositeWindow::hasTransitioningWindow()
 QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant &value)
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
-    bool zvalChanged = (change == ItemZValueHasChanged);
-    if (zvalChanged) {
+    if (change == ItemZValueHasChanged) {
         findBehindWindow();
         p->d->setWindowDebugProperties(window());
-    }
 
-    // Be careful that there is a changed visible item, to not reopen NB#189519.
-    // Update is needed if visibility changes for a visible item
-    // (other visible items get redrawn also)
-    QList<QGraphicsItem*> l;
-    if (scene())
-        l = scene()->items();
-    int highest_visible_z = -1000;
-    for (QList<QGraphicsItem*>::const_iterator i = l.begin(); i != l.end(); ++i)
-        if ((*i)->isVisible()) {
-            highest_visible_z = (*i)->zValue();     
-            break;
+        // Be careful not to update if this item whose visibility is about
+        // to change is behind a visible item, to not reopen NB#189519.
+        // Update is needed if visibility changes for a visible item
+        // (other visible items get redrawn also).  Case requiring this:
+        // status menu closed on top of an mdecorated window.
+        bool ok_to_update = true;
+        if (scene()) {
+            QList<QGraphicsItem*> l = scene()->items();
+            for (QList<QGraphicsItem*>::const_iterator i = l.begin();
+                 i != l.end(); ++i)
+                if ((*i)->isVisible()) {
+                    ok_to_update = zValue() >= (*i)->zValue();
+                    break;
+                }
         }
 
-    // case requiring this: status menu closed on top of decorated FieldTest app
-    if (zValue() >= highest_visible_z && change == ItemVisibleHasChanged)
-        p->d->glwidget->update();
+        if (ok_to_update)
+            // Nothing is visible or the topmost visible item is lower than us.
+            p->d->glwidget->update();
+    }
 
     return QGraphicsItem::itemChange(change, value);
 }
