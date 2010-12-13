@@ -687,7 +687,9 @@ QVariant MCompositeWindow::itemChange(GraphicsItemChange change, const QVariant 
     if (change == ItemZValueHasChanged) {
         findBehindWindow();
         p->d->setWindowDebugProperties(window());
+    }
 
+    if (change == ItemVisibleHasChanged) {
         // Be careful not to update if this item whose visibility is about
         // to change is behind a visible item, to not reopen NB#189519.
         // Update is needed if visibility changes for a visible item
