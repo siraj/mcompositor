@@ -78,7 +78,6 @@ signals:
 private:
     void setSceneSize();
     void setMDecoratorWindowProperty();
-    QRect itemRectToScreenRect(const QRect& r);
 
     MHomeButtonPanel *homeButtonPanel;
     MEscapeButtonPanel *escapeButtonPanel;
