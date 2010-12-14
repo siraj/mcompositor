@@ -189,7 +189,6 @@ public slots:
     void closeHandler(MCompositeWindow *window);
     
     void onDesktopActivated(MCompositeWindow*);
-    void exposeDesktop();
     void exposeSwitcher();
     
     void displayOff(bool display_off);
