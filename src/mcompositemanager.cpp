@@ -2671,13 +2671,6 @@ void MCompositeManagerPrivate::setExposeDesktop(bool exposed)
     cw->setWindowObscured(!exposed);
 }
 
-// Visibility notification to desktop window. Ensure this is called once
-// transitions are done
-void MCompositeManagerPrivate::exposeDesktop()
-{
-    setExposeDesktop(true);
-}
-
 void MCompositeManagerPrivate::activateWindow(Window w, Time timestamp,
                                               bool disableCompositing)
 {
