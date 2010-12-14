@@ -65,7 +65,7 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
         is_valid = false;
         anim = 0;
         newly_mapped = false;
-        t_ping = 0;
+        t_ping = t_reappear = damage_timer = 0;
         window_visible = false;
         return;
     } else
