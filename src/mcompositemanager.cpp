@@ -2121,7 +2121,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             deco->decoratorItem()->setVisible(true);
             glwidget->update();
         }
-    } else if (!highest_d || top_decorated_i < 0) {
+    } else if ((!highest_d || top_decorated_i < 0) && deco->decoratorItem()) {
         Window deco_w = deco->decoratorItem()->window();
         int deco_i = stacking_list.indexOf(deco_w);
         if (deco_i > 0) {
