@@ -909,7 +909,7 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
             && t != MCompAtoms::INPUT
             && t != MCompAtoms::DOCK
             && t != MCompAtoms::NO_DECOR_DIALOG
-            && !transient);
+            && (!transient || t == MCompAtoms::DIALOG));
 }
 
 void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
@@ -1074,12 +1074,12 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
     return 0;
 }
 
-MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated()
+MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated(int *index)
 {
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);
         if (w == stack[DESKTOP_LAYER])
-            return 0;
+            break;
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         MWindowPropertyCache *pc;
         if (cw && cw->isMapped() && (pc = cw->propertyCache()) &&
@@ -1088,9 +1088,12 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated()
              || (FULLSCREEN_WINDOW(cw) &&
                  pc->windowTypeAtom() != ATOM(_KDE_NET_WM_WINDOW_TYPE_OVERRIDE)
                  && pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_MENU)
-                 && device_state->ongoingCall())))
+                 && device_state->ongoingCall()))) {
+            if (index) *index = i;
             return cw;
+        }
     }
+    if (index) *index = -1;
     return 0;
 }
 
@@ -2093,24 +2096,10 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                    cw->propertyCache()->meegoStackingLayer() == 6
                    && cw->iconifyState() == MCompositeWindow::NoIconifyState)
 
-    MCompositeWindow *topmost = 0, *highest_d = getHighestDecorated();
-    int top_i = -1;
-    // find out highest application window
-    for (int i = stacking_list.size() - 1; i >= 0; --i) {
-         MCompositeWindow *cw;
-         Window w = stacking_list.at(i);
-         if (w == duihome)
-             break;
-         if (!(cw = COMPOSITE_WINDOW(w)))
-             continue;
-         if (cw->propertyCache() && cw->isMapped() && cw->isAppWindow(true)) {
-             topmost = cw;
-             top_i = i;
-             break;
-         }
-    }
-    /* raise decorator */
-    if (highest_d && highest_d == topmost && deco->decoratorItem()
+    int top_decorated_i;
+    MCompositeWindow *highest_d = getHighestDecorated(&top_decorated_i);
+    /* raise/lower decorator */
+    if (highest_d && top_decorated_i >= 0 && deco->decoratorItem()
         && deco->managedWindow() == highest_d->window()
         && (!FULLSCREEN_WINDOW(highest_d)
             || highest_d->status() == MCompositeWindow::Hung
@@ -2118,19 +2107,26 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         Window deco_w = deco->decoratorItem()->window();
         int deco_i = stacking_list.indexOf(deco_w);
         if (deco_i >= 0) {
-            if (deco_i < top_i) {
-                STACKING_MOVE(deco_i, top_i);
-                safe_move(stacking_list, deco_i, top_i);
+            if (deco_i < top_decorated_i) {
+                STACKING_MOVE(deco_i, top_decorated_i);
+                safe_move(stacking_list, deco_i, top_decorated_i);
             } else {
-                STACKING_MOVE(deco_i, top_i+1);
-                safe_move(stacking_list, deco_i, top_i + 1);
+                STACKING_MOVE(deco_i, top_decorated_i + 1);
+                safe_move(stacking_list, deco_i, top_decorated_i + 1);
             }
             if (!compositing)
                 // decor requires compositing
                 enableCompositing(true);
-            MCompositeWindow *cw = COMPOSITE_WINDOW(deco_w);
-            cw->updateWindowPixmap();
-            cw->setVisible(true);
+            deco->decoratorItem()->updateWindowPixmap();
+            deco->decoratorItem()->setVisible(true);
+            glwidget->update();
+        }
+    } else if (!highest_d || top_decorated_i < 0) {
+        Window deco_w = deco->decoratorItem()->window();
+        int deco_i = stacking_list.indexOf(deco_w);
+        if (deco_i > 0) {
+            STACKING_MOVE(deco_i, 0);
+            stacking_list.move(deco_i, 0);
         }
     }
 

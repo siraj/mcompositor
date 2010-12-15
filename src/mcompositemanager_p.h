@@ -115,7 +115,7 @@ public:
     bool processX11EventFilters(XEvent *event, bool after);
     void removeWindow(Window w);
     bool needDecoration(Window w, MWindowPropertyCache *pc = 0);
-    MCompositeWindow *getHighestDecorated();
+    MCompositeWindow *getHighestDecorated(int *index = 0);
     
     static bool compareWindows(Window w_a, Window w_b);
     void roughSort();
