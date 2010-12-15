@@ -36,4 +36,5 @@ QMAKE_EXTRA_TARGETS += clean
 mdinst.depends = $${metadata.output}
 mdinst.files = $${metadata.output}
 mdinst.path = /usr/share/$$SUITENAME
+mdinst.CONFIG = no_check_exist
 INSTALLS += mdinst
