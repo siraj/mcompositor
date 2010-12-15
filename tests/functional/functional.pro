@@ -13,7 +13,7 @@ INSTALLS += initScript
 
 # Install all test scripts.
 scripts.files += test*.py
-scripts.path = /usr/share/meegotouch/testscripts/$$SUITENAME
+scripts.path = /usr/share/$$SUITENAME
 INSTALLS += scripts
 
 # Simple and easy way to build tests.xml.
