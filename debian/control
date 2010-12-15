@@ -9,7 +9,7 @@ Package: mcompositor
 Replaces: duicompositor
 Conflicts: duicompositor
 Architecture: any
-Depends: libmeegotouchcore0, ${shlibs:Depends}
+Depends: ${shlibs:Depends}
 Description: MeeGo Touch UI Compositing Window Manager
  MeeGo Touch UI Compositing Window Manager
  
@@ -27,18 +27,15 @@ Description: MeeGo Touch UI Compositing Window Manager header files
 
 Package: mcompositor-utils
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, mcetools, gconf2, aegis-dss-tools [arm armel]
 Description: commandline tools for testing mcompositor
- . 
-
 
 Package: mcompositor-functional-tests
 Architecture: any
-Depends: libmeegotouchcore0, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils, aegis-dss-tools [arm armel], x11-utils, mcompositor-utils, ${shlibs:Depends}
-XB-Maemo-CI-Packages:  mcompositor
+Depends: mcompositor, ci-testing, meego-env-dimming, meego-env-behave, python, contextkit-utils, x11-utils, mcompositor-utils
+XB-Maemo-CI-Packages: mcompositor
 XB-Maemo-CI-Stage: fast
 Description: mcompositor functional testcases
- . 
 
 Package: mcompositor-l10n-engineering-english
 Section: devel

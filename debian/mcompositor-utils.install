@@ -1,3 +1,4 @@
 usr/bin/windowctl
 usr/bin/windowstack
 usr/bin/focus-tracker
+usr/bin/mcompositor-test-init.py
