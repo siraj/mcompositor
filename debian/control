@@ -3,7 +3,7 @@ Section: x11
 Priority: extra
 Maintainer: Abdiel Janulgue <abdiel.janulgue@nokia.com>
 Build-Depends: debhelper (>= 5), libqt4-dev, libmeegotouch-dev, libgles2-sgx-img-dev [arm armel], opengles-sgx-img-common-dev [arm armel], libgl-dev [i386], libgl1 [i386], libqt4-opengl-dev, libxrender-dev, libxcomposite-dev, libxdamage-dev, libxtst-dev, libxi-dev, mce-dev [arm armel], libcontextsubscriber-dev, pkg-config, aegis-builder (>= 1.4), libxml2-utils, test-definition, libx11-xcb-dev, libxcb-render0-dev, libxext-dev, libxcb-shape0-dev, libxrandr-dev
-Standards-Version: 3.7.2
+Standards-Version: 3.9.1
 
 Package: mcompositor
 Replaces: duicompositor
@@ -15,7 +15,7 @@ Description: MeeGo Touch UI Compositing Window Manager
  
 Package: mcompositor-dbg
 Architecture: any
-Depends: mcompositor (=${Source-Version})
+Depends: mcompositor (=${binary:Version})
 Description: MeeGo Touch UI Compositing Window Manager debug symbols
  MeeGo Touch UI Compositor debug symbols
 
