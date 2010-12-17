@@ -661,15 +661,36 @@ static void kill_window(Window window)
 static int transiencyRelation(MCompositeWindow *cw_a, MCompositeWindow *cw_b)
 {
     Window parent;
+    bool cw_a_seen;
     MCompositeWindow *tmp, *cw_p;
+
+    // if they are in the same circle => return 0
+    cw_a_seen = false;
     for (tmp = cw_b; (parent = tmp->propertyCache()->transientFor())
                      && (cw_p = COMPOSITE_WINDOW(parent)); tmp = cw_p)
-       if (cw_p == cw_a)
-           return -1;
+        if (cw_p == cw_a)
+            // We still need to verify @cw_a and cw_b are not in circle.
+            cw_a_seen = true;    
+        else if (cw_p == cw_b) {
+            if (cw_a_seen)
+                return 0;
+            break;
+        }
+    if (cw_a_seen)
+        // @cw_a is an ancestor of @cw_b
+        return -1;
+
+    // @cw_b could be in a circle, and it may be @cw_a's ancestor
     for (tmp = cw_a; (parent = tmp->propertyCache()->transientFor())
                      && (cw_p = COMPOSITE_WINDOW(parent)); tmp = cw_p)
-       if (cw_p == cw_b)
-           return 1;
+        if (cw_p == cw_b)
+            // cw_b is an ancestor of cw_a => cw_b < cw_a => cw_a > cw_b
+            return 1;
+       else if (cw_p == cw_a)
+           // @cw_a is in a transiency loop, which doesn't contain @cw_b
+           return 0;
+
+    // @cw_a and @cw_b are unrelated
     return 0;
 }
 
@@ -1615,30 +1636,109 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     XMapWindow(QX11Info::display(), e->window);
 }
 
-/* recursion is needed to handle transients that are transient for other
- * transients */
-void MCompositeManagerPrivate::raiseTransientsOf(MWindowPropertyCache *pc,
-                                                 int last_i, bool recursion)
+// Raise @pc's window together with its transiency tree to the top of
+// @stacking list.  @parent_idx is expected to be the index in the list
+// of the window of @pc.
+bool MCompositeManagerPrivate::raiseWithTransients(MWindowPropertyCache *pc,
+                                    int parent_idx, QList<int> *anewpos)
 {
-    static MWindowPropertyCache *orig_pc = 0;
-    if (!recursion)
-        orig_pc = pc;
+    int nprev;
+    QList<int> *newpos;
+
+    if (!pc)
+        return true;
+
+    // @newpos is a list of @stacking_list indices which should be topped.
+    // If it contains [ @i1, @i2, ..., @in ] then [ @stacking_list[@i1],
+    // @stacking_list[@i2], ..., @stacking_list[@in] ] will be the tail
+    // of the list when we have finished.
+    //
+    // @nprev is the number of elements already in @newpos.  It is used
+    // for error recovery, when we encounter a transiency cycle.
+    if (!anewpos) {
+        // Non-recursive call.
+        newpos = new QList<int>;
+        nprev = 0;
+    } else {
+        // Recursive call.
+        newpos = anewpos;
+        nprev = newpos->size();
+    }
+
+    // @stcking_list[@parent_idx] -> top of the stack
+    Q_ASSERT(parent_idx == stacking_list.indexOf(pc->winId()));
+    newpos->push_front(parent_idx);
+
+    // @isok denotes whether the caller should stop iterating, because
+    // the callee found a better root of window hierarchy.  This can
+    // only happen if we were asked to raise a transiency cycle, but
+    // checkStacking() didn't gave us the lowest-stacked element of
+    // the cycle, for example if [@w1, @w2] is the stack and we had
+    // been asked to raise @w2.  Then we would restack needlessly,
+    // which we seek to avoid.
+    bool isok = true;
     for (QList<Window>::const_iterator it = pc->transientWindows().begin();
          it != pc->transientWindows().end(); ++it) {
-        int i = stacking_list.indexOf(*it);
-        if (i != -1) {
-            STACKING_MOVE(i, last_i);
-            stacking_list.move(i, last_i);
-            MWindowPropertyCache *p = prop_caches.value(*it, 0);
-            if (p == orig_pc && orig_pc) {
-                qWarning("%s(): window 0x%lx belongs to a transiency loop!",
-                         __func__, orig_pc->winId());
-                break;
-            }
-            if (p && !p->transientWindows().isEmpty())
-                raiseTransientsOf(p, last_i, true);
+        int idx = stacking_list.indexOf(*it);
+        if (idx < 0)
+            continue;
+        if (newpos->contains(idx)) {
+            // Transiency loop.  Having seen @idx means we are transient for it,
+            // but if we are stacked lower we make for a better root of the
+            // hierarchy.
+            if (parent_idx < idx) {
+                // Undo all positionings not done by us.
+                isok = false;
+                for (; nprev > 0; nprev--)
+                    newpos->pop_back();
+            } else
+                // We already have a new position for @idx.
+                continue;
+        }
+
+        if (!raiseWithTransients(prop_caches.value(*it), idx, newpos)) {
+            // Callee found a new root, stop what we're doing.
+            isok = false;
+            break;
         }
     }
+
+    // If it was a recursive call we're finished.
+    if (anewpos)
+        return isok;
+
+    // Change @stacking_list according to @newpos.  The new position
+    // of @stacking_list[@newpos[0]] is length(@stacking_list)-1,
+    // @stacking_list[@newpos[1]] goes to length(@stacking_list)-2,
+    // and so on.  @moved indicates whether we have moved anything in
+    // @stacking_list yet and is used for a little optimization.
+    bool moved = false;
+    Q_ASSERT(newpos->size() > 0);
+    QList<int>::iterator it = newpos->begin();
+    for (int new_idx = stacking_list.size() - 1; ; new_idx--) {
+        int old_idx = *it;
+        if (old_idx != new_idx) {
+            Q_ASSERT(new_idx >= 0);
+            STACKING_MOVE(old_idx, new_idx);
+            stacking_list.move(old_idx, new_idx);
+            moved = true;
+        }
+
+        if (++it == newpos->end())
+            break;
+        if (!moved)
+            continue;
+
+        // Since we have moved @stacking_list[@old_idx] all windows above
+        // drop down by one index.  Update @newpos according to this.
+        for (QList<int>::iterator ot = it; ot != newpos->end(); ++ot)
+            if (*ot > old_idx)
+                (*ot)--;
+    }
+
+    // The new @stacking_list is ready.
+    delete newpos;
+    return true;
 }
 
 static Bool timestamp_predicate(Display *display, XEvent *xevent, XPointer arg)
@@ -1872,9 +1972,7 @@ static int xrestackwindows_error_handler(Display *dpy, XErrorEvent *err)
                 if (cw && cw->propertyCache() && cw->isMapped() && (X)) \
                     break; \
             } \
-            STACKING_MOVE(i, last_i); \
-            stacking_list.move(i, last_i); \
-	    raiseTransientsOf(orig_cw->propertyCache(), last_i); \
+	    raiseWithTransients(orig_cw->propertyCache(), i); \
             if (!first_moved) first_moved = w; \
             if (!next || (i = stacking_list.indexOf(next)) < 0) \
                 break; \
@@ -1914,6 +2012,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             if (parent) {
                 active_app = parent;
                 aw = COMPOSITE_WINDOW(parent);
+                app_i = stacking_list.indexOf(active_app);
             }
             fs_app = FULLSCREEN_WINDOW(aw);
         }
@@ -1941,11 +2040,8 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 	    }
 	}
     
-        STACKING_MOVE(app_i, last_i);
-	safe_move(stacking_list, app_i, last_i);
-	/* raise transients recursively */
-        if (aw->propertyCache())
-	    raiseTransientsOf(aw->propertyCache(), last_i);
+	/* raise with transients recursively */
+        raiseWithTransients(aw->propertyCache(), app_i);
     } else if (duihome) {
         //qDebug() << "raising home window" << duihome;
         STACKING_MOVE(stacking_list.indexOf(duihome), last_i);
@@ -2108,7 +2204,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                         XA_WINDOW, 32, PropModeReplace,
                         (unsigned char *)no_decors.toVector().data(),
                         no_decors.size());
-        prev_only_mapped = QList<Window>(only_mapped);
+        prev_only_mapped = only_mapped;
     }
     if (order_changed || changed_properties) {
         if (!device_state->displayOff())
@@ -3173,9 +3269,11 @@ bool MCompositeManagerPrivate::compareWindows(Window w_a, Window w_b)
 
 void MCompositeManagerPrivate::roughSort()
 {
+    // Use a stable sorting algorithm to ensure roughSort() is invariant,
+    // ie. that it keeps the order unless it is necessary to change.
     STACKING("sorting stack");
     orig_list = stacking_list;
-    qSort(stacking_list.begin(), stacking_list.end(), compareWindows);
+    qStableSort(stacking_list.begin(), stacking_list.end(), compareWindows);
 }
 
 MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)

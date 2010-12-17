@@ -146,11 +146,25 @@ for l in s.splitlines():
     ret = 1
     break
 
+# get the root window and the current stacking
+r = re.compile("Window id: (0x[0-9a-fA-F]*)")
+root = [ m.group(1) for m in [ r.search(l) for l in os.popen("xwininfo -root") ]
+	if m is not None ][0]
+rnwmclist = re.compile('^_NET_CLIENT_LIST_STACKING:')
+stacking = filter(rnwmclist.match, os.popen("xprop -id %s -notype" % root))[0]
+
 # swap the transiencies of the dialogs
 # (this introduces a temporary transiency loop)
 os.popen("windowctl t %s %s" % (new_win, new_dialog))
 os.popen("windowctl t %s %s" % (new_dialog, old_win))
-time.sleep(1)
+
+# wait until the wm has restacked
+prev_stacking = stacking
+while stacking == prev_stacking:
+	time.sleep(0.5)
+	prev_stacking = stacking
+	stacking = filter(rnwmclist.match,
+		os.popen("xprop -id %s -notype" % root))[0]
 
 new_dialog_found = new_win_found = 0
 fd = os.popen('windowstack m')

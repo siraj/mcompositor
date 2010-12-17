@@ -120,9 +120,8 @@ public:
     static bool compareWindows(Window w_a, Window w_b);
     void roughSort();
     void setCurrentApp(Window w, bool stacking_order_changed);
-    void raiseTransientsOf(MWindowPropertyCache *pc, int last_i,
-                           bool recursion = false);
-
+    bool raiseWithTransients(MWindowPropertyCache *pc,
+                           int parent_idx, QList<int> *anewpos = NULL);
     MCompositeScene *watch;
     Window localwin, localwin_parent;
     Window xoverlay;
