@@ -3189,8 +3189,6 @@ void MCompositeManagerPrivate::removeWindow(Window w)
     if (removed > 0) updateWinList();
 }
 
-static QList<Window> orig_list;
-
 // internal qSort comparator
 // TODO: before this can replace checkStacking(), we need to handle at least
 // the decorator, possibly also window groups and dock windows.
@@ -3259,11 +3257,8 @@ bool MCompositeManagerPrivate::compareWindows(Window w_a, Window w_b)
     if (trans_rel)
         return (trans_rel == 1) ? false : true;
 
-    // the last resort: keep the old order
-    // NOTE: this is required because w_a and w_b are not necessary in
-    // the same order as in the stacking_list
-    if (orig_list.indexOf(w_a) < orig_list.indexOf(w_b))
-        return true;
+    // Neither of the windows is higher than the other one,
+    // stable sorting will keep the original order.
     return false;
 }
 
@@ -3272,7 +3267,6 @@ void MCompositeManagerPrivate::roughSort()
     // Use a stable sorting algorithm to ensure roughSort() is invariant,
     // ie. that it keeps the order unless it is necessary to change.
     STACKING("sorting stack");
-    orig_list = stacking_list;
     qStableSort(stacking_list.begin(), stacking_list.end(), compareWindows);
 }
 
