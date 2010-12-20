@@ -210,7 +210,8 @@ public:
             currentShader = shader[type];
         
         updateVertices(t);
-        currentShader->bind();
+        if (!currentShader->bind())
+            qWarning() << __func__ << "failed to bind shader program";
         currentShader->setWorldMatrix(worldMatrix);
     }
 
@@ -224,7 +225,8 @@ public:
             return;
         currentShader = frag;        
         updateVertices(t);
-        currentShader->bind();
+        if (!currentShader->bind())
+            qWarning() << __func__ << "failed to bind shader program";
         currentShader->setWorldMatrix(worldMatrix);
     }
 
@@ -275,7 +277,9 @@ MShaderProgram *MGLResourceManager::shader[ShaderTotal];
 #endif
 
 
-void MTexturePixmapPrivate::drawTexture(const QTransform &transform, const QRectF &drawRect, qreal opacity)
+void MTexturePixmapPrivate::drawTexture(const QTransform &transform,
+                                        const QRectF &drawRect,
+                                        qreal opacity)
 {
     if (current_effect) {
         current_effect->d->drawTexture(this, transform, drawRect, opacity);
@@ -283,7 +287,10 @@ void MTexturePixmapPrivate::drawTexture(const QTransform &transform, const QRect
         q_drawTexture(transform, drawRect, opacity);
 }
 
-void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform, const QRectF &drawRect, qreal opacity)
+void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform,
+                                          const QRectF &drawRect,
+                                          qreal opacity,
+                                          bool texcoords_from_rect)
 {
     if (current_effect)
         glresource->updateVertices(transform, current_effect->activeShaderFragment());
@@ -300,7 +307,33 @@ void MTexturePixmapPrivate::q_drawTexture(const QTransform &transform, const QRe
     glEnableVertexAttribArray(D_VERTEX_COORDS);
     glEnableVertexAttribArray(D_TEXTURE_COORDS);
     glVertexAttribPointer(D_VERTEX_COORDS, 2, GL_FLOAT, GL_FALSE, 0, vertexCoords);
-    if (inverted_texture)
+    if (texcoords_from_rect) {
+        float w, h, x, y, cx, cy, cw, ch;
+        w = item->boundingRect().width();
+        h = item->boundingRect().height();
+        x = item->boundingRect().x();
+        y = item->boundingRect().y();
+
+        cx = (drawRect.x() - x) / w;
+        cy = (drawRect.y() - y) / h;
+        cw = drawRect.width() / w;
+        ch = drawRect.height() / h;
+        GLfloat texCoords[8];
+        if (inverted_texture) {
+            texCoords[0] = cx;      texCoords[1] = cy;
+            texCoords[2] = cx;      texCoords[3] = ch + cy;
+            texCoords[4] = cx + cw; texCoords[5] = ch + cy;
+            texCoords[6] = cx + cw; texCoords[7] = cy;
+        } else {
+            texCoords[0] = cx;      texCoords[1] = ch + cy;
+            texCoords[2] = cx;      texCoords[3] = cy;
+            texCoords[4] = cx + cw; texCoords[5] = cy;
+            texCoords[6] = cx + cw; texCoords[7] = ch + cy;
+        }
+        glVertexAttribPointer(D_TEXTURE_COORDS, 2, GL_FLOAT, GL_FALSE, 0,
+                              texCoords);
+    }
+    else if (inverted_texture)
         glVertexAttribPointer(D_TEXTURE_COORDS, 2, GL_FLOAT, GL_FALSE, 0,
                               glresource->texCoordsInv);
     else

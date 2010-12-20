@@ -50,7 +50,10 @@ MCompositeWindowShaderEffectPrivate::MCompositeWindowShaderEffectPrivate(MCompos
 {
 }
 
-void MCompositeWindowShaderEffectPrivate::drawTexture(MTexturePixmapPrivate* render, const QTransform &transform, const QRectF &drawRect, qreal opacity)
+void MCompositeWindowShaderEffectPrivate::drawTexture(MTexturePixmapPrivate* render,
+                                                      const QTransform &transform,
+                                                      const QRectF &drawRect,
+                                                      qreal opacity)
 {
     priv_render = render;
     effect->drawTexture(transform, drawRect, opacity);
@@ -62,6 +65,7 @@ void MCompositeWindowShaderEffectPrivate::drawTexture(MTexturePixmapPrivate* ren
  */
 MCompositeWindowShaderEffect::MCompositeWindowShaderEffect(QObject* parent)
     :QObject(parent),
+     comp_window(0),
      d(new MCompositeWindowShaderEffectPrivate(this))
 {    
     // install default pixel shader
@@ -167,10 +171,12 @@ GLuint MCompositeWindowShaderEffect::activeShaderFragment() const
 */
 void MCompositeWindowShaderEffect::drawSource(const QTransform &transform, 
                                               const QRectF &drawRect, 
-                                              qreal opacity)
+                                              qreal opacity,
+                                              bool texcoords_from_rect)
 {
     if (d->priv_render)
-        d->priv_render->q_drawTexture(transform, drawRect, opacity);
+        d->priv_render->q_drawTexture(transform, drawRect, opacity,
+                                      texcoords_from_rect);
 }
 
 /*!
@@ -184,6 +190,7 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
     if (!window->isValid() && (window->type() != MCompositeWindowGroup::Type))
         return;
 
+    comp_window = window;
     // only happens with GL. sorry n800 guys :p
 #ifdef QT_OPENGL_LIB
     window->renderer()->installEffect(this);    
@@ -196,9 +203,11 @@ void MCompositeWindowShaderEffect::installEffect(MCompositeWindow* window)
 */
 void MCompositeWindowShaderEffect::removeEffect(MCompositeWindow* window)
 {
-    if (!window->isValid() && (window->type() != MCompositeWindowGroup::Type))
+    if (window != comp_window ||
+        (!window->isValid() && (window->type() != MCompositeWindowGroup::Type)))
         return;
 
+    comp_window = 0;
 #ifdef QT_OPENGL_LIB
     window->renderer()->installEffect(0);    
 #endif

@@ -54,8 +54,10 @@ class MCompositeWindowShaderEffect: public QObject
     void enabledChanged( bool enabled);
     
  protected: 
+    MCompositeWindow *comp_window;
     void drawSource(const QTransform &transform,
-                    const QRectF &drawRect, qreal opacity);
+                    const QRectF &drawRect, qreal opacity,
+                    bool texcoords_from_rect = false);
     virtual void drawTexture(const QTransform &transform,
                              const QRectF &drawRect, qreal opacity) = 0;
     virtual void setUniforms(QGLShaderProgram* program);

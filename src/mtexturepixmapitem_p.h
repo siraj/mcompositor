@@ -60,9 +60,11 @@ public:
     void clearTexture();
     bool isDirectRendered() const;
     void resize(int w, int h);
-    void drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
+    void drawTexture(const QTransform& transform, const QRectF& drawRect,
+                     qreal opacity);
     
-    void q_drawTexture(const QTransform& transform, const QRectF& drawRect, qreal opacity);
+    void q_drawTexture(const QTransform& transform, const QRectF& drawRect,
+                       qreal opacity, bool texcoords_from_rect = false);
     void installEffect(MCompositeWindowShaderEffect* effect);
     static GLuint installPixelShader(const QByteArray& code);
                 

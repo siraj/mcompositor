@@ -237,6 +237,11 @@ public:
     unsigned orientationAngle();
 
     /*!
+     * Returns the value of _MEEGOTOUCH_MSTATUSBAR_GEOMETRY.
+     */
+    const QRect &statusbarGeometry();
+
+    /*!
      * Called on PropertyNotify for this window.
      * Returns true if we should re-check stacking order.
      */
@@ -297,7 +302,7 @@ private:
     int video_global_alpha;
     int is_decorator;
     QList<Atom> net_wm_state;
-    QRect req_geom, real_geom;
+    QRect req_geom, real_geom, statusbar_geom;
     QRect home_button_geom, close_button_geom;
     XWMHints *wmhints;
     xcb_get_window_attributes_reply_t *attrs;
@@ -329,6 +334,7 @@ private:
     xcb_get_property_cookie_t xcb_cannot_minimize_cookie;
     xcb_get_property_cookie_t xcb_custom_region_cookie;
     xcb_get_property_cookie_t xcb_orientation_angle_cookie;
+    xcb_get_property_cookie_t xcb_statusbar_cookie;
     xcb_render_query_pict_formats_cookie_t xcb_pict_formats_cookie;
     xcb_shape_get_rectangles_cookie_t xcb_shape_rects_cookie;
     QRegion shape_region;

@@ -2943,11 +2943,6 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
             qWarning("%s: no Shape extension!", __func__);
     }
 
-    if (event->type == damage_ev) {
-        XDamageNotifyEvent *e = reinterpret_cast<XDamageNotifyEvent *>(event);
-        damageEvent(e);
-        return true;
-    }
     if (event->type == shape_event_base + ShapeNotify) {
         XShapeEvent *ev = (XShapeEvent*)event;
         if (ev->kind == ShapeBounding && prop_caches.contains(ev->window)) {
@@ -2961,7 +2956,13 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
     
     if (processX11EventFilters(event, false))
         return true;
-    
+
+    if (event->type == damage_ev) {
+        XDamageNotifyEvent *e = reinterpret_cast<XDamageNotifyEvent *>(event);
+        damageEvent(e);
+        return true;
+    }
+
     bool ret = true;
     switch (event->type) {
     case FocusIn: {

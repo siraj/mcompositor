@@ -83,6 +83,7 @@ void MWindowPropertyCache::init_invalid()
     memset(&xcb_decor_buttons_cookie, 0, sizeof(xcb_decor_buttons_cookie));
     memset(&xcb_orientation_angle_cookie, 0,
            sizeof(xcb_orientation_angle_cookie));
+    memset(&xcb_statusbar_cookie, 0, sizeof(xcb_statusbar_cookie));
     memset(&xcb_wm_protocols_cookie, 0, sizeof(xcb_wm_protocols_cookie));
     memset(&xcb_wm_state_cookie, 0, sizeof(xcb_wm_state_cookie));
     memset(&xcb_wm_hints_cookie, 0, sizeof(xcb_wm_hints_cookie));
@@ -147,7 +148,10 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                                        XCB_ATOM_CARDINAL, 0, 8);
     xcb_orientation_angle_cookie = xcb_get_property(xcb_conn, 0, window,
                                     ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE),
-                                    XCB_ATOM_CARDINAL, 0, 8);
+                                    XCB_ATOM_CARDINAL, 0, 1);
+    xcb_statusbar_cookie = xcb_get_property(xcb_conn, 0, window,
+                                    ATOM(_MEEGOTOUCH_MSTATUSBAR_GEOMETRY),
+                                    XCB_ATOM_CARDINAL, 0, 4);
     xcb_wm_protocols_cookie = xcb_get_property(xcb_conn, 0, window,
                                                ATOM(WM_PROTOCOLS),
                                                XCB_ATOM_ATOM, 0, 100);
@@ -267,6 +271,7 @@ MWindowPropertyCache::~MWindowPropertyCache()
         if (r) free(r);
     } 
     xcb_discard_reply(xcb_conn, xcb_orientation_angle_cookie.sequence);
+    xcb_discard_reply(xcb_conn, xcb_statusbar_cookie.sequence);
     if (custom_region) delete custom_region;
     if (wm_state_query)
         windowState();
@@ -661,7 +666,12 @@ bool MWindowPropertyCache::propertyEvent(XPropertyEvent *e)
         xcb_discard_reply(xcb_conn, xcb_orientation_angle_cookie.sequence);
         xcb_orientation_angle_cookie = xcb_get_property(xcb_conn, 0, window,
                                     ATOM(_MEEGOTOUCH_ORIENTATION_ANGLE),
-                                    XCB_ATOM_CARDINAL, 0, 8);
+                                    XCB_ATOM_CARDINAL, 0, 1);
+    } else if (e->atom == ATOM(_MEEGOTOUCH_MSTATUSBAR_GEOMETRY)) {
+        xcb_discard_reply(xcb_conn, xcb_statusbar_cookie.sequence);
+        xcb_statusbar_cookie = xcb_get_property(xcb_conn, 0, window,
+                                    ATOM(_MEEGOTOUCH_MSTATUSBAR_GEOMETRY),
+                                    XCB_ATOM_CARDINAL, 0, 4);
     } else if (e->atom == ATOM(WM_PROTOCOLS)) {
         if (!wm_protocols_valid)
             // collect the old reply
@@ -787,6 +797,36 @@ unsigned MWindowPropertyCache::orientationAngle()
     xcb_orientation_angle_cookie.sequence = 0;
 
     return orientation_angle;
+}
+
+const QRect &MWindowPropertyCache::statusbarGeometry()
+{
+    if (!xcb_statusbar_cookie.sequence)
+        return statusbar_geom;
+
+    xcb_get_property_reply_t *r;
+    unsigned long x, y, w, h;
+    int len;
+    r = xcb_get_property_reply(xcb_conn, xcb_statusbar_cookie, 0);
+    if (!r)
+        goto failure;
+    len = xcb_get_property_value_length(r);
+    if (len != 4 * sizeof(CARD32)) {
+        free(r);
+        goto failure;
+    }
+    x = ((CARD32*)xcb_get_property_value(r))[0];
+    y = ((CARD32*)xcb_get_property_value(r))[1];
+    w = ((CARD32*)xcb_get_property_value(r))[2];
+    h = ((CARD32*)xcb_get_property_value(r))[3];
+    statusbar_geom.setRect(x, y, w, h);
+    free(r);
+    xcb_statusbar_cookie.sequence = 0;
+    return statusbar_geom;
+
+failure:
+    statusbar_geom.setRect(0, 0, 0, 0);
+    return statusbar_geom;
 }
 
 const QList<Atom>& MWindowPropertyCache::supportedProtocols()
