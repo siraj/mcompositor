@@ -1710,12 +1710,11 @@ bool MCompositeManagerPrivate::raiseWithTransients(MWindowPropertyCache *pc,
     // Change @stacking_list according to @newpos.  The new position
     // of @stacking_list[@newpos[0]] is length(@stacking_list)-1,
     // @stacking_list[@newpos[1]] goes to length(@stacking_list)-2,
-    // and so on.  @moved indicates whether we have moved anything in
-    // @stacking_list yet and is used for a little optimization.
-    bool moved = false;
+    // and so on.
     Q_ASSERT(newpos->size() > 0);
     QList<int>::iterator it = newpos->begin();
     for (int new_idx = stacking_list.size() - 1; ; new_idx--) {
+        bool moved = false;
         int old_idx = *it;
         if (old_idx != new_idx) {
             Q_ASSERT(new_idx >= 0);
@@ -1727,6 +1726,7 @@ bool MCompositeManagerPrivate::raiseWithTransients(MWindowPropertyCache *pc,
         if (++it == newpos->end())
             break;
         if (!moved)
+            // No need to update @newpos indices.
             continue;
 
         // Since we have moved @stacking_list[@old_idx] all windows above
