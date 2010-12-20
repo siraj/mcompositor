@@ -1,8 +1,38 @@
 mcompositor (0.8.1-1) unstable; urgency=low
 
+<<<<<<< HEAD:debian/changelog
+  * Fixes: NB#207977 - Select connection dialog is not opened on display in certain s ituation
+  * Remove old dock code and obsolete _DUI_STATUSBAR_OVERLAY
+  * MCompositeManagerPrivate::addItem(): use property cache to get the window type
+  * Replace setExposeDesktop's innards with a setWindowObscured() call
+  * Improve fix for NB#202667 - Search application launches automatically
+  * Implement support for multi-part decorator
+  * Implement new UI for application not responding
+  * polish debian/control
+  * install test scripts in the right directory
+  * refresh translations/recovery.ts
+  * remove MDecoratorWindow::itemRectToScreenRect() from the class definition
+  * sick button removal
+  * use QString()s in the zombie dialog
+  * handle all kind of decoration geometries correctly
+  * move mcompositor-test-init.py to mcompositor-utils
+  * uninitialized variables in MCompositeWindow
+  * simplify MCompositeWindow::itemChange()
+  * rebuild translation files only when needed
+  * remove MCompositeManagerPrivate::exposeDesktop()
+  * add MWindowPropertyCache::orientationAngle()
+  * combined fix of segfaults, leaks and invisible windows
+  * make MCompositeManagerExtension::desktopWindow() const
+  * make the decorator object available to plugins
+  * MCompositeManager::xtrace() is leaking
+  * facility to trace window sizing
+
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Mon, 20 Dec 2010 14:25:36 +0200
+=======
   * unreleased
 
  -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Wed, 08 Dec 2010 15:01:17 +0200
+>>>>>>> cadf5c731433726e3d641e4d0720ee138e886cb5:debian/changelog
 
 mcompositor (0.8.0-2) unstable; urgency=low
 
