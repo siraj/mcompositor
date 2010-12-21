@@ -1,9 +1,10 @@
 mcompositor (0.8.1-2) unstable; urgency=low
 
-  *  F1K535 NB#213779 - Compositor doesn't send synthetic VisibilityUnobscured to Status Indicator Menu
-  *  make test21.py pass even if there is a notification window before the test
+  * Fixes: NB#213779 - Compositor doesn't send synthetic VisibilityUnobscured to Status Indicator Menu
+  * make test21.py pass even if there is a notification window before the test
+  * make all tests pass even if there are notifications
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 21 Dec 2010 13:54:42 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Tue, 21 Dec 2010 14:42:39 +0200
 
 mcompositor (0.8.1-1) unstable; urgency=low
 
