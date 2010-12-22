@@ -1351,6 +1351,10 @@ void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
         if (e->value_mask & CWSibling) {
             int above_i = stacking_list.indexOf(e->above);
             if (above_i >= 0) {
+                Window d = stack[DESKTOP_LAYER];
+                if (d && stacking_list.indexOf(d) > above_i)
+                    // mark iconic if it goes under desktop
+                    setWindowState(e->window, IconicState);
                 if (above_i > win_i) {
                     STACKING_MOVE(win_i, above_i);
                     safe_move(stacking_list, win_i, above_i);
@@ -1372,6 +1376,10 @@ void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
         if (e->value_mask & CWSibling) {
             int above_i = stacking_list.indexOf(e->above);
             if (above_i >= 0) {
+                Window d = stack[DESKTOP_LAYER];
+                if (d && stacking_list.indexOf(d) >= above_i)
+                    // mark iconic if it goes under desktop
+                    setWindowState(e->window, IconicState);
                 if (above_i > win_i) {
                     STACKING_MOVE(win_i, above_i-1);
                     safe_move(stacking_list, win_i, above_i - 1);
@@ -1383,10 +1391,13 @@ void MCompositeManagerPrivate::configureWindow(MCompositeWindow *cw,
             }
         } else {
             Window parent = transient_for(e->window);
-            if (parent)
+            if (parent) {
+                setWindowState(parent, IconicState);
                 positionWindow(parent, false);
-            else
+            } else {
+                setWindowState(e->window, IconicState);
                 positionWindow(e->window, false);
+            }
         }
     }
 
