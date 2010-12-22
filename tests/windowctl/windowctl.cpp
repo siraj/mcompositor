@@ -1019,6 +1019,7 @@ static bool old_main(QStringList& args, QString& stdOut)
                 else if (xev.type == ClientMessage) {
                   XClientMessageEvent *e = (XClientMessageEvent*)&xev;
                   if (!do_not_answer_ping &&
+                      e->window == w &&
                       e->message_type == XInternAtom(dpy, "WM_PROTOCOLS", False)
                       && e->data.l[0] ==
                               (signed)XInternAtom(dpy, "_NET_WM_PING", False)) {
