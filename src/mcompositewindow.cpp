@@ -585,15 +585,17 @@ void MCompositeWindow::reappearTimeout()
 {
     if (window_status == Hung)
         // show "application not responding" UI again
-        emit windowHung(this);
+        emit windowHung(this, true);
 }
 
 void MCompositeWindow::receivedPing(ulong serverTimeStamp)
 {
     received_ping_timestamp = serverTimeStamp;
     
-    if (window_status != Minimizing && window_status != Closing)
+    if (window_status == Hung) {
         window_status = Normal;
+        emit windowHung(this, false);
+    }
     if (blurred())
         setBlurred(false);
     if (t_reappear->isActive())
@@ -606,7 +608,7 @@ void MCompositeWindow::pingTimeout()
         && pc && pc->isMapped() && window_status != Hung
         && window_status != Minimizing && window_status != Closing) {
         window_status = Hung;
-        emit windowHung(this);
+        emit windowHung(this, true);
     }
     if (pinging_enabled)
         // interval timer is still active

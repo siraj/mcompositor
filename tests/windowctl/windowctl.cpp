@@ -641,7 +641,7 @@ static bool old_main(QStringList& args, QString& stdOut)
         time_t last_time;
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
-            shaped = 0, initial_iconic = 0, no_focus = 0, support_ping = 0,
+            shaped = 0, initial_iconic = 0, no_focus = 0, do_not_answer_ping = 0,
             input_only = 0, always_mapped = -1;
 	WindowType windowtype = TYPE_INVALID;
 
@@ -706,7 +706,7 @@ static bool old_main(QStringList& args, QString& stdOut)
                         continue;
                 }
 		if (*p == 'p') {
-                        support_ping = 1;
+                        do_not_answer_ping = 1;
                         continue;
                 }
 		if (*p == 'l') {
@@ -909,7 +909,7 @@ static bool old_main(QStringList& args, QString& stdOut)
         if (decor_buttons) set_decorator_buttons(dpy, w);
         if (shaped) set_shaped(dpy, w);
         if (initial_iconic) set_initial_state_iconic(dpy, w);
-        if (support_ping) set_support_wm_ping(dpy, w);
+        set_support_wm_ping(dpy, w);
 
         green_gc = XCreateGC (dpy, w, 0, NULL);
         XParseColor (dpy, colormap, green, &green_col);
@@ -1016,14 +1016,19 @@ static bool old_main(QStringList& args, QString& stdOut)
 		    /* our window was unmapped */
 	            exit(0);
                 }
-#if 0
                 else if (xev.type == ClientMessage) {
                   XClientMessageEvent *e = (XClientMessageEvent*)&xev;
-                  printf("0x%lx: ClientMessage %d %ld %ld\n", w,
-                         e->message_type,
-                         e->data.l[0], e->data.l[1]);
+                  if (!do_not_answer_ping &&
+                      e->message_type == XInternAtom(dpy, "WM_PROTOCOLS", False)
+                      && e->data.l[0] ==
+                              (signed)XInternAtom(dpy, "_NET_WM_PING", False)) {
+                      /*printf("0x%lx: _NET_WM_PING ClientMessage %ld\n", w,
+                             e->data.l[1]);*/
+                      e->window = DefaultRootWindow(dpy);
+                      XSendEvent(dpy, e->window, False, SubstructureNotifyMask,
+                                 &xev);
+                  }
                 }
-#endif
                 else if (xev.type == ConfigureNotify) {
                   /*XConfigureEvent *e = (XConfigureEvent*)&xev;*/
                 }

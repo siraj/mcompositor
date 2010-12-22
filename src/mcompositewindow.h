@@ -367,9 +367,10 @@ private slots:
     
 signals:
     /*!
-     * Emitted if this window is hung
+     * Emitted if this window becomes hung or "hung dialog" reappearance timer
+     * elapses or stops being hung.
      */
-    void windowHung(MCompositeWindow *window);
+    void windowHung(MCompositeWindow *window, bool is_hung);
 
     void visualized(bool);
 

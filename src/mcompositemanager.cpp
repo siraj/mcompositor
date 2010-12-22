@@ -3382,8 +3382,8 @@ void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
 
 
     // ping protocol
-    connect(item, SIGNAL(windowHung(MCompositeWindow *)),
-            SLOT(gotHungWindow(MCompositeWindow *)));
+    connect(item, SIGNAL(windowHung(MCompositeWindow *, bool)),
+            SLOT(gotHungWindow(MCompositeWindow *, bool)));
 }
 
 void MCompositeManagerPrivate::updateWinList()
@@ -3585,9 +3585,9 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
     compositing = false;
 }
 
-void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w)
+void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
 {
-    if (!MDecoratorFrame::instance()->decoratorItem())
+    if (!is_hung || !MDecoratorFrame::instance()->decoratorItem())
         return;
 
     enableCompositing(true);
