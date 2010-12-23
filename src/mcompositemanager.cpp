@@ -3867,12 +3867,22 @@ void MCompositeManager::dumpState(const char *heading)
             else if (cls.res_class)
                 XFree(cls.res_class);
         }
+        QString cmdline("<unknown PID>");
+        int pid = MCompAtoms::instance()->getPid(cw->window());
+        if (pid) {
+            QFile f(QString().sprintf("/proc/%d/cmdline", pid));
+            if (f.open(QIODevice::ReadOnly)) {
+                QByteArray ba = f.readLine(100);
+                if (!ba.isEmpty()) cmdline = ba;
+            }
+        }
 
         qDebug("  ptr %p == xwin 0x%lx%s: %s", cw, cw->window(),
                cw->isValid() ? "" : " (not valid anymore)",
                name ? name : "[noname]");
-        qDebug("    mapped: %s, newly mapped: %s",
-               yn[cw->isMapped()], yn[cw->isNewlyMapped()]);
+        qDebug("    mapped: %s, newly mapped: %s, InputOnly: %s",
+               yn[cw->isMapped()], yn[cw->isNewlyMapped()],
+               yn[cw->propertyCache()->isInputOnly()]);
         qDebug("    visible: %s, direct rendered: %s",
                yn[cw->windowVisible()], yn[cw->isDirectRendered()]);
         qDebug("    is app: %s, needs decoration: %s",
@@ -3892,6 +3902,7 @@ void MCompositeManager::dumpState(const char *heading)
         qDebug("    stack index: %d, behind window: 0x%lx, "
                    "last visible parent: 0x%lx", cw->indexInStack(),
                    behind ? behind->window() : 0, cw->lastVisibleParent());
+        if (pid) qDebug("    PID: %d, cmdline: %s", pid, cmdline.toAscii().data());
 
         // MWindowPropertyCache::transientFor() can change state,
         // transientWindows() doesn't.
