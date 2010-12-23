@@ -91,12 +91,15 @@ static bool should_be_pinged(MCompositeWindow *cw);
 
 #ifdef WINDOW_DEBUG
 static QTime overhead_measure;
-// this can be toggled with SIGUSR1
-static bool debug_mode = false;
+static bool debug_mode = false; // this can be toggled with SIGUSR1
+static QString dumpWindows(const QList<Window> &wins);
 #endif
 
 // Enable to see the decisions of the stacker.
 #if 0
+# ifndef WINDOW_DEBUG
+#  define WINDOW_DEBUG // We use dumpWindows() in STACKING().
+# endif
 # define STACKING_DEBUGGING
 # define STACKING(fmt, args...)                     \
     qDebug("line:%u: " fmt, __LINE__ ,##args)
@@ -983,6 +986,9 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
                                                Window ignore_window,
                                                bool skip_always_mapped)
 {
+    GTA("ignore 0x%lx, skip_always_mapped: %d",
+        ignore_window, skip_always_mapped);
+
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
         Window w = stacking_list.at(i);        
         GTA("considering 0x%lx", w);
@@ -2132,18 +2138,9 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         for (int i = last_i; i >= 0; --i)
             reverse.append(stacking_list.at(i));
 
-#ifdef STACKING_DEBUGGING
         // Log the actual arguments of XRestackWindows().
-        QList<Window>::const_iterator winit;
-        QString line;
-        for (winit = reverse.constBegin(); winit != reverse.constEnd();
-             ++winit) {
-            if (winit != reverse.constBegin())
-                line += ", ";
-            line += QString().sprintf("0x%lx", *winit);
-        }
-        STACKING("XRestackWindows([%s])", line.toLatin1().constData());
-#endif
+        STACKING("XRestackWindows([%s])",
+                 dumpWindows(reverse).toLatin1().constData());
 
         // Watch out for errors, there may be BadWin:s in @reverse.
         XSync(QX11Info::display(), False);
@@ -3359,8 +3356,11 @@ void MCompositeManagerPrivate::roughSort()
 {
     // Use a stable sorting algorithm to ensure roughSort() is invariant,
     // ie. that it keeps the order unless it is necessary to change.
-    STACKING("sorting stack");
+    STACKING("sorting stack [%s]",
+             dumpWindows(stacking_list).toLatin1().constData());
     qStableSort(stacking_list.begin(), stacking_list.end(), compareWindows);
+    STACKING("resulting in: [%s]",
+             dumpWindows(stacking_list).toLatin1().constData());
 }
 
 MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
@@ -3759,15 +3759,27 @@ void MCompositeManagerPrivate::hideLaunchIndicator()
         launchIndicator->hide();
 }
 
+#ifdef WINDOW_DEBUG
 static void sigusr1_handler(int signo)
 {
     Q_UNUSED(signo)
-#ifdef WINDOW_DEBUG
     debug_mode = !debug_mode;
-#endif
 }
 
-#ifdef WINDOW_DEBUG
+static QString dumpWindows(const QList<Window> &wins)
+{
+    QString line;
+
+    for (QList<Window>::const_iterator winit = wins.begin();
+         winit != wins.end(); ++winit) {
+        if (winit != wins.begin())
+            line += ", ";
+        line += QString().sprintf("0x%lx", *winit);
+    }
+
+    return line;
+}
+
 void MCompositeManager::dumpState(const char *heading)
 {
     static const char *tf[] = { "false", "true" };
@@ -3867,19 +3879,26 @@ void MCompositeManager::dumpState(const char *heading)
             else if (cls.res_class)
                 XFree(cls.res_class);
         }
-        QString cmdline("<unknown PID>");
+
+        // Get the PID and the command line of the process which created
+        // the window.
+        QByteArray cmdline;
         int pid = MCompAtoms::instance()->getPid(cw->window());
         if (pid) {
             QFile f(QString().sprintf("/proc/%d/cmdline", pid));
-            if (f.open(QIODevice::ReadOnly)) {
-                QByteArray ba = f.readLine(100);
-                if (!ba.isEmpty()) cmdline = ba;
-            }
+            if (f.open(QIODevice::ReadOnly))
+                cmdline = f.readLine(100);
         }
+        if (cmdline.size() > 0)
+            // The arguments are \0-delimited.
+            cmdline.replace('\0', ' ');
+        else
+            cmdline = "<unknown PID>";
 
         qDebug("  ptr %p == xwin 0x%lx%s: %s", cw, cw->window(),
                cw->isValid() ? "" : " (not valid anymore)",
                name ? name : "[noname]");
+        qDebug("    PID: %d, cmdline: %s", pid, cmdline.constData());
         qDebug("    mapped: %s, newly mapped: %s, InputOnly: %s",
                yn[cw->isMapped()], yn[cw->isNewlyMapped()],
                yn[cw->propertyCache()->isInputOnly()]);
@@ -3902,19 +3921,10 @@ void MCompositeManager::dumpState(const char *heading)
         qDebug("    stack index: %d, behind window: 0x%lx, "
                    "last visible parent: 0x%lx", cw->indexInStack(),
                    behind ? behind->window() : 0, cw->lastVisibleParent());
-        if (pid) qDebug("    PID: %d, cmdline: %s", pid, cmdline.toAscii().data());
 
         // MWindowPropertyCache::transientFor() can change state,
         // transientWindows() doesn't.
-        QList<Window> const &transients = cw->propertyCache()->transientWindows();
-        if (!transients.empty()) {
-            line = "    transients:";
-            QList<Window>::const_iterator trit;
-            for (trit = transients.constBegin();
-                 trit != transients.constEnd(); ++trit)
-                line += QString().sprintf(" 0x%lx", *trit);
-            qDebug() << line.toLatin1().constData();
-        }
+        qDebug("    transients: %s", dumpWindows(cw->propertyCache()->transientWindows()).toLatin1().constData());
 
         if (name)
             XFree(name);
@@ -4198,13 +4208,13 @@ void MCompositeManager::xtracef(const char *fun, const char *fmt, ...)
 MCompositeManager::MCompositeManager(int &argc, char **argv)
     : QApplication(argc, argv)
 {
-    signal(SIGUSR1, sigusr1_handler);
-
     d = new MCompositeManagerPrivate(this);
     MRmiServer *s = new MRmiServer(".mcompositor", this);
     s->exportObject(this);
 
 #ifdef WINDOW_DEBUG
+    signal(SIGUSR1, sigusr1_handler);
+
     // Open the remote control interface.
     mknod("/tmp/mrc", S_IFIFO | 0666, 0);
     connect(new QSocketNotifier(open("/tmp/mrc", O_RDWR), QSocketNotifier::Read),
