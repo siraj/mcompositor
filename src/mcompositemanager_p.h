@@ -117,7 +117,6 @@ public:
     bool needDecoration(Window w, MWindowPropertyCache *pc = 0);
     MCompositeWindow *getHighestDecorated(int *index = 0);
     
-    static bool compareWindows(Window w_a, Window w_b);
     void roughSort();
     void setCurrentApp(Window w, bool stacking_order_changed);
     bool raiseWithTransients(MWindowPropertyCache *pc,
