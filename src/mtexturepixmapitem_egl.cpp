@@ -289,10 +289,15 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
     if (d->direct_fb_render || propertyCache()->isInputOnly())
         return;
 
-    QRegion r;
-    for (int i = 0; i < num; ++i)
-        r += QRegion(rects[i].x, rects[i].y, rects[i].width, rects[i].height);
-    d->damageRegion = r;
+    if (!rects)
+        // no rects means the whole area
+        d->damageRegion = boundingRect().toRect();
+    else {
+        QRegion r;
+        for (int i = 0; i < num; ++i)
+             r += QRegion(rects[i].x, rects[i].y, rects[i].width, rects[i].height);
+        d->damageRegion = r;
+    }
     
     bool new_image = false;
     if (d->custom_tfp) {

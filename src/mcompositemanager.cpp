@@ -887,22 +887,18 @@ bool MCompositeManagerPrivate::needDecoration(Window window,
 
 void MCompositeManagerPrivate::damageEvent(XDamageNotifyEvent *e)
 {
-    XserverRegion r = XFixesCreateRegion(QX11Info::display(), 0, 0);
-    int num;
-    XDamageSubtract(QX11Info::display(), e->damage, None, r);
-
-    XRectangle *rects = XFixesFetchRegion(QX11Info::display(), r, &num);
-    XFixesDestroyRegion(QX11Info::display(), r);
+    XDamageSubtract(QX11Info::display(), e->damage, None, None);
 
     MCompositeWindow *item = COMPOSITE_WINDOW(e->drawable);
-    if (item && rects) {
-        item->updateWindowPixmap(rects, num, e->timestamp);
+    if (item) {
+        /* partial updates disabled for now, does not always work, unless we
+         * check for EGL_BUFFER_PRESERVED or GLX_SWAP_COPY_OML first, see
+         * http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html and
+         * http://www.opengl.org/registry/specs/OML/glx_swap_method.txt */
+        item->updateWindowPixmap(0, 0, e->timestamp);
         if (item->waitingForDamage())
             item->damageReceived(false);
     }
-
-    if (rects)
-        XFree(rects);
 }
 
 void MCompositeManagerPrivate::destroyEvent(XDestroyWindowEvent *e)
