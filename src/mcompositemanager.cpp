@@ -2968,8 +2968,10 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
     case ButtonRelease:
     case ButtonPress: 
         buttonEvent(&event->xbutton);
-        // Qt needs to handle this event for the window frame buttons
-        ret = false;
+        // TODO: enable this code when MSimpleWindowFrame raises from death.
+        // ret = false;
+        break;
+    case MotionNotify: // in case a plugin subscribes these
         break;
     case KeyPress:
     case KeyRelease:
