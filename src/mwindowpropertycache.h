@@ -149,14 +149,8 @@ public:
      */
     bool beingMapped() const { return being_mapped; }
     void setBeingMapped(bool s) { being_mapped = s; }
-
-    /*!
-     * Used for special windows that should not be minimised/iconified.
-     */
-    bool dontIconify() {
-        return cannotMinimize() > 0 || dont_iconify;
-    }
     void setDontIconify(bool s) { dont_iconify = s; }
+    bool dontIconify();
 
     bool isMapped() const {
         if (!is_valid || !attrs)

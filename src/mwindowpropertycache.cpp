@@ -523,10 +523,23 @@ unsigned int MWindowPropertyCache::meegoStackingLayer()
         }
     }
     if (meego_layer > 6) meego_layer = 6;
-    if (meego_layer == 1 || meego_layer == 2)
-        // these (screen/device lock) cannot be iconified by default
-        dont_iconify = true;
     return (unsigned)meego_layer;
+}
+
+/*!
+ * Used for special windows that should not be minimised/iconified.
+ */
+bool MWindowPropertyCache::dontIconify()
+{
+    if (dont_iconify)
+        return true;
+    if (cannotMinimize() > 0)
+        return true;
+    int layer = meegoStackingLayer();
+    if (layer == 1 || layer == 2)
+        // these (screen/device lock) cannot be iconified by default
+        return true;
+    return false;
 }
 
 bool MWindowPropertyCache::wantsFocus()
