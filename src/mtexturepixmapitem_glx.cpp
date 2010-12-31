@@ -64,21 +64,63 @@ static  _glx_bind glXBindTexImageEXT = 0;
 static  _glx_release glXReleaseTexImageEXT = 0;
 static GLXFBConfig config = 0;
 static GLXFBConfig configAlpha = 0;
+static bool configInverted = false, configAlphaInverted = false;
+
+static void getConfig(bool alpha)
+{
+    Display *display = QX11Info::display();
+    int screen = QX11Info::appScreen();
+
+    int pixmap_config[] = {
+        alpha ? GLX_BIND_TO_TEXTURE_RGBA_EXT :
+                             GLX_BIND_TO_TEXTURE_RGB_EXT, True,
+        GLX_DRAWABLE_TYPE, GLX_PIXMAP_BIT,
+        GLX_BIND_TO_TEXTURE_TARGETS_EXT, GLX_TEXTURE_2D_BIT_EXT,
+        GLX_DOUBLEBUFFER, True,
+        GLX_Y_INVERTED_EXT, GLX_DONT_CARE,
+        None
+    };
+
+    int c = 0;
+    GLXFBConfig *configs = 0;
+    configs = glXChooseFBConfig(display, screen, pixmap_config, &c);
+    if (!configs) {
+        qWarning() << "No appropriate" <<
+	      (alpha ? "alpha" : "non-alpha") << "GLXFBconfig found!"
+              " Falling back to custom TFP.";
+        return;
+    }
+
+    int inverted;
+    glXGetFBConfigAttrib(display, configs[0], GLX_Y_INVERTED_EXT, &inverted);
+    if (alpha) {
+        configAlpha = configs[0];
+        configAlphaInverted = inverted ? true : false;
+    } else {
+        config = configs[0];
+        configInverted = inverted ? true : false;
+    }
+    XFree(configs);
+}
 
 static bool hasTextureFromPixmap()
 {
-    static bool hasTfp = false;
+    static bool checked = false, hasTfp = false;
 
-    if (!hasTfp) {
-        hasTfp = true;
-
+    if (!checked) {
+	checked = true;
         QList<QByteArray> exts = QByteArray(glXQueryExtensionsString(QX11Info::display(), QX11Info::appScreen())).split(' ');
         if (exts.contains("GLX_EXT_texture_from_pixmap")) {
             glXBindTexImageEXT = (_glx_bind) glXGetProcAddress((const GLubyte *)"glXBindTexImageEXT");
             glXReleaseTexImageEXT = (_glx_release) glXGetProcAddress((const GLubyte *)"glXReleaseTexImageEXT");
         }
+	getConfig(false);
+	getConfig(true);
+        if (glXBindTexImageEXT && glXReleaseTexImageEXT
+	    && config && configAlpha)
+	    hasTfp = true;
     }
-    return glXBindTexImageEXT && glXReleaseTexImageEXT;
+    return hasTfp;
 }
 #endif
 
@@ -89,7 +131,7 @@ void MTexturePixmapItem::init()
         qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
                  __func__);
         return;
-    } else if (!isValid()) 
+    } else if (!isValid())
         return;
 
     d->glpixmap = 0;
@@ -98,51 +140,18 @@ void MTexturePixmapItem::init()
 
     if (d->custom_tfp) {
         initCustomTfp();
+        saveBackingStore();
         return;
     }
+    d->inverted_texture = pc->hasAlpha() ? configAlphaInverted
+                                         : configInverted;
+
     const int pixmapAttribs[] = {
         GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-        GLX_TEXTURE_FORMAT_EXT, propertyCache()->hasAlpha() ?
+        GLX_TEXTURE_FORMAT_EXT, pc->hasAlpha() ?
                 GLX_TEXTURE_FORMAT_RGBA_EXT : GLX_TEXTURE_FORMAT_RGB_EXT,
         None
     };
-
-    if ((!pc->hasAlpha() && !config) || (pc->hasAlpha() && !configAlpha)) {
-        Display *display = QX11Info::display();
-        int screen = QX11Info::appScreen();
-
-        int pixmap_config[] = {
-            pc->hasAlpha() ? GLX_BIND_TO_TEXTURE_RGBA_EXT :
-                             GLX_BIND_TO_TEXTURE_RGB_EXT, True,
-            GLX_DRAWABLE_TYPE, GLX_PIXMAP_BIT,
-            GLX_BIND_TO_TEXTURE_TARGETS_EXT, GLX_TEXTURE_2D_BIT_EXT,
-            GLX_DOUBLEBUFFER, True,
-            GLX_Y_INVERTED_EXT, GLX_DONT_CARE,
-            None
-        };
-
-        int c = 0;
-        GLXFBConfig *configs = 0;
-        configs = glXChooseFBConfig(display, screen, pixmap_config, &c);
-        if (!configs) {
-            qWarning("No appropriate GLXFBconfig found!"
-                     "Falling back to custom texture to pixmap ");
-            d->custom_tfp = true;
-            initCustomTfp();
-            return;
-        }
-
-        int inverted;
-        glXGetFBConfigAttrib(display, configs[0], GLX_Y_INVERTED_EXT, &inverted);
-        if (pc->hasAlpha()) {
-            configAlpha = configs[0];
-            d->inverted_texture = inverted ? true : false;
-        } else {
-            config = configs[0];
-            d->inverted_texture = inverted ? true : false;
-        }
-        XFree(configs);
-    }
 
     glGenTextures(1, &d->textureId);
     glEnable(GL_TEXTURE_2D);
@@ -280,7 +289,8 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
     Q_UNUSED(num);
     Q_UNUSED(when);
 
-    if (isWindowTransitioning() || d->direct_fb_render || !windowVisible())
+    if (isWindowTransitioning() || d->direct_fb_render || !windowVisible()
+        || propertyCache()->isInputOnly())
         return;
 
     // Our very own custom texture from pixmap
