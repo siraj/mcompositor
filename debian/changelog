@@ -1,3 +1,9 @@
+mcompositor (0.8.2-1~unreleased) unstable; urgency=low
+
+  * unreleased
+
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Thu, 30 Dec 2010 14:54:36 +0200
+
 mcompositor (0.8.1-2) unstable; urgency=low
 
   * Fixes: NB#213779 - Compositor doesn't send synthetic VisibilityUnobscured to Status Indicator Menu
