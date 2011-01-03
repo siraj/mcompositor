@@ -21,6 +21,8 @@
 
 #include <MSceneManager>
 #include <MScene>
+#include <MLabel>
+#include <QGraphicsLinearLayout>
 
 #include <QApplication>
 #include <QDesktopWidget>
@@ -244,10 +246,26 @@ void MDecoratorWindow::showQueryDialog(bool visible)
         XSetTransientForHint(QX11Info::display(), winId(), managed_window);
         requested_only_statusbar = only_statusbar;
         setOnlyStatusbar(true, true);
-        messageBox = new MMessageBox(
-                         qtTrId("qtn_reco_app_not_responding").arg(name),
-                         qtTrId("qtn_reco_close_app_question"),
-                         M::NoStandardButton);
+        messageBox = new MMessageBox("", "", M::NoStandardButton);
+        messageBox->setCentralWidget(new QGraphicsWidget(messageBox));
+        QGraphicsLinearLayout *layout = new QGraphicsLinearLayout(Qt::Vertical,
+                                                messageBox->centralWidget());
+        MLabel *title = new MLabel(
+                             qtTrId("qtn_reco_app_not_responding").arg(name),
+                             messageBox);
+        title->setStyleName("CommonQueryTitle");
+        title->setWordWrap(true);
+        title->setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        title->setAlignment(Qt::AlignCenter);
+        layout->addItem(title);
+        MLabel *text = new MLabel(qtTrId("qtn_reco_close_app_question"),
+                                  messageBox);
+        text->setStyleName("CommonQueryText");
+        text->setWordWrap(true);
+        text->setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        text->setAlignment(Qt::AlignCenter);
+        layout->addItem(text);
+        messageBox->centralWidget()->setLayout(layout);
         MButtonModel *yes = messageBox->addButton(qtTrId("qtn_comm_command_yes"),
                                                   M::AcceptRole);
         MButtonModel *no = messageBox->addButton(qtTrId("qtn_comm_command_no"),
