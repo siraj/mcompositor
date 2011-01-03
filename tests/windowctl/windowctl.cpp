@@ -199,8 +199,11 @@ static void set_mstatusbar_geom (Display *dpy, Window win, unsigned x,
 
 static void set_shaped (Display *dpy, Window w)
 {
-  XRectangle rect = {250, 120, 300, 200};
-  XShapeCombineRectangles(dpy, w, ShapeBounding, 0, 0, &rect, 1,
+  XRectangle rect[] = {{250, 120, 300, 200},
+	{240, 130, 310, 190},
+	{150, 150, 100, 150},
+  };
+  XShapeCombineRectangles(dpy, w, ShapeBounding, 0, 0, rect, 3,
                           ShapeSet, Unsorted);
   XSync(dpy, False);
 }
@@ -634,15 +637,16 @@ static bool old_main(QStringList& args, QString& stdOut)
 {
         Display *dpy;
         Window w;
-        GC green_gc;
-        XColor green_col;
+        GC green_gc, blue_gc;
+        XColor green_col, blue_col;
         Colormap colormap;
         char green[] = "#00ff00";
+        char blue[] = "#0000ff";
         time_t last_time;
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
             shaped = 0, initial_iconic = 0, no_focus = 0, do_not_answer_ping = 0,
-            input_only = 0, always_mapped = -1;
+            input_only = 0, always_mapped = -1, draw_mode = 0;;
 	WindowType windowtype = TYPE_INVALID;
 
 	if (args.count() < 1 || args.count() > 6) {
@@ -675,6 +679,10 @@ static bool old_main(QStringList& args, QString& stdOut)
 		const char *command;
 		if (*p == 'a') {
 			argb = 1;
+			continue;
+		}
+		if (*p == 'B') {
+			draw_mode = 1;
 			continue;
 		}
 		if (*p == 'f') {
@@ -916,6 +924,15 @@ static bool old_main(QStringList& args, QString& stdOut)
         XAllocColor (dpy, colormap, &green_col);
         XSetForeground (dpy, green_gc, green_col.pixel);
 
+        {
+          XGCValues values;
+	  values.line_width = 3;
+          blue_gc = XCreateGC (dpy, w, GCLineWidth, &values);
+          XParseColor (dpy, colormap, blue, &blue_col);
+          XAllocColor (dpy, colormap, &blue_col);
+          XSetForeground (dpy, blue_gc, blue_col.pixel);
+        }
+
         if (kde_override && windowtype == TYPE_NORMAL)
             set_kde_override(dpy, w);
         set_window_type(dpy, w, windowtype);
@@ -946,7 +963,8 @@ static bool old_main(QStringList& args, QString& stdOut)
         XDamageQueryExtension(dpy, &damage_event, &damage_error);
         static const int damage_ev = damage_event + XDamageNotify;
         // listen to root window damage
-        XDamageCreate(dpy, DefaultRootWindow(dpy), XDamageReportNonEmpty); 
+        XDamageCreate(dpy, DefaultRootWindow(dpy), XDamageReportRawRectangles);
+        XDamageCreate(dpy, w, XDamageReportRawRectangles);
 
         struct timeval map_time;
         gettimeofday(&map_time, NULL);
@@ -1005,7 +1023,28 @@ static bool old_main(QStringList& args, QString& stdOut)
                 else if (xev.type == PropertyNotify) {
                 }
                 else if (xev.type == ButtonRelease) {
-                  /*XButtonEvent *e = (XButtonEvent*)&xev;*/
+                  XButtonEvent *e = (XButtonEvent*)&xev;
+                  int x = e->x - 10;
+                  int y = e->y - 10;
+                  int width = 20;
+                  int height = 20;
+
+                  if (draw_mode)
+                    XDrawRectangle(dpy, w, green_gc, x, y, width, height);
+                  else
+                    XFillRectangle(dpy, w, green_gc, x, y, width, height);
+                }
+                else if (xev.type == ButtonPress) {
+                  XButtonEvent *e = (XButtonEvent*)&xev;
+                  int x = e->x - 10;
+                  int y = e->y - 10;
+                  int width = 20;
+                  int height = 20;
+
+                  if (draw_mode)
+                    XDrawRectangle(dpy, w, blue_gc, x, y, width, height);
+                  else
+                    XFillRectangle(dpy, w, blue_gc, x, y, width, height);
                 }
                 else if (xev.type == MapNotify) {
                   /*XMapEvent *e = (XMapEvent*)&xev;*/
@@ -1035,11 +1074,23 @@ static bool old_main(QStringList& args, QString& stdOut)
                 }
                 else if (xev.type == damage_ev) {
                   struct timeval dtime;
+		  XDamageNotifyEvent e;
+
+                  memcpy(&e, &xev, sizeof(e));
                   gettimeofday(&dtime, NULL);
                   unsigned int secs = dtime.tv_sec - map_time.tv_sec;
-                  unsigned int usecs = dtime.tv_usec - map_time.tv_usec;
-                  printf("Damage received, %us and %uus from mapping\n",
-                         secs, usecs);
+                  int usecs = dtime.tv_usec - map_time.tv_usec;
+		  if (usecs < 0) {
+			  usecs += 1000*1000;
+			  secs -= 1;
+		  }
+		  usecs /= 100;
+                  printf("Damage received, %u.%.4us from mapping"
+			" (draw %lx, more %d, time %lu, x %d-%d, y %d-%d)\n",
+                         secs, usecs,
+			 e.drawable, e.more, e.timestamp,
+			 e.area.x, e.area.x+e.area.width,
+			 e.area.y, e.area.y+e.area.height);
                   /*
                   XDamageSubtract(dpy, ((XDamageNotifyEvent*)&xev)->damage,
                                   None, None);
