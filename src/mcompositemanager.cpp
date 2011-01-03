@@ -3844,12 +3844,12 @@ void MCompositeManager::dumpState(const char *heading)
     QList<Window>::const_iterator winit;
     qDebug("window stack:");
     for (winit = d->stacking_list.constEnd();
-         --winit != d->stacking_list.constBegin(); )
-        qDebug("  0x%lx", *winit);
+         winit > d->stacking_list.constBegin(); )
+        qDebug("  0x%lx", *--winit);
     qDebug("mapping order:");
     for (winit = d->windows_as_mapped.constEnd();
-         --winit != d->windows_as_mapped.constBegin(); )
-        qDebug("  0x%lx", *winit);
+         winit > d->windows_as_mapped.constBegin(); )
+        qDebug("  0x%lx", *--winit);
 
     // All MCompositeWindow:s we know about.
     QHash<Window, MCompositeWindow *>::const_iterator cwit;
