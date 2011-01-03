@@ -274,6 +274,11 @@ void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
     Q_UNUSED(t)
     Q_D(MCompositeWindowGroup);
     
+    if (d->main_window->isWindowTransitioning()) {
+        // updates during transitioning cause issues when texcoords_from_rect
+        // is used in MTexturePixmapItemPrivate and is heavy, too
+        return;
+    }
     if (!d->valid) {
         qDebug() << "invalid fbo";
         return;
@@ -288,14 +293,16 @@ void MCompositeWindowGroup::updateWindowPixmap(XRectangle *rects, int num,
                  __func__, ret); 
         d->valid = false;
     }
+    bool orig_value = d->main_window->d->inverted_texture;
     d->main_window->d->inverted_texture = false;
     d->main_window->renderTexture(d->main_window->sceneTransform());
-    d->main_window->d->inverted_texture = true;
+    d->main_window->d->inverted_texture = orig_value;
     for (int i = 0; i < d->item_list.size(); ++i) {
         MTexturePixmapItem* item = d->item_list[i];
+        orig_value = item->d->inverted_texture;
         item->d->inverted_texture = false;
         item->renderTexture(item->sceneTransform());
-        item->d->inverted_texture = true;
+        item->d->inverted_texture = orig_value;
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
