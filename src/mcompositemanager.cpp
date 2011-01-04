@@ -955,10 +955,9 @@ void MCompositeManagerPrivate::propertyEvent(XPropertyEvent *e)
 
     // global alpha events here. TODO: property cache class could handle this
     // but it is straightforward to manipulate it from here
-    if (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA))
-        set_global_alpha(pc->globalAlpha(), -1);
-    else if (e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA))
-        set_global_alpha(-1, pc->videoGlobalAlpha());
+    if (pc->isMapped() && (e->atom == ATOM(_MEEGOTOUCH_GLOBAL_ALPHA) ||
+        e->atom == ATOM(_MEEGOTOUCH_VIDEO_ALPHA)))
+        dirtyStacking(true, e->time);
 }
 
 Window MCompositeManagerPrivate::getLastVisibleParent(MWindowPropertyCache *pc)
@@ -1239,15 +1238,6 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         if (stack[i] == e->window) stack[i] = 0;
 
     dirtyStacking(false);
-
-    // Set the global alpha if the window beneath this window has one
-    MCompositeWindow *newtop = MCompositeWindow::compositeWindow(
-                                         getTopmostApp(0, e->window));
-    if (newtop)
-        set_global_alpha(newtop->propertyCache()->globalAlpha(),
-                         newtop->propertyCache()->videoGlobalAlpha());
-    else
-        reset_global_alpha();
 }
 
 void MCompositeManagerPrivate::configureEvent(XConfigureEvent *e)
@@ -2191,6 +2181,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
                  break;
              }
         }
+        MWindowPropertyCache *ga_pc = 0;
         /* Send synthetic visibility events for our babies */
         int home_i = stacking_list.indexOf(duihome);
         for (int i = 0; i <= last_i; ++i) {
@@ -2207,6 +2198,10 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             if (i >= covering_i) {
                 cw->setWindowObscured(false);
                 cw->setVisible(true);
+                if (!ga_pc && (cw->propertyCache()->globalAlpha() < 255 ||
+                    cw->propertyCache()->videoGlobalAlpha() < 255))
+                    // select topmost window with global alpha properties
+                    ga_pc = cw->propertyCache();
             } else {
                 if (i < home_i &&
                     ((MTexturePixmapItem *)cw)->isDirectRendered()) {
@@ -2222,6 +2217,10 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
             if (duihome && i >= home_i)
                 setWindowState(cw->window(), NormalState);
         }
+        if (ga_pc)
+            set_global_alpha(ga_pc->globalAlpha(), ga_pc->videoGlobalAlpha());
+        else
+            reset_global_alpha();
     }
     // current app has different semantics from getTopmostApp and pure isAppWindow
     Window set_as_current_app = duihome;
@@ -2316,8 +2315,6 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             hideLaunchIndicator();
         }
     }
-
-    set_global_alpha(wpc->globalAlpha(), wpc->videoGlobalAlpha());
 
     MWindowPropertyCache *pc = 0;
     MCompositeWindow *item = COMPOSITE_WINDOW(win);
@@ -2484,8 +2481,6 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                 i->setZValue(windows.size() + 1);
                 QRectF iconGeometry = i->propertyCache()->iconGeometry();
                 i->restore(iconGeometry, needComp);
-                set_global_alpha(i->propertyCache()->globalAlpha(),
-                                 i->propertyCache()->videoGlobalAlpha());
             }
         }
 
@@ -2673,9 +2668,6 @@ void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
     }
     // checkStacking() will redirect windows for the switcher
     dirtyStacking(false);
-
-    // Reset the global alpha on minimize
-    reset_global_alpha();
 }
 
 void MCompositeManagerPrivate::restoreHandler(MCompositeWindow *window)
