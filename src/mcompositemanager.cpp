@@ -3962,7 +3962,7 @@ void MCompositeManager::dumpState(const char *heading)
         for (it = d->configure_reqs.constBegin();
              it != d->configure_reqs.constEnd(); ++it) {
             for (ot = it->constBegin(); ot != it->constEnd(); ++ot) {
-                const XConfigureRequestEvent *ev = ot->();
+                const XConfigureRequestEvent *ev = &(*ot);
 
                 // The requested geometry
                 line = QString().sprintf("  0x%lx: %dx%d%+d%+d", it.key(),
