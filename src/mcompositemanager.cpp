@@ -3817,6 +3817,8 @@ void MCompositeManager::dumpState(const char *heading)
     qDebug(    "buttoned_win:     0x%lx", d->buttoned_win);
 
     // Decoration button geometries.
+    qDebug(    "decorated window: 0x%lx",
+               MDecoratorFrame::instance()->managedWindow());
     r = &d->home_button_geom;
     qDebug(    "home button:      0x%lx (%dx%d%+d%+d)",
                d->home_button_win,
@@ -3856,11 +3858,20 @@ void MCompositeManager::dumpState(const char *heading)
     qDebug("windows:");
     for (cwit = d->windows.constBegin(); cwit != d->windows.constEnd();
          ++cwit) {
+        static const char *wintypes[] = {
+            "INVALID", "DESKTOP", "NORMAL", "DIALOG", "NO_DECOR_DIALOG",
+            "FRAMELESS", "DOCK", "INPUT", "ABOVE", "NOTIFICATION",
+            "DECORATOR", "UNKNOWN",
+        };
         static const char *winstates[] = {
+            "Withdrawn", "Normal", NULL, "Iconic"
+        };
+        static const char *appstates[] = {
             "normal", "hung", "minimizing", "closing"
         };
         static const char *iconstates[] = { "none", "manual", "transition" };
         MCompositeWindow *cw, *behind;
+        int winstate;
         char *name;
 
         cw = *cwit;
@@ -3895,6 +3906,7 @@ void MCompositeManager::dumpState(const char *heading)
         else
             cmdline = "<unknown PID>";
 
+        winstate = cw->propertyCache()->windowState();
         qDebug("  ptr %p == xwin 0x%lx%s: %s", cw, cw->window(),
                cw->isValid() ? "" : " (not valid anymore)",
                name ? name : "[noname]");
@@ -3904,11 +3916,14 @@ void MCompositeManager::dumpState(const char *heading)
                yn[cw->propertyCache()->isInputOnly()]);
         qDebug("    visible: %s, direct rendered: %s",
                yn[cw->windowVisible()], yn[cw->isDirectRendered()]);
-        qDebug("    is app: %s, needs decoration: %s",
+        qDebug("    window type: %s, is app: %s, needs decoration: %s",
+               wintypes[cw->propertyCache()->windowType()],
                yn[cw->isAppWindow()], yn[cw->needDecoration()]);
-        qDebug("    status: %s, iconified: %s, iconification status: %s",
-               winstates[cw->status()], yn[cw->isIconified()],
-               iconstates[cw->iconifyState()]);
+        qDebug("    status: %s, state: %s", appstates[cw->status()],
+               winstate < (int)(sizeof(winstates)/sizeof(winstates[0]))
+                  ? winstates[winstate] : NULL);
+        qDebug("    iconified: %s, iconification status: %s",
+               yn[cw->isIconified()], iconstates[cw->iconifyState()]);
         qDebug("    has transitioning windows: %s, transitioning: %s, "
                    "closing: %s",
                    yn[cw->hasTransitioningWindow()],
