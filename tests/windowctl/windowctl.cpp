@@ -381,7 +381,7 @@ static void print_usage_and_exit(QString& stdOut)
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
 	 "b - WM_TYPE_NOTIFICATION window ('b' is for banner)\n\n"
-	 "Usage 2: " PROG " N|U|F|C|M|T|A|W|H|S|O <XID>\n"
+	 "Usage 2: " PROG " N|U|F|C|M|T|A|W|H|S|O|Z <XID>\n"
 	 "N - unfullscreen the window with <XID>\n"
 	 "U - unmap the window with <XID>\n"
 	 "F - fullscreen the window with <XID>\n"
@@ -392,7 +392,8 @@ static void print_usage_and_exit(QString& stdOut)
 	 "W - wait for mapping of the window with <XID>\n"
 	 "H - set _MEEGOTOUCH_DECORATOR_BUTTONS to the window with <XID>\n"
 	 "S - make the window with <XID> a shaped window\n"
-	 "O - icOnify the window with <XID>\n\n"
+	 "O - icOnify the window with <XID>\n"
+	 "Z - print damage events of the window with <XID>\n\n"
 	 "Usage 3: " PROG " t|L|V|G <XID> (<XID>|'None')\n"
 	 "t - make the first window transient for the second one\n"
 	 "L - configure the first window beLow the second one\n"
@@ -636,13 +637,12 @@ static pid_t rotate_screen(char *o, QString& stdOut)
 static bool old_main(QStringList& args, QString& stdOut)
 {
         Display *dpy;
-        Window w;
-        GC green_gc, blue_gc;
+        Window w = None, track_w = None;
+        GC green_gc = 0, blue_gc = 0;
         XColor green_col, blue_col;
         Colormap colormap;
         char green[] = "#00ff00";
         char blue[] = "#0000ff";
-        time_t last_time;
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
             shaped = 0, initial_iconic = 0, no_focus = 0, do_not_answer_ping = 0,
@@ -875,6 +875,12 @@ static bool old_main(QStringList& args, QString& stdOut)
                     printf("%u %u\n", WIN_W, WIN_H);
                     return true;
                 }
+                if (*p == 'Z' && args.count() == 2) {
+                    track_w = strtol(args.at(1).toAscii().data(), NULL, 16);
+                    printf("tracking damages of 0x%lx\n", track_w);
+                    XDamageCreate(dpy, track_w, XDamageReportRawRectangles);
+                    goto mainloop;
+                }
 		if ((command = strchr("NUFCMTAWHSO", *p))) {
 			if (args.count() != 2) {
 	  			print_usage_and_exit(stdOut);
@@ -959,9 +965,6 @@ static bool old_main(QStringList& args, QString& stdOut)
 				sizeof(name));
 	}
 
-        int damage_event, damage_error;
-        XDamageQueryExtension(dpy, &damage_event, &damage_error);
-        static const int damage_ev = damage_event + XDamageNotify;
         // listen to root window damage
         XDamageCreate(dpy, DefaultRootWindow(dpy), XDamageReportRawRectangles);
         XDamageCreate(dpy, w, XDamageReportRawRectangles);
@@ -970,8 +973,10 @@ static bool old_main(QStringList& args, QString& stdOut)
         gettimeofday(&map_time, NULL);
 
         XMapWindow(dpy, w);  /* map the window */
-
-        last_time = time(NULL);
+mainloop:
+        int damage_event, damage_error;
+        XDamageQueryExtension(dpy, &damage_event, &damage_error);
+        static const int damage_ev = damage_event + XDamageNotify;
 
         for (;;) {
                 XEvent xev;
@@ -1085,9 +1090,17 @@ static bool old_main(QStringList& args, QString& stdOut)
 			  secs -= 1;
 		  }
 		  usecs /= 100;
-                  printf("Damage received, %u.%.4us from mapping"
+                  if (e.drawable != track_w)
+                    printf("Damage received, %u.%.4us from mapping"
 			" (draw %lx, more %d, time %lu, x %d-%d, y %d-%d)\n",
                          secs, usecs,
+			 e.drawable, e.more, e.timestamp,
+			 e.area.x, e.area.x+e.area.width,
+			 e.area.y, e.area.y+e.area.height);
+                  else
+                    printf("Damage for 0x%lx received"
+			" (draw %lx, more %d, time %lu, x %d-%d, y %d-%d)\n",
+                         track_w,
 			 e.drawable, e.more, e.timestamp,
 			 e.area.x, e.area.x+e.area.width,
 			 e.area.y, e.area.y+e.area.height);
