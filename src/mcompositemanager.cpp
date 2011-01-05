@@ -809,26 +809,33 @@ void MCompositeManagerPrivate::prepare()
     prepared = true;
 }
 
-void MCompositeManagerPrivate::loadPlugins()
+void MCompositeManagerPrivate::loadPlugin(const QString &fileName)
 {
-    // hard-coded for now. move this to plugindir later
-#define PDIR "/usr/lib/mcompositor"
-    QDir pluginsDir = QDir(PDIR);
-   
-    foreach (QString fileName, pluginsDir.entryList(QDir::Files)) {
         QObject *plugin;
         MCompmgrExtensionFactory* factory;
-
-        QPluginLoader loader(pluginsDir.absoluteFilePath(fileName));
+        QPluginLoader loader(fileName);
         if (!(plugin = loader.instance()))
             qFatal("couldn't load %s: %s",
-                   loader.fileName().toLatin1().constData(),
+                   fileName.toLatin1().constData(),
                    loader.errorString().toLatin1().constData());
         if (!(factory = qobject_cast<MCompmgrExtensionFactory *>(plugin)))
             qFatal("%s is not a MCompmgrExtensionFactory",
-                   loader.fileName().toLatin1().constData());
+                   fileName.toLatin1().constData());
         factory->create();
-     }
+}
+
+int MCompositeManagerPrivate::loadPlugins(const QDir &dir)
+{
+    int nloaded = 0;
+    foreach (QString fileName, dir.entryList(QDir::Files)) {
+        if (!QLibrary::isLibrary(fileName)) {
+            qWarning() << fileName << "doesn't look like a library, skipping";
+            continue;
+        }
+        loadPlugin(dir.absoluteFilePath(fileName));
+        nloaded++;
+    }
+    return nloaded;
 }
 
 bool MCompositeManagerPrivate::needDecoration(Window window,
@@ -4273,9 +4280,17 @@ void MCompositeManager::prepareEvents()
     d->prepare();
 }
 
-void MCompositeManager::loadPlugins()
+void MCompositeManager::loadPlugins(const QString &overridePluginPath,
+                                    const QString &regularPluginDir)
 {
-    d->loadPlugins();
+    if (!overridePluginPath.isEmpty()) {
+        d->loadPlugin(QString(overridePluginPath));
+        return;
+    }
+
+    QDir pluginDir = QDir(regularPluginDir);
+    if (pluginDir.exists() && !d->loadPlugins(pluginDir))
+        qWarning("no plugins loaded");
 }
 
 bool MCompositeManager::x11EventFilter(XEvent *event)

@@ -24,6 +24,7 @@
 #include <QHash>
 #include <QPixmap>
 #include <QTimer>
+#include <QDir>
 
 #include <X11/Xutil.h>
 #include <X11/Xlib.h>
@@ -71,7 +72,8 @@ public:
     QGraphicsScene *scene();
 
     void prepare();
-    void loadPlugins();
+    void loadPlugin(const QString &fileName);
+    int loadPlugins(const QDir &dir);
     void activateWindow(Window w, Time timestamp,
 		        bool disableCompositing = true);
     void updateWinList();

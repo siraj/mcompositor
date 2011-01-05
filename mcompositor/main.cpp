@@ -87,9 +87,13 @@ int main(int argc, char *argv[])
     w->makeCurrent();
     view.show();
 
+    // The directory is hard-coded for now. could be moved this
+    // to $plugindir later.
     app.prepareEvents();
     app.redirectWindows();
-    app.loadPlugins();
+    app.loadPlugins(app.arguments().count() > 1
+                    ? app.arguments().at(1) : QString(),
+                    "/usr/lib/mcompositor");
 
     return app.exec();
 }

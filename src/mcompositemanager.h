@@ -22,6 +22,7 @@
 
 #include <QApplication>
 #include <QGLWidget>
+#include <QDir>
 #include "mwindowpropertycache.h"
 
 class QGraphicsScene;
@@ -99,7 +100,14 @@ public:
      */
     void redirectWindows();
 
-    void loadPlugins();
+    /*!
+     * Load @overridePluginPath if provided and abort if fails.
+     * Otherwise, if there's no @overridePluginPath loads plugins
+     * from @regularPluginDir but skips non-library files and
+     * does not abort if there aren't plugins.
+     */
+    void loadPlugins(const QString &overridePluginPath,
+                     const QString &regularPluginDir);
 
     /*!
      * Returns whether a Window is redirected or not
