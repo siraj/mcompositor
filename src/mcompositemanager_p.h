@@ -118,6 +118,7 @@ public:
     bool processX11EventFilters(XEvent *event, bool after);
     void removeWindow(Window w);
     bool needDecoration(Window w, MWindowPropertyCache *pc = 0);
+    bool skipStartupAnim(MWindowPropertyCache *pc);
     MCompositeWindow *getHighestDecorated(int *index = 0);
     
     void roughSort();

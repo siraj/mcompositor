@@ -2254,6 +2254,32 @@ void MCompositeManagerPrivate::stackingTimeout()
         enableCompositing(true);
 }
 
+// check if there is a categorically higher mapped window than pc
+bool MCompositeManagerPrivate::skipStartupAnim(MWindowPropertyCache *pc)
+{
+    if (stack[DESKTOP_LAYER]) {
+        const XWMHints &h = pc->getWMHints();
+        if ((h.flags & StateHint) && h.initial_state == IconicState)
+            return true;
+    }
+    for (int i = stacking_list.size() - 1; i >= 0; --i) {
+        MWindowPropertyCache *tmp;
+        Window w = stacking_list.at(i);
+        if (w && w == stack[DESKTOP_LAYER])
+            return false;
+        if (!(tmp = prop_caches.value(w, 0)) || tmp->isInputOnly()
+            || tmp == pc || !tmp->isMapped() || tmp->isDecorator())
+            continue;
+        if (tmp->meegoStackingLayer() > pc->meegoStackingLayer())
+            return true;
+        if (pc->windowTypeAtom() != ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION)
+            && tmp->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_NOTIFICATION)
+            && !getLastVisibleParent(tmp))
+            return true;
+    }
+    return false;
+}
+
 void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
 {
     Window win = e->window;
@@ -2346,11 +2372,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             setWindowDebugProperties(item->window());
         } else
             item->saveBackingStore();
-        // TODO: don't show the animation if the window is not stacked on top
-        const XWMHints &h = pc->getWMHints();
-        if ((!(h.flags & StateHint) || h.initial_state != IconicState)
-            && !pc->alwaysMapped() && e->send_event == False
-            && !pc->isInputOnly()) {
+        if (!pc->alwaysMapped() && e->send_event == False
+            && !pc->isInputOnly() && !skipStartupAnim(pc)) {
             // remapped/prestarted apps should also have startup animation
             // FIXME: assumes this window is on top
             item->requestZValue(scene()->items().count() + 1);
@@ -2378,10 +2401,9 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             qDebug() << "Composition overhead (new pixmap):"
                      << overhead_measure.elapsed();
 #endif
-        const XWMHints &h = pc->getWMHints();
-        if ((!(h.flags & StateHint) || h.initial_state != IconicState)
-            && !pc->alwaysMapped() && e->send_event == False
-            && !pc->isInputOnly() && item->isAppWindow()) {
+        if (!pc->alwaysMapped() && e->send_event == False
+            && !pc->isInputOnly() && item->isAppWindow()
+            && !skipStartupAnim(pc)) {
             if (!item->showWindow()) {
                 item->setNewlyMapped(false);
                 item->setVisible(true);
@@ -2467,8 +2489,10 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
         if (event->window != stack[DESKTOP_LAYER])
             setExposeDesktop(false);
 
-        if (!getTopmostApp()) {
-            // Not necessary to animate if not in desktop view.
+        MWindowPropertyCache *pc = prop_caches.value(event->window, 0);
+        if (pc && !skipStartupAnim(pc) &&
+            (!m_extensions.values(MapNotify).isEmpty() || !getTopmostApp())) {
+            // Not necessary to animate if not in desktop view or we have a plugin.
             Window raise = event->window;
             MCompositeWindow *d_item = COMPOSITE_WINDOW(stack[DESKTOP_LAYER]);
             bool needComp = false;
