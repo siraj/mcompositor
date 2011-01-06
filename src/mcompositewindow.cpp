@@ -55,7 +55,6 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
       need_decor(false),
       window_obscured(-1),
       is_transitioning(false),
-      pinging_enabled(false),
       dimmed_effect(false),
       waiting_for_damage(0),
       win_id(window)
@@ -76,13 +75,18 @@ MCompositeWindow::MCompositeWindow(Qt::HANDLE window,
     connect(mpc, SIGNAL(iconGeometryUpdated()), SLOT(updateIconGeometry()));
     setAcceptHoverEvents(true);
 
+    // this could be configurable. But will do for now. Most WMs use 5s delay
     t_ping = new QTimer(this);
+    t_ping->setInterval(5000);
     connect(t_ping, SIGNAL(timeout()), SLOT(pingTimeout()));
     t_reappear = new QTimer(this);
+    t_reappear->setSingleShot(true);
+    t_reappear->setInterval(30 * 1000);
     connect(t_reappear, SIGNAL(timeout()), SLOT(reappearTimeout()));
 
     damage_timer = new QTimer(this);
     damage_timer->setSingleShot(true);
+    damage_timer->setInterval(500);
     connect(damage_timer, SIGNAL(timeout()), SLOT(damageTimeout()));
     
     MCompAtoms* atoms = MCompAtoms::instance(); 
@@ -120,16 +124,13 @@ MCompositeWindow::~MCompositeWindow()
 {
     MCompositeManager *p = (MCompositeManager *) qApp;
 
-    if (window() && (t_ping || t_reappear)) {
+    if (window()) {
         stopPing();
-        delete t_ping;
-        delete t_reappear;
         t_ping = t_reappear = 0;
     }
     endAnimation();
     
     anim = 0;
-    delete damage_timer;
     
     if (pc) {
         pc->damageTracking(false);
@@ -355,7 +356,7 @@ bool MCompositeWindow::showWindow()
         // waiting for two damage events seems to work for Meegotouch apps
         // at least, for the rest, there is a timeout
         waiting_for_damage = 2;
-        damage_timer->start(500);
+        damage_timer->start();
     } else
         q_fadeIn();
     return true;
@@ -547,37 +548,24 @@ void MCompositeWindow::setVisible(bool visible)
 
 void MCompositeWindow::startPing()
 {
-    if (pinging_enabled || !t_ping)
+    if (t_ping->isActive())
         // this function can be called repeatedly without extending the timeout
         return;
     // startup: send ping now, otherwise it is sent after timeout
-    pinging_enabled = true;
     pingWindow();
-    if (t_ping->isActive())
-        t_ping->stop();
-    // this could be configurable. But will do for now. Most WMs use 5s delay
-    t_ping->setSingleShot(false);
-    t_ping->setInterval(5000);
     t_ping->start();
 }
 
 void MCompositeWindow::stopPing()
 {
-    pinging_enabled = false;
-    if (t_ping)
-        t_ping->stop();
-    if (t_reappear)
-        t_reappear->stop();
+    t_ping->stop();
+    t_reappear->stop();
 }
 
 void MCompositeWindow::startDialogReappearTimer()
 {
-    if (!t_reappear || window_status != Hung)
+    if (window_status != Hung)
         return;
-    if (t_reappear->isActive())
-        t_reappear->stop();
-    t_reappear->setSingleShot(true);
-    t_reappear->setInterval(30 * 1000);
     t_reappear->start();
 }
 
@@ -598,19 +586,18 @@ void MCompositeWindow::receivedPing(ulong serverTimeStamp)
     }
     if (blurred())
         setBlurred(false);
-    if (t_reappear->isActive())
-        t_reappear->stop();
+    t_reappear->stop();
 }
 
 void MCompositeWindow::pingTimeout()
 {
-    if (pinging_enabled && received_ping_timestamp < sent_ping_timestamp
+    if (received_ping_timestamp < sent_ping_timestamp
         && pc && pc->isMapped() && window_status != Hung
         && window_status != Minimizing && window_status != Closing) {
         window_status = Hung;
         emit windowHung(this, true);
     }
-    if (pinging_enabled)
+    if (t_ping->isActive())
         // interval timer is still active
         pingWindow();
 }

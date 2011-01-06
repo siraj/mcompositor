@@ -416,7 +416,6 @@ private:
     bool is_valid;
     bool newly_mapped;
     bool is_transitioning;
-    bool pinging_enabled;
     bool dimmed_effect;
     char waiting_for_damage;
 
