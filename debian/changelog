@@ -1,3 +1,9 @@
+mcompositor (0.8.3-1~unreleased) unstable; urgency=low
+
+  * unreleased
+
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Fri, 07 Jan 2011 14:47:30 +0200
+
 mcompositor (0.8.2-1) unstable; urgency=low
 
   * fix some issues in MCompositeWindowGroup::updateWindowPixmap()
