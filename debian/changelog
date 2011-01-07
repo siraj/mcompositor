@@ -1,8 +1,33 @@
-mcompositor (0.8.2-1~unreleased) unstable; urgency=low
+mcompositor (0.8.2-1) unstable; urgency=low
 
-  * unreleased
+  * fix some issues in MCompositeWindowGroup::updateWindowPixmap()
+  * Fixes: NB#215570 - Cropped text in 'application's not responding' message
+  * Fixes: NB#215389 - Fullscreen window sometimes stays in composited mode
+  * Fixes: NB#209217 - ARGB windows show up black in SB/x86
+  * Fix related to NB#212859 - If touch screen lock times out on CherryUI, cannot unlock
+  * Depending on the plugin, avoid NB#215576 crash
+  * Fixes: NB#214816 - Multi-part damage is handled incorrectly in compositor
+  * Fixes: NB#214825 - Fetching rectangles for damage region is expensive when compositor shouldn't need the rectangles
+  * dumpState(): add command line and InputOnly info printing
+  * Fixes: NB#213095 - Call-history opens in the background while receiving 2nd missed call
+  * Change windowHung signal to have bool argument + make windowctl answer ping
+  * Implement support for partial window drawing etc.
+  * Fixes: NB#206559 - The QDialog items don't draw correctly
+  * activateWindow()s with configure_reqs on mapEvent()
+  * make it possible to specify the plugin to load on the command line
+  * print the window type and state in dumpState()
+  * draw mode for windowctl
+  * don't forget print the bottomest window of stacking_list
+  * restore accidentally removed translations
+  * Fixes: NB#212830 - on a random note Swiping away from ongoing call view is not possible
+  * STACKING_DEBUGGING and dumpState() improvements
+  * Fixes: NB#210945 - SMS/Chat message UI opened in background the second time from contacts
+  * optimize MCompositeManagerPrivate::raiseWithTransients()
+  * remove orig_list
+  * fix stacking with transiency loops
+  * draw mode for windowctl
 
- -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Thu, 30 Dec 2010 14:54:36 +0200
+ -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Fri, 07 Jan 2011 13:18:15 +0200
 
 mcompositor (0.8.1-2) unstable; urgency=low
 
