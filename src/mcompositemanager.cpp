@@ -282,7 +282,7 @@ QVector<Atom> MCompAtoms::getAtomArray(Window w, Atom array_atom)
         ret.resize(left / 4);
         XFree((void *) data);
         data = 0;
-        
+
         if (XGetWindowProperty(QX11Info::display(), w, array_atom, 0,
                                ret.size(), False, XA_ATOM, &actual, &format,
                                &n, &left, &data) != Success) {
@@ -663,12 +663,12 @@ static void kill_window(Window window)
 }
 
 static void safe_move(QList<Window>& winlist, int from, int to)
-{            
+{
     int slsize = winlist.size();
     if( (from == to) || (from < 0) || (from >= slsize) ||
         (to < 0) || (to >= slsize) )
         return;
-    
+
     winlist.move(from,to);
 }
 
@@ -737,16 +737,16 @@ static void setup_key_grabs()
                  RootWindow(QX11Info::display(), 0), True,
                  GrabModeAsync, GrabModeAsync);
     }
-    
+
     if (!ignored_mod) {
         XkbDescPtr xkb_t;
-        
+
         if ((xkb_t = XkbAllocKeyboard()) == NULL)
             return;
-        
-        if (XkbGetControls(dpy, XkbAllControlsMask, xkb_t) == Success) 
-            XkbSetIgnoreLockMods(dpy, xkb_t->device_spec, Mod5Mask, Mod5Mask, 
-                                 0, 0);    
+
+        if (XkbGetControls(dpy, XkbAllControlsMask, xkb_t) == Success)
+            XkbSetIgnoreLockMods(dpy, xkb_t->device_spec, Mod5Mask, Mod5Mask,
+                                 0, 0);
         XkbFreeControls(xkb_t, 0, True);
         ignored_mod = true;
         free(xkb_t);
@@ -988,7 +988,7 @@ Window MCompositeManagerPrivate::getTopmostApp(int *index_in_stacking_list,
         ignore_window, skip_always_mapped);
 
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
-        Window w = stacking_list.at(i);        
+        Window w = stacking_list.at(i);
         GTA("considering 0x%lx", w);
         if (w == ignore_window || !w) {
             GTA("ignoring");
@@ -1067,7 +1067,7 @@ MCompositeWindow *MCompositeManagerPrivate::getHighestDecorated(int *index)
 bool MCompositeManagerPrivate::haveMappedWindow() const
 {
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
-        Window w = stacking_list.at(i);        
+        Window w = stacking_list.at(i);
         MWindowPropertyCache *pc = prop_caches.value(w, 0);
         if (pc && pc->is_valid && pc->isMapped())
             return true;
@@ -1118,7 +1118,7 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
     // this code prevents us disabling compositing when we have a window
     // that has XMapWindow() called but we have not yet received the MapNotify
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
-        Window w = stacking_list.at(i);        
+        Window w = stacking_list.at(i);
         if (w == stack[DESKTOP_LAYER]) break;
         MWindowPropertyCache *pc = prop_caches.value(w, 0);
         if (pc && pc->is_valid && pc->beingMapped())
@@ -1465,7 +1465,7 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
         // since we call disable compositing immediately
         // we don't see the animated transition
         if (!i->propertyCache()->hasAlpha() && !i->needDecoration()) {
-            i->setIconified(false);        
+            i->setIconified(false);
             disableCompositing(FORCED);
         } else if (MDecoratorFrame::instance()->managedWindow() == e->window)
             enableCompositing();
@@ -1507,7 +1507,7 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
     // Composition is enabled by default because we are introducing animations
     // on window map. It will be turned off once transitions are done
     enableCompositing(true);
-    
+
     if (pc->isDecorator()) {
         MDecoratorFrame::instance()->setDecoratorWindow(e->window);
         MDecoratorFrame::instance()->setManagedWindow(0);
@@ -1963,7 +1963,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         stacking_timeout_timestamp = CurrentTime;
     }
     Window active_app = 0, duihome = stack[DESKTOP_LAYER], first_moved;
-    int last_i = stacking_list.size() - 1;    
+    int last_i = stacking_list.size() - 1;
     bool desktop_up = false, fs_app = false;
     int app_i = -1;
     MDecoratorFrame *deco = MDecoratorFrame::instance();
@@ -2007,7 +2007,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
 		 } else ++i;
 	    }
 	}
-    
+
 	/* raise with transients recursively */
         raiseWithTransients(aw->propertyCache(), app_i);
     } else if (duihome) {
@@ -2226,7 +2226,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
     // current app has different semantics from getTopmostApp and pure isAppWindow
     Window set_as_current_app = duihome;
     for (int i = stacking_list.size() - 1; i >= 0; --i) {
-        Window w = stacking_list.at(i);        
+        Window w = stacking_list.at(i);
         if (!w) continue;
         MCompositeWindow *cw = COMPOSITE_WINDOW(w);
         if (!cw || !cw->propertyCache() || !cw->propertyCache()->is_valid)
@@ -2251,7 +2251,7 @@ void MCompositeManagerPrivate::stackingTimeout()
                   stacking_timeout_timestamp);
     stacking_timeout_check_visibility = false;
     stacking_timeout_timestamp = CurrentTime;
-    if (!device_state->displayOff() && !possiblyUnredirectTopmostWindow()) 
+    if (!device_state->displayOff() && !possiblyUnredirectTopmostWindow())
         enableCompositing(true);
 }
 
@@ -2341,7 +2341,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             pc->setWindowTypeAtom(atom->getType(win));
 #ifdef WINDOW_DEBUG
         if (debug_mode)
-            qDebug() << "Composition overhead (existing pixmap):" 
+            qDebug() << "Composition overhead (existing pixmap):"
                      << overhead_measure.elapsed();
 #endif
         if (((MTexturePixmapItem *)item)->isDirectRendered()) {
@@ -2393,7 +2393,7 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
             item->setNewlyMapped(false);
             item->setVisible(true);
         }
-        
+
         // the current decorated window got mapped
         if (e->window == MDecoratorFrame::instance()->managedWindow() &&
                 MDecoratorFrame::instance()->decoratorItem()) {
@@ -2442,7 +2442,7 @@ stack_and_return:
             roughSort();
         }
     }
-    
+
     dirtyStacking(false);
 }
 
@@ -2517,7 +2517,7 @@ void MCompositeManagerPrivate::rootMessageEvent(XClientMessageEvent *event)
                     MDecoratorFrame::instance()->lower();
                     MDecoratorFrame::instance()->setManagedWindow(0);
                     MDecoratorFrame::instance()->setAutoRotation(false);
-                    if(!ping_source->propertyCache()->hasAlpha()) 
+                    if(!ping_source->propertyCache()->hasAlpha())
                         disableCompositing(FORCED);
                 } else if (was_hung && ping_source->window() == managed
                            && FULLSCREEN_WINDOW(ping_source)) {
@@ -2579,7 +2579,7 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
                     Window w = stacking_list.at(wi);
                     if (!w)
                         continue;
-                    
+
                     if (w == lower) {
                         lower_i = wi;
                         continue;
@@ -2621,26 +2621,26 @@ void MCompositeManagerPrivate::clientMessageEvent(XClientMessageEvent *event)
 }
 
 void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
-{    
+{
     bool delete_sent = false;
     if ((window->propertyCache()->supportedProtocols().indexOf(
                                                                ATOM(WM_DELETE_WINDOW)) != -1) && window->status() != MCompositeWindow::Hung) {
         // send WM_DELETE_WINDOW message to the window that needs to close
         XEvent ev;
         memset(&ev, 0, sizeof(ev));
-        
+
         ev.xclient.type = ClientMessage;
         ev.xclient.window = window->window();
         ev.xclient.message_type = ATOM(WM_PROTOCOLS);
         ev.xclient.format = 32;
         ev.xclient.data.l[0] = ATOM(WM_DELETE_WINDOW);
         ev.xclient.data.l[1] = CurrentTime;
-        
+
         XSendEvent(QX11Info::display(), window->window(), False,
                    NoEventMask, &ev);
         delete_sent = true;
     }
-    
+
     if ((!delete_sent || window->status() == MCompositeWindow::Hung)) {
         kill_window(window->window());
         if (MDecoratorFrame::instance()->managedWindow() == window->window())
@@ -2655,7 +2655,7 @@ void MCompositeManagerPrivate::closeHandler(MCompositeWindow *window)
 
 // window iconified or unmapping animation ended
 void MCompositeManagerPrivate::lowerHandler(MCompositeWindow *window)
-{    
+{
     // TODO: (work for more)
     // Handle minimize request coming from a managed window itself,
     // if there are any
@@ -2910,7 +2910,7 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
         }
         return true;
     }
-    
+
     if (processX11EventFilters(event, false))
         return true;
 
@@ -2949,7 +2949,7 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
     case ClientMessage:
         clientMessageEvent(&event->xclient); break;
     case ButtonRelease:
-    case ButtonPress: 
+    case ButtonPress:
         buttonEvent(&event->xbutton);
         // TODO: enable this code when MSimpleWindowFrame raises from death.
         // ret = false;
@@ -2960,7 +2960,7 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
     case KeyRelease:
         XAllowEvents(QX11Info::display(), ReplayKeyboard, event->xkey.time);
         keyEvent(&event->xkey); break;
-    case ReparentNotify: 
+    case ReparentNotify:
         // TODO: handle if one of our top-levels is reparented away
         // Prevent this event from internally cascading inside Qt. Causing some
         // random crashes in XCheckTypedWindowEvent
@@ -2983,27 +2983,27 @@ bool MCompositeManagerPrivate::processX11EventFilters(XEvent *event, bool after)
 {
     if (!m_extensions.contains(event->type))
         return false;
-    
+
     QList<MCompositeManagerExtension*> evlist = m_extensions.values(event->type);
     bool processed = false;
     if (after)
-        for (int i = 0; i < evlist.size(); ++i) 
+        for (int i = 0; i < evlist.size(); ++i)
             evlist[i]->afterX11Event(event);
     else
-        for (int i = 0; i < evlist.size(); ++i) 
+        for (int i = 0; i < evlist.size(); ++i)
             processed = evlist[i]->x11Event(event);
-    
+
     return processed;
 }
 
 void MCompositeManagerPrivate::keyEvent(XKeyEvent* e)
-{    
+{
     if (e->state & Mod5Mask && e->keycode == switcher_key)
         exposeSwitcher();
 }
 
 void MCompositeManagerPrivate::buttonEvent(XButtonEvent* e)
-{   
+{
     if (e->type == ButtonRelease && e->window == home_button_win
         && e->x >= 0 && e->y >= 0 && e->x <= home_button_geom.width()
         && e->y <= home_button_geom.height())
@@ -3420,7 +3420,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
     roughSort();
 
     addItem(item);
-    
+
     if (pc->windowType() == MCompAtoms::INPUT) {
         dirtyStacking(false);
         return item;
@@ -3447,7 +3447,7 @@ MCompositeWindow *MCompositeManagerPrivate::bindWindow(Window window)
 
 void MCompositeManagerPrivate::addItem(MCompositeWindow *item)
 {
-    watch->addItem(item);    
+    watch->addItem(item);
     updateWinList();
     setWindowDebugProperties(item->window());
 
@@ -3632,7 +3632,7 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
         return;
     if (!compositing && forced == NO_FORCED)
         return;
-    
+
     // we could still have existing decorator on-screen.
     // ensure we don't accidentally disturb it
     for (QHash<Window, MCompositeWindow *>::iterator it = windows.begin();
@@ -3641,11 +3641,11 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
         if (i->propertyCache()->isDecorator())
             continue;
         if (i->windowVisible() && (i->propertyCache()->hasAlpha()
-                                   || i->needDecoration())) 
+                                   || i->needDecoration()))
             return;
     }
 
-#ifdef GLES2_VERSION  
+#ifdef GLES2_VERSION
     showOverlayWindow(false);
 #endif
 
@@ -3659,13 +3659,13 @@ void MCompositeManagerPrivate::disableCompositing(ForcingLevel forced)
         setWindowDebugProperties(it.key());
     }
 
-#ifndef GLES2_VERSION  
+#ifndef GLES2_VERSION
     showOverlayWindow(false);
 #endif
 
     if (MDecoratorFrame::instance()->decoratorItem())
         MDecoratorFrame::instance()->lower();
-    
+
     compositing = false;
 }
 
@@ -3683,7 +3683,7 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
     MDecoratorFrame::instance()->showQueryDialog(true);
     dirtyStacking(false);
     MDecoratorFrame::instance()->raise();
-    
+
     // We need to activate the window as well with instructions to decorate
     // the hung window. Above call just seems to mark the window as needing
     // decoration
@@ -3691,10 +3691,10 @@ void MCompositeManagerPrivate::gotHungWindow(MCompositeWindow *w, bool is_hung)
 }
 
 void MCompositeManagerPrivate::exposeSwitcher()
-{    
+{
     MCompositeWindow *i = 0;
     for (int j = stacking_list.size() - 1; j >= 0; --j) {
-        Window w = stacking_list.at(j);        
+        Window w = stacking_list.at(j);
         if (!(i = COMPOSITE_WINDOW(w)) || !i->propertyCache() ||
             !i->propertyCache()->isMapped() ||
             i->propertyCache()->windowTypeAtom() == ATOM(_NET_WM_WINDOW_TYPE_DESKTOP)
@@ -3721,9 +3721,9 @@ void MCompositeManagerPrivate::exposeSwitcher()
     clientMessageEvent(&(e.xclient));
 }
 
-void MCompositeManagerPrivate::installX11EventFilter(long xevent, 
+void MCompositeManagerPrivate::installX11EventFilter(long xevent,
                                                      MCompositeManagerExtension* extension)
-{  
+{
     m_extensions.insert(xevent, extension);
 }
 
@@ -4252,19 +4252,19 @@ QGraphicsScene *MCompositeManager::scene()
 }
 
 void MCompositeManager::prepareEvents()
-{    
+{
     if (QX11Info::isCompositingManagerRunning()) {
         qCritical("Compositing manager already running.");
         ::exit(0);
     }
-    
+
     d->prepare();
 }
 
 void MCompositeManager::loadPlugins(const QString &overridePluginPath,
                                     const QString &regularPluginDir)
 {
-    if (!overridePluginPath.isEmpty()) {
+    if (!overridePluginPath.isEmpty() && QDir(overridePluginPath).exists()) {
         d->loadPlugin(QString(overridePluginPath));
         return;
     }
