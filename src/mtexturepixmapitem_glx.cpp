@@ -278,8 +278,10 @@ void MTexturePixmapItem::cleanup()
     } else
         glDeleteTextures(1, &d->ctextureId);
 
-    if (d->windowp)
+    if (d->windowp) {
         XFreePixmap(QX11Info::display(), d->windowp);
+        d->windowp = 0;
+    }
 }
 
 void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
@@ -304,6 +306,7 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
                          GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
        } QT_CATCH(std::bad_alloc e) {
            /* XGetImage() failed, the window has been unmapped. */;
+           qWarning("MTexturePixmapItem::%s(): std::bad_alloc e", __func__);
        }
     }
     update();

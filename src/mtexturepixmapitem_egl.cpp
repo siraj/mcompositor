@@ -249,7 +249,10 @@ void MTexturePixmapItem::cleanup()
     eglMakeCurrent(d->eglresource->dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 #endif
 
-    XFreePixmap(QX11Info::display(), d->windowp);
+    if (d->windowp) {
+        XFreePixmap(QX11Info::display(), d->windowp);
+        d->windowp = 0;
+    }
 }
 
 void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
@@ -429,14 +432,20 @@ void MTexturePixmapItem::doTFP()
 {
     if (isClosing()) // Pixmap is already freed. No sense to create EGL image
         return;      // from it again
-    
+
+
     //no EGL texture from pixmap extensions available
     //use regular X11/GL calls to copy pixels from Pixmap to GL Texture
     if (d->custom_tfp) {
-        QPixmap qp = QPixmap::fromX11Pixmap(d->windowp);
-        QImage img = QGLWidget::convertToGLFormat(qp.toImage());
-        glBindTexture(GL_TEXTURE_2D, d->textureId);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width(), img.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+        QT_TRY {
+            QPixmap qp = QPixmap::fromX11Pixmap(d->windowp);
+            QImage img = QGLWidget::convertToGLFormat(qp.toImage());
+            glBindTexture(GL_TEXTURE_2D, d->textureId);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width(), img.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+            } QT_CATCH(std::bad_alloc e) {
+        /* XGetImage() failed, the window has been unmapped. */;
+        qWarning("MTexturePixmapItem::%s(): std::bad_alloc e", __func__);
+        }
     }
     //use EGL extensions
     else {
