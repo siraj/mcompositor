@@ -292,9 +292,8 @@ QVector<Atom> MCompAtoms::getAtomArray(Window w, Atom array_atom)
 
         if (!ret.isEmpty())
             memcpy(ret.data(), data, ret.size() * sizeof(Atom));
-
-        if (data) XFree((void *) data);
     }
+    if (data) XFree(data);
 
     return ret;
 }
@@ -306,7 +305,7 @@ unsigned int MCompAtoms::get_opacity_prop(Display *dpy, Window w, unsigned int d
     int format;
     unsigned long n, left;
 
-    unsigned char *data;
+    unsigned char *data = 0;
     int result = XGetWindowProperty(QX11Info::display(), w, atoms[_NET_WM_WINDOW_OPACITY], 0L, 1L, False,
                                     XA_CARDINAL, &actual, &format,
                                     &n, &left, &data);
@@ -363,12 +362,12 @@ Atom MCompAtoms::getAtom(Window w, Atoms atomtype)
     Atom actual;
     int format;
     unsigned long n, left;
-    unsigned char *data;
+    unsigned char *data = 0;
 
     int result = XGetWindowProperty(QX11Info::display(), w, atoms[atomtype], 0L, 1L, False,
                                     XA_ATOM, &actual, &format,
                                     &n, &left, &data);
-    if (result == Success && data != None) {
+    if (result == Success && data) {
         Atom a;
         memcpy(&a, data, sizeof(Atom));
         XFree((void *) data);
@@ -549,7 +548,7 @@ static RROutput find_primary_output()
     for (i = 0, primary = None; i < scres->noutput && primary == None; i++) {
         Atom t;
         int fmt;
-        unsigned char *contype;
+        unsigned char *contype = 0;
         unsigned long nitems, rem;
 
         if (XRRGetOutputProperty(dpy, scres->outputs[i], ATOM(RROUTPUT_CTYPE),
@@ -557,7 +556,7 @@ static RROutput find_primary_output()
                                  &fmt, &nitems, &rem, &contype) == Success) {
             if (t == XA_ATOM && fmt == 32 && nitems == 1
                 && *(Atom *)contype == ATOM(RROUTPUT_PANEL)) {
-                unsigned char *alpha_mode;
+                unsigned char *alpha_mode = 0;
 
                 /* Does the primary output support alpha blending? */
                 primary = scres->outputs[i];
@@ -567,11 +566,11 @@ static RROutput find_primary_output()
                           &alpha_mode) == Success) {
                     has_alpha_mode = t == XA_INTEGER && fmt == 32
                       && nitems == 1;
-                    XFree(alpha_mode);
                 }
+                if (alpha_mode) XFree(alpha_mode);
             }
-            XFree(contype);
         }
+        if (contype) XFree(contype);
     }
     XRRFreeScreenResources(scres);
 
@@ -1166,7 +1165,7 @@ bool MCompositeManagerPrivate::possiblyUnredirectTopmostWindow()
 
 void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
 {
-    if (e->event != QX11Info::appRootWindow())
+    if (e->send_event == True || e->event != QX11Info::appRootWindow())
         // handle root's SubstructureNotifys (top-levels) only
         return;
     configure_reqs.remove(e->window);
@@ -1175,7 +1174,8 @@ void MCompositeManagerPrivate::unmapEvent(XUnmapEvent *e)
         wpc = prop_caches.value(e->window);
         wpc->setBeingMapped(false);
         wpc->setIsMapped(false);
-        if (!wpc->isInputOnly())
+        if (!wpc->isInputOnly()
+            && wpc->parentWindow() != QX11Info::appRootWindow())
             XRemoveFromSaveSet(QX11Info::display(), e->window);
     }
 
@@ -1486,8 +1486,6 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         // we know the parent due to SubstructureRedirectMask on root window
         pc->setParentWindow(RootWindow(dpy, 0));
     }
-    if(!pc->isInputOnly())
-        XAddToSaveSet(QX11Info::display(), e->window);
 
     MCompAtoms::Type wtype = pc->windowType();
     QRect a = pc->realGeometry();
@@ -1546,6 +1544,8 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
         } else {
 #if 0 /* FIXME/TODO: this does NOT work when mdecorator starts after the first
          decorated window is shown. See NB#196194 */
+            if (!pc->isInputOnly())
+                XAddToSaveSet(QX11Info::display(), e->window);
             // it will be non-toplevel, so mask needs to be set here
             XSelectInput(dpy, e->window,
                          StructureNotifyMask | ColormapChangeMask |
@@ -2294,7 +2294,8 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         return;
     }
     if (win == localwin || win == localwin_parent || win == close_button_win
-        || win == home_button_win)
+        || win == home_button_win || e->send_event == True
+        || e->event != QX11Info::appRootWindow())
         return;
 
     MWindowPropertyCache *wpc;
@@ -2983,14 +2984,24 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
         XAllowEvents(QX11Info::display(), ReplayKeyboard, event->xkey.time);
         keyEvent(&event->xkey); break;
     case ReparentNotify:
-        // TODO: handle if one of our top-levels is reparented away
-        // Prevent this event from internally cascading inside Qt. Causing some
-        // random crashes in XCheckTypedWindowEvent
         if (prop_caches.contains(((XReparentEvent*)event)->window)) {
-            MWindowPropertyCache *pc =
-                    prop_caches.value(((XReparentEvent*)event)->window);
-            if (((XReparentEvent*)event)->parent != pc->parentWindow())
-                pc->setParentWindow(((XReparentEvent*)event)->parent);
+            Window window = ((XReparentEvent*)event)->window;
+            Window new_parent = ((XReparentEvent*)event)->parent;
+            MWindowPropertyCache *pc = prop_caches.value(window);
+            if (new_parent != pc->parentWindow()) {
+                if (new_parent != QX11Info::appRootWindow() &&
+                    !framed_windows.contains(window)) {
+                    // if new parent is not root/frame, forget about the window
+                    if (!pc->isInputOnly()
+                        && pc->parentWindow() != QX11Info::appRootWindow())
+                        XRemoveFromSaveSet(QX11Info::display(), window);
+                    MCompositeWindow *i = COMPOSITE_WINDOW(window);
+                    if (i) i->deleteLater();
+                    removeWindow(window);
+                    prop_caches.remove(window);
+                }
+                pc->setParentWindow(new_parent);
+            }
         }
         break;
     default:
@@ -3082,14 +3093,14 @@ void MCompositeManagerPrivate::redirectWindows()
     for (i = 0; i < children; ++i)  {
         xcb_get_window_attributes_reply_t *attr;
         attr = xcb_get_window_attributes_reply(xcb_conn,
-                     xcb_get_window_attributes(xcb_conn, kids[i]), 0);
+                     xcb_get_window_attributes_unchecked(xcb_conn, kids[i]), 0);
         if (!attr || attr->_class == XCB_WINDOW_CLASS_INPUT_ONLY) {
             if (attr) free(attr);
             continue;
         }
         xcb_get_geometry_reply_t *geom;
         geom = xcb_get_geometry_reply(xcb_conn,
-                        xcb_get_geometry(xcb_conn, kids[i]), 0);
+                        xcb_get_geometry_unchecked(xcb_conn, kids[i]), 0);
         if (!geom) {
             free(attr);
             continue;
@@ -4213,7 +4224,7 @@ void MCompositeManager::xtrace(const char *fun, const char *msg, int lmsg)
     // point (it has to wait for the reply).  Use xcb rather than libx11
     // because the latter maintains a hashtable of known Atom:s.
     free(xcb_intern_atom_reply(p->d->xcb_conn,
-                               xcb_intern_atom(p->d->xcb_conn, False,
+                               xcb_intern_atom_unchecked(p->d->xcb_conn, False,
                                                lmsg, msg),
                                NULL));
 }

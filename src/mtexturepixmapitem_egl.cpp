@@ -39,7 +39,7 @@
 
 static PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR = 0; 
 static PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR = 0; 
-PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = 0;
+static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = 0;
 static EGLint attribs[] = { EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE }; 
 
 class EglTextureManager
@@ -122,11 +122,7 @@ EGLDisplay EglResourceManager::dpy = 0;
 
 void MTexturePixmapItem::init()
 {
-    if (isValid() && !propertyCache()->isMapped()) {
-        qWarning("MTexturePixmapItem::%s(): Failed getting offscreen pixmap",
-                 __func__);
-        return;
-    } else if (!isValid() || propertyCache()->isInputOnly())
+    if (!isValid() || propertyCache()->isInputOnly())
         return;
     
     if (!d->eglresource)
@@ -223,7 +219,6 @@ bool MTexturePixmapItem::isDirectRendered() const
 MTexturePixmapItem::~MTexturePixmapItem()
 {
     cleanup();
-    delete d;
 }
 
 void MTexturePixmapItem::initCustomTfp()
@@ -237,7 +232,7 @@ void MTexturePixmapItem::cleanup()
 {
     EGLDisplay dpy = d->eglresource->dpy;
 
-    if (!d->custom_tfp && d->egl_image != EGL_NO_IMAGE_KHR) {
+    if (d->egl_image != EGL_NO_IMAGE_KHR) {
         EGLImageKHR egl_image =  d->egl_image;
         eglDestroyImageKHR(dpy, egl_image);
         d->egl_image = EGL_NO_IMAGE_KHR;
@@ -453,8 +448,9 @@ void MTexturePixmapItem::doTFP()
                                          (EGLClientBuffer)d->windowp,
                                          attribs);
         if (d->egl_image == EGL_NO_IMAGE_KHR) {
-            qWarning("MTexturePixmapItem::%s(): Cannot create EGL image: 0x%x",
-                     __func__, eglGetError());
+            // window is probably unmapped
+            /*qWarning("MTexturePixmapItem::%s(): Cannot create EGL image: 0x%x",
+                     __func__, eglGetError());*/
             return;
         } else {
             glBindTexture(GL_TEXTURE_2D, d->textureId);
