@@ -1,6 +1,7 @@
 mcompositor (0.8.3-1~unreleased) unstable; urgency=low
 
   * unreleased
+  * Fixes: BMC#11128 [REG]Sometimes system will die after tapped close button..
 
  -- Adam Endrodi <ext-adam.endrodi@nokia.com>  Fri, 07 Jan 2011 14:47:30 +0200
 
