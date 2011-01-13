@@ -2293,9 +2293,9 @@ void MCompositeManagerPrivate::mapEvent(XMapEvent *e)
         showOverlayWindow(true);
         return;
     }
+    // NOTE: we send synthetic MapNotifys from redirectWindows()
     if (win == localwin || win == localwin_parent || win == close_button_win
-        || win == home_button_win || e->send_event == True
-        || e->event != QX11Info::appRootWindow())
+        || win == home_button_win || e->event != QX11Info::appRootWindow())
         return;
 
     MWindowPropertyCache *wpc;
