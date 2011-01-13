@@ -100,7 +100,8 @@ void MWindowPropertyCache::init_invalid()
 
 MWindowPropertyCache::MWindowPropertyCache(Window w,
                         xcb_get_window_attributes_reply_t *wa,
-                        xcb_get_geometry_reply_t *geom)
+                        xcb_get_geometry_reply_t *geom,
+                        Damage damage_obj)
     : window(w)
 {
     init();
@@ -122,6 +123,7 @@ MWindowPropertyCache::MWindowPropertyCache(Window w,
                           xcb_real_geom->width, xcb_real_geom->height);
     }
     is_valid = true;
+    damage_object = damage_obj;
 
     if (!isMapped()) {
         // required to get property changes happening before mapping

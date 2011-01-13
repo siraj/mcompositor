@@ -45,7 +45,8 @@ public:
     MWindowPropertyCache();
     MWindowPropertyCache(Window window,
                          xcb_get_window_attributes_reply_t *attrs = 0,
-                         xcb_get_geometry_reply_t *geom = 0);
+                         xcb_get_geometry_reply_t *geom = 0,
+                         Damage damage_obj = 0);
     virtual ~MWindowPropertyCache();
 
     Atom windowTypeAtom() const { return window_type_atom; }

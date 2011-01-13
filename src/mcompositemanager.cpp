@@ -1465,11 +1465,19 @@ void MCompositeManagerPrivate::configureRequestEvent(XConfigureRequestEvent *e)
 void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 {
     Display *dpy = QX11Info::display();
+    Damage damage_obj = 0;
+    // create the damage object before mapping to get 'em all
+    if (!device_state->displayOff() && !prop_caches.contains(e->window))
+        damage_obj = XDamageCreate(dpy, e->window, XDamageReportNonEmpty);
+    // map early to give the app a chance to start drawing
+    XMapWindow(dpy, e->window);
+    XFlush(dpy);
+
     MWindowPropertyCache *pc;
     if (prop_caches.contains(e->window))
         pc = prop_caches.value(e->window);
     else {
-        pc = new MWindowPropertyCache(e->window);
+        pc = new MWindowPropertyCache(e->window, 0, 0, damage_obj);
         if (!pc->is_valid) {
             delete pc;
             return;
@@ -1588,10 +1596,6 @@ void MCompositeManagerPrivate::mapRequestEvent(XMapRequestEvent *e)
 #endif
         }
     }
-    // create the damage object before mapping to get 'em all
-    if (!device_state->displayOff())
-        pc->damageTracking(true);
-    XMapWindow(QX11Info::display(), e->window);
 }
 
 // Raise @pc's window together with its transiency tree to the top of
@@ -2927,7 +2931,8 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
         return true;
     }
 
-    if (processX11EventFilters(event, false))
+    if (event->type != MapRequest && event->type != ConfigureRequest
+        && processX11EventFilters(event, false))
         return true;
 
     if (event->type == damage_ev) {
@@ -2991,7 +2996,8 @@ bool MCompositeManagerPrivate::x11EventFilter(XEvent *event)
         ret = false;
         break;
     }
-    processX11EventFilters(event, true);
+    if (event->type != MapRequest && event->type != ConfigureRequest)
+        processX11EventFilters(event, true);
     return ret;
 }
 
