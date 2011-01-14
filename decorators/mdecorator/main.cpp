@@ -28,7 +28,13 @@ public:
         window.show();
     }
 
-    virtual bool x11EventFilter(XEvent *e) { return window.x11Event(e); }
+    virtual bool x11EventFilter(XEvent *e)
+    {
+        bool ret = window.x11Event(e);
+        if (!ret)
+            ret = MApplication::x11EventFilter(e);
+        return ret;
+    }
 
 private:
     MDecoratorWindow window;
