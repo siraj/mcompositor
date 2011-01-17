@@ -219,6 +219,7 @@ bool MTexturePixmapItem::isDirectRendered() const
 MTexturePixmapItem::~MTexturePixmapItem()
 {
     cleanup();
+    delete d;
 }
 
 void MTexturePixmapItem::initCustomTfp()
