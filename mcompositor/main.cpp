@@ -89,10 +89,14 @@ int main(int argc, char *argv[])
 
     // The directory is hard-coded for now. could be moved this
     // to $plugindir later.
+    int testPlugin;
+    const QStringList &args = app.arguments();
     app.prepareEvents();
     app.redirectWindows();
-    app.loadPlugins(app.arguments().count() > 1
-                    ? app.arguments().at(1) : QString(),
+    for (testPlugin = 1; testPlugin < args.length(); testPlugin++)
+        if (!args[testPlugin].isEmpty() && args[testPlugin][0] != '-')
+            break;
+    app.loadPlugins(testPlugin < args.length() ? args[testPlugin] : QString(),
                     "/usr/lib/mcompositor");
 
     return app.exec();

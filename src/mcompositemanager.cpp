@@ -4264,7 +4264,7 @@ void MCompositeManager::prepareEvents()
 void MCompositeManager::loadPlugins(const QString &overridePluginPath,
                                     const QString &regularPluginDir)
 {
-    if (!overridePluginPath.isEmpty() && QDir(overridePluginPath).exists()) {
+    if (!overridePluginPath.isEmpty()) {
         d->loadPlugin(QString(overridePluginPath));
         return;
     }
