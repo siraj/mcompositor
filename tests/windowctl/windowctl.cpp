@@ -244,6 +244,21 @@ static void set_iconic (Display *dpy, Window window)
                   (XEvent *)&xclient);
 }
 
+static void send_mtt_message (Display *dpy, Window w, float value)
+{
+      XClientMessageEvent xclient;
+
+      memset (&xclient, 0, sizeof (xclient));
+      xclient.type = ClientMessage;
+      xclient.window = w;
+      xclient.message_type = XInternAtom(dpy, "_MEEGOTOUCH_TRANSITION", False);
+      xclient.format = 32;
+      memcpy(&xclient.data.l[0], &value, sizeof(long));
+      XSendEvent (dpy, DefaultRootWindow (dpy), False,
+                  SubstructureRedirectMask | SubstructureNotifyMask,
+                  (XEvent *)&xclient);
+}
+
 static Visual*
 get_argb32_visual (Display *dpy)
 {
@@ -362,7 +377,7 @@ static void wait_for_mapnotify(Display *dpy, Window w)
 static void print_usage_and_exit(QString& stdOut)
 {
 #define PROG "windowctl"
-  stdOut = "Usage 1: " PROG " [afoemksIchpl(j[12])](n|d|i|b) [transient for <XID>]\n"
+  stdOut = "Usage 1: " PROG " [afoemksIchpl(j[12])M](n|d|i|b) [transient for <XID>]\n"
 	 "a - ARGB (32-bit) window, otherwise 16-bit is used\n"
 	 "f - fullscreen window\n"
 	 "o - override-redirect window\n"
@@ -377,6 +392,7 @@ static void print_usage_and_exit(QString& stdOut)
          "l - use InputOnly window class\n"
          "j1 - set _MEEGOTOUCH_ALWAYS_MAPPED property to 1\n"
          "j2 - set _MEEGOTOUCH_ALWAYS_MAPPED property to 2\n"
+         "M - send _MEEGOTOUCH_TRANSITION messages when the window is ARGB\n"
 	 "n - WM_TYPE_NORMAL window (if 'k' is given, that is the first type)\n"
 	 "d - WM_TYPE_DIALOG window\n"
 	 "i - WM_TYPE_INPUT window\n"
@@ -643,10 +659,11 @@ static bool old_main(QStringList& args, QString& stdOut)
         Colormap colormap;
         char green[] = "#00ff00";
         char blue[] = "#0000ff";
+        int input_mask;
 	int argb = 0, fullscreen = 0, override_redirect = 0, decor_buttons = 0,
             exit_on_unmap = 1, modal = 0, kde_override = 0, meego_layer = -1,
             shaped = 0, initial_iconic = 0, no_focus = 0, do_not_answer_ping = 0,
-            input_only = 0, always_mapped = -1, draw_mode = 0;;
+            input_only = 0, always_mapped = -1, draw_mode = 0, send_mtt = 0;
 	WindowType windowtype = TYPE_INVALID;
 
 	if (args.count() < 1 || args.count() > 6) {
@@ -739,6 +756,10 @@ static bool old_main(QStringList& args, QString& stdOut)
 		}
 		if (*p == 'o') {
 		       override_redirect = 1;	
+		       continue;
+		}
+		if (*p == 'M') {
+		       send_mtt = 1;	
 		       continue;
 		}
 		if (*p == 't') {
@@ -945,8 +966,11 @@ static bool old_main(QStringList& args, QString& stdOut)
         if (kde_override && windowtype != TYPE_NORMAL)
             set_kde_override(dpy, w);
 
-        XSelectInput (dpy, w, VisibilityChangeMask |
-                      ExposureMask | ButtonReleaseMask | ButtonPressMask);
+        input_mask = VisibilityChangeMask | ExposureMask | ButtonReleaseMask
+                     | ButtonPressMask;
+        if (argb && send_mtt)
+            input_mask |= Button1MotionMask;
+        XSelectInput (dpy, w, input_mask);
 
 	/* set WM_NAME */
 	{
@@ -977,6 +1001,7 @@ mainloop:
         int damage_event, damage_error;
         XDamageQueryExtension(dpy, &damage_event, &damage_error);
         static const int damage_ev = damage_event + XDamageNotify;
+        int last_root_x = WIN_W;
 
         for (;;) {
                 XEvent xev;
@@ -1027,7 +1052,17 @@ mainloop:
                 }
                 else if (xev.type == PropertyNotify) {
                 }
+                else if (xev.type == MotionNotify && argb && send_mtt) {
+                  int x = last_root_x = xev.xmotion.x_root;
+                  send_mtt_message(dpy, w, (float)(WIN_W - x) / (float)WIN_W);
+                }
                 else if (xev.type == ButtonRelease) {
+                  if (argb && send_mtt) {
+                      if (last_root_x < WIN_W / 2)
+                          send_mtt_message(dpy, w, 1);
+                      else
+                          send_mtt_message(dpy, w, 0);
+                  }
                   XButtonEvent *e = (XButtonEvent*)&xev;
                   int x = e->x - 10;
                   int y = e->y - 10;
@@ -1090,14 +1125,14 @@ mainloop:
 			  secs -= 1;
 		  }
 		  usecs /= 100;
-                  if (e.drawable != track_w)
+                  if (e.drawable != track_w && draw_mode)
                     printf("Damage received, %u.%.4us from mapping"
 			" (draw %lx, more %d, time %lu, x %d-%d, y %d-%d)\n",
                          secs, usecs,
 			 e.drawable, e.more, e.timestamp,
 			 e.area.x, e.area.x+e.area.width,
 			 e.area.y, e.area.y+e.area.height);
-                  else
+                  else if (e.drawable == track_w)
                     printf("Damage for 0x%lx received"
 			" (draw %lx, more %d, time %lu, x %d-%d, y %d-%d)\n",
                          track_w,
