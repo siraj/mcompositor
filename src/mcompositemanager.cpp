@@ -2088,6 +2088,7 @@ void MCompositeManagerPrivate::checkStacking(bool force_visibility_check,
         if (deco_i > 0) {
             STACKING_MOVE(deco_i, 0);
             stacking_list.move(deco_i, 0);
+            MDecoratorFrame::instance()->setManagedWindow(0);
         }
     }
 

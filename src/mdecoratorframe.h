@@ -109,6 +109,7 @@ private slots:
 
 private:
     explicit MDecoratorFrame(QObject *object = 0);
+    void sendManagedWindowId();
     static MDecoratorFrame *d;
 
     MCompositeWindow *client;

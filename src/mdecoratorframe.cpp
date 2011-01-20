@@ -84,9 +84,21 @@ void MDecoratorFrame::updateManagedWindowGeometry()
     if (client && client->needDecoration())
         setDecoratorAvailableRect(available_rect);
 }
+    
+void MDecoratorFrame::sendManagedWindowId()
+{
+    qulonglong winid = client ? client->window() : 0;
+    if(client)
+        remote_decorator->invoke("MAbstractDecorator",
+                                 "RemoteSetClientGeometry",
+                                 client->propertyCache()->requestedGeometry());
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemoteSetAutoRotation", false);
+    remote_decorator->invoke("MAbstractDecorator",
+                             "RemoteSetManagedWinId", winid);
+}
 
-void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
-                                       bool no_resize)
+void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw, bool no_resize)
 {    
     this->no_resize = no_resize;
 
@@ -96,19 +108,9 @@ void MDecoratorFrame::setManagedWindow(MCompositeWindow *cw,
         disconnect(client, SIGNAL(destroyed()), this, SLOT(destroyClient()));
     client = cw;
 
-    qulonglong winid = client ? client->window() : 0;
     if (!decorator_item)
         return;
-    
-    if(cw)
-        remote_decorator->invoke("MAbstractDecorator",
-                                 "RemoteSetClientGeometry",
-                                 cw->propertyCache()->requestedGeometry());
-    remote_decorator->invoke("MAbstractDecorator",
-                             "RemoteSetAutoRotation", false);
-    remote_decorator->invoke("MAbstractDecorator",
-                             "RemoteSetManagedWinId", winid);
-    
+    sendManagedWindowId();
     if (cw)
         connect(cw, SIGNAL(destroyed()), SLOT(destroyClient()));
 }
@@ -127,6 +129,7 @@ void MDecoratorFrame::setDecoratorItem(MCompositeWindow *window)
     MTexturePixmapItem *item = (MTexturePixmapItem *) window;
     if (!decorator_window)
         setDecoratorWindow(item->window());
+    sendManagedWindowId();
 }
 
 MCompositeWindow *MDecoratorFrame::decoratorItem() const
