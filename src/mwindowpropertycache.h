@@ -95,8 +95,7 @@ public:
         if (!shape_rects_valid)
             shapeRegion();
         shape_rects_valid = false;
-        xcb_shape_rects_cookie = xcb_shape_get_rectangles_unchecked(xcb_conn,
-                                                          window,
+        xcb_shape_rects_cookie = xcb_shape_get_rectangles(xcb_conn, window,
                                                           ShapeBounding);
     }
 

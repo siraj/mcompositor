@@ -548,7 +548,7 @@ static RROutput find_primary_output()
     for (i = 0, primary = None; i < scres->noutput && primary == None; i++) {
         Atom t;
         int fmt;
-        unsigned char *contype = 0;
+        unsigned char *contype;
         unsigned long nitems, rem;
 
         if (XRRGetOutputProperty(dpy, scres->outputs[i], ATOM(RROUTPUT_CTYPE),
@@ -556,7 +556,7 @@ static RROutput find_primary_output()
                                  &fmt, &nitems, &rem, &contype) == Success) {
             if (t == XA_ATOM && fmt == 32 && nitems == 1
                 && *(Atom *)contype == ATOM(RROUTPUT_PANEL)) {
-                unsigned char *alpha_mode = 0;
+                unsigned char *alpha_mode;
 
                 /* Does the primary output support alpha blending? */
                 primary = scres->outputs[i];
@@ -566,11 +566,11 @@ static RROutput find_primary_output()
                           &alpha_mode) == Success) {
                     has_alpha_mode = t == XA_INTEGER && fmt == 32
                       && nitems == 1;
+                    XFree(alpha_mode);
                 }
-                if (alpha_mode) XFree(alpha_mode);
             }
+            XFree(contype);
         }
-        if (contype) XFree(contype);
     }
     XRRFreeScreenResources(scres);
 
@@ -3093,14 +3093,14 @@ void MCompositeManagerPrivate::redirectWindows()
     for (i = 0; i < children; ++i)  {
         xcb_get_window_attributes_reply_t *attr;
         attr = xcb_get_window_attributes_reply(xcb_conn,
-                     xcb_get_window_attributes_unchecked(xcb_conn, kids[i]), 0);
+                     xcb_get_window_attributes(xcb_conn, kids[i]), 0);
         if (!attr || attr->_class == XCB_WINDOW_CLASS_INPUT_ONLY) {
             if (attr) free(attr);
             continue;
         }
         xcb_get_geometry_reply_t *geom;
         geom = xcb_get_geometry_reply(xcb_conn,
-                        xcb_get_geometry_unchecked(xcb_conn, kids[i]), 0);
+                        xcb_get_geometry(xcb_conn, kids[i]), 0);
         if (!geom) {
             free(attr);
             continue;
@@ -4224,7 +4224,7 @@ void MCompositeManager::xtrace(const char *fun, const char *msg, int lmsg)
     // point (it has to wait for the reply).  Use xcb rather than libx11
     // because the latter maintains a hashtable of known Atom:s.
     free(xcb_intern_atom_reply(p->d->xcb_conn,
-                               xcb_intern_atom_unchecked(p->d->xcb_conn, False,
+                               xcb_intern_atom(p->d->xcb_conn, False,
                                                lmsg, msg),
                                NULL));
 }
