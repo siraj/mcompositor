@@ -304,10 +304,10 @@ void MTexturePixmapItem::updateWindowPixmap(XRectangle *rects, int num,
             glBindTexture(GL_TEXTURE_2D, d->ctextureId);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width(), img.height(), 0,
                          GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
-       } QT_CATCH(std::bad_alloc e) {
-           /* XGetImage() failed, the window has been unmapped. */;
-           qWarning("MTexturePixmapItem::%s(): std::bad_alloc e", __func__);
-       }
+        } QT_CATCH(std::bad_alloc e) {
+            /* XGetImage() failed, the window has been unmapped. */;
+            qWarning("MTexturePixmapItem::%s(): std::bad_alloc e", __func__);
+        }
     }
     update();
 }
