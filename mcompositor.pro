@@ -1,11 +1,11 @@
 TEMPLATE = subdirs
 CONFIG+=ordered
 SUBDIRS = \
-    decorators \
-    src \
-    mcompositor\
-    tests \
-    translations
+decorators \
+   src \
+   mcompositor\
+#    tests \
+#    translations
 
 src.depends=decorators
 

@@ -158,7 +158,7 @@ public:
     bool compositing;
     bool overlay_mapped;
     bool changed_properties;
-    MDeviceState *device_state;
+    //MDeviceState *device_state;
 
     // Indicates whether MCompositeManager::prepare() has finished.
     // Used by the destructor.

@@ -37,7 +37,6 @@ HEADERS += \
     mcompositemanager.h \
     msimplewindowframe.h \
     mcompositemanager_p.h \
-    mdevicestate.h \
     mcompatoms_p.h \
     mdecoratorframe.h \
     mcompositemanagerextension.h \
@@ -52,7 +51,6 @@ SOURCES += \
     mcompwindowanimator.cpp \
     mcompositemanager.cpp \
     msimplewindowframe.cpp \
-    mdevicestate.cpp \
     mdecoratorframe.cpp \
     mcompositemanagerextension.cpp \
     mcompositewindowshadereffect.cpp

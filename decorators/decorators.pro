@@ -3,12 +3,12 @@ TEMPLATE = subdirs
 CONFIG+=ordered
 SUBDIRS += \
     sub_lib \
-    sub_decorator \
+    sub_decorator
 
 sub_lib.subdir=libdecorator
 
 sub_decorator.depends=sub_lib
-sub_decorator.subdir=mdecorator
+sub_decorator.subdir=qtdecorator
 
 
 check.target = check 
