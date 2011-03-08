@@ -19,7 +19,7 @@
 
 #include <QApplication>
 #include <QDebug>
-#include "qtdecotator.h"
+#include "qtdecorator.h"
 #include "windowframe.h"
 
 class MDecoratorApp : public QApplication
