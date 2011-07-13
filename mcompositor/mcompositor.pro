@@ -7,6 +7,7 @@ INCLUDEPATH += ../src
 QMAKE_CXXFLAGS = -lX11 -lXext
 
 LIBS += ../src/libmcompositor.so ../decorators/libdecorator/libdecorator.so
+LIBS += -lX11 -lXext
 
 target.path += $$M_INSTALL_BIN
 INSTALLS += target 
