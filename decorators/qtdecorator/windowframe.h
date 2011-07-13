@@ -2,7 +2,7 @@
 #define QT_FRAME_WINDOW_H
 
 #include <QWidget>
-#include "qtdecotator.h"
+#include "qtdecorator.h"
 
 
 class QtWindowFrame : public QWidget

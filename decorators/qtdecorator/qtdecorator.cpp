@@ -1,4 +1,4 @@
-#include "qtdecotator.h"
+#include "qtdecorator.h"
 #include "windowframe.h"
 #include <QDebug>.
 
