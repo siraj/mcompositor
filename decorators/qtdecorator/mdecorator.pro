@@ -3,6 +3,7 @@ DEPENDPATH += .
 INCLUDEPATH += . ../libdecorator
 CONFIG += release
 QT += opengl
+QMAKE_CXXFLAGS = -lX11 -lXext
 
 LIBS += ../libdecorator/libdecorator.so
 
