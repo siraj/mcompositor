@@ -1,5 +1,7 @@
 TEMPLATE = subdirs
 CONFIG+=ordered
+QMAKE_CXXFLAGS = -lX11 -lXext
+
 SUBDIRS = \
 decorators \
    src \
