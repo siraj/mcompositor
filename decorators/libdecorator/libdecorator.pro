@@ -5,6 +5,7 @@ INCLUDEPATH += .
 CONFIG += dll release
 QT += opengl network
 TARGET = decorator
+QMAKE_CXXFLAGS = -lX11 -lXext
 
 HEADERS += mabstractdecorator.h \
            mrmiclient_p.h \
