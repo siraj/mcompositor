@@ -25,6 +25,8 @@ TARGET = mcompositor
 DEPENDPATH += .
 QT += dbus
 
+QMAKE_CXXFLAGS = -lX11 -lXext
+LIBS += -lX11 -lXext
 # Input
 INCLUDEPATH += ../decorators/libdecorator/
 HEADERS += \

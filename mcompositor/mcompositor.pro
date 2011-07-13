@@ -4,6 +4,7 @@ TEMPLATE = app
 TARGET = 
 DEPENDPATH += .
 INCLUDEPATH += ../src
+QMAKE_CXXFLAGS = -lX11 -lXext
 
 LIBS += ../src/libmcompositor.so ../decorators/libdecorator/libdecorator.so
 
